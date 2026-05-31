@@ -28,7 +28,7 @@ export class ReporteDocenteService {
         usuario: { select: { nombre: true, apellidos: true, email: true } },
         horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
       },
-    });
+    }) as any;
 
     if (!docente) {
       throw new Error('Docente no encontrado');
@@ -62,7 +62,7 @@ export class ReporteDocenteService {
         horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
       },
       orderBy: { codigo: 'asc' },
-    });
+    }) as any[];
 
     const conHorario = docentes.filter((d) => d.horarios.length > 0);
     const totalSesiones = docentes.reduce((s, d) => s + d.horarios.length, 0);

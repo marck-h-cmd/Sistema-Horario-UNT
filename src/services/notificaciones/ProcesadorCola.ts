@@ -2,6 +2,7 @@ import { redis } from '@/lib/redis';
 import { GestorNotificaciones } from './GestorNotificaciones';
 import { ServicioCorreo } from './ServicioCorreo';
 import { CanalNotificacion } from '@prisma/client';
+import { TemporizadorService } from '../ventanas/TemporizadorService';
 
 export class ProcesadorCola {
   private gestorNotificaciones: GestorNotificaciones;
@@ -27,6 +28,10 @@ export class ProcesadorCola {
         try {
           await this.procesarTodasLasColas();
           await this.procesarNotificacionesProgramadas();
+          
+          // Procesar alertas y vencimientos de temporizadores de atención
+          const temporizadorService = new TemporizadorService();
+          await temporizadorService.procesarTemporizadoresPendientes();
         } catch (error) {
           console.error('Error en procesador de cola:', error);
         } finally {

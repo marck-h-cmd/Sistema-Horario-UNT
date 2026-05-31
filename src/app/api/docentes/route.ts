@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
     const categoria = searchParams.get('categoria') as CategoriaDocente || undefined;
     const activo = searchParams.get('activo') === 'true' ? true : 
                    searchParams.get('activo') === 'false' ? false : undefined;
+    const sortBy = searchParams.get('sortBy') || undefined;
+    const sortOrder = (searchParams.get('sortOrder') || undefined) as 'asc' | 'desc' | undefined;
 
     const resultado = await servicioDocente.listar({
       page,
@@ -34,6 +36,8 @@ export async function GET(request: NextRequest) {
       search,
       categoria,
       activo,
+      sortBy,
+      sortOrder,
     });
 
     return createPaginatedResponse(resultado.data, page, limit, resultado.meta.total);

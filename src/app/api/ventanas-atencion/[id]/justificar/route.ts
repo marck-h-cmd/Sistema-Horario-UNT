@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import { GestorVentanasAtencion } from '@/services/ventanas/GestorVentanasAtencion';
 
 const justificarSchema = z.object({
   motivo: z.string().min(10),
@@ -64,8 +65,23 @@ export async function POST(
       return createErrorResponse('NOT_FOUND', 'No se encontró atención activa', 404);
     }
 
+    // Calcular hora estimada de inicio del turno
+    const gestorVentanas = new GestorVentanasAtencion();
+    const horaInicioEstimada = await gestorVentanas.calcularHoraEstimadaTurno(params.id, atencion.posicion);
+    const limiteTiempo = 2 * 60 * 60 * 1000; // 2 horas en milisegundos
+
+    if (horaInicioEstimada.getTime() - Date.now() < limiteTiempo) {
+      return createErrorResponse(
+        'VALIDATION_ERROR',
+        `No es posible justificar la ausencia. El plazo permitido ha vencido (debe realizarse al menos 2 horas antes del inicio estimado de su turno, el cual es a las ${horaInicioEstimada.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}).`,
+        400
+      );
+    }
+
     const docenteNombre = `${atencion.docente.usuario.nombre} ${atencion.docente.usuario.apellidos}`;
 
+    // 🔒 Requiere EstadoAtencion.JUSTIFICADO (pendiente de aprobación de BD)
+    // Por ahora usar AUSENTE como fallback temporal
     await prisma.atencionVentana.update({
       where: { id: atencion.id },
       data: { 

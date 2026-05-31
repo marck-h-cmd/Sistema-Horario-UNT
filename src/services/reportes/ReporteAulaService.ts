@@ -38,9 +38,21 @@ export class ReporteAulaService {
       where: { id: periodoId },
     });
 
+    const ambienteFormateado = {
+      ...ambiente,
+      horarios: (ambiente.horarios || [])
+        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+        .map(h => ({
+          ...h,
+          diaSemana: h.diaSemana!,
+          horaInicio: h.horaInicio!,
+          horaFin: h.horaFin!,
+        })),
+    };
+
     const html = htmlDocumentoHorario(
       'Reporte de horario por ambiente',
-      htmlSeccionAmbiente(ambiente),
+      htmlSeccionAmbiente(ambienteFormateado as any),
       { periodo: periodo?.nombre, subtitulo: ambiente.codigo }
     );
 
@@ -60,8 +72,20 @@ export class ReporteAulaService {
       orderBy: { codigo: 'asc' },
     });
 
-    const conHorario = ambientes.filter((a) => a.horarios.length > 0);
-    const totalSesiones = ambientes.reduce((s, a) => s + a.horarios.length, 0);
+    const ambientesFormateados = ambientes.map(a => ({
+      ...a,
+      horarios: (a.horarios || [])
+        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+        .map(h => ({
+          ...h,
+          diaSemana: h.diaSemana!,
+          horaInicio: h.horaInicio!,
+          horaFin: h.horaFin!,
+        })),
+    }));
+
+    const conHorario = ambientesFormateados.filter((a) => a.horarios.length > 0);
+    const totalSesiones = ambientesFormateados.reduce((s, a) => s + a.horarios.length, 0);
 
     const cuerpo =
       htmlResumenConsolidado([
@@ -69,7 +93,7 @@ export class ReporteAulaService {
         { label: 'Con horario asignado', value: conHorario.length },
         { label: 'Sesiones totales', value: totalSesiones },
       ]) +
-      unirSeccionesPaginadas(ambientes.map((a) => htmlSeccionAmbiente(a)));
+      unirSeccionesPaginadas(ambientesFormateados.map((a) => htmlSeccionAmbiente(a as any)));
 
     const html = htmlDocumentoHorario('Horarios de todos los ambientes', cuerpo, {
       periodo: periodo?.nombre,

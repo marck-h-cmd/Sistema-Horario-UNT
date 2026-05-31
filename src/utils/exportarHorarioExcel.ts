@@ -192,12 +192,13 @@ export async function exportarHorarioExcel(
         const endRowIndex = sheetRowIndex + duration - 1;
 
         // Escribir contenido estructurado
-        const isLab = startingClass.ambiente.codigo.toUpperCase().includes('LAB');
+        const isLab = startingClass.ambiente ? startingClass.ambiente.codigo.toUpperCase().includes('LAB') : false;
         const docName = startingClass.docente?.usuario 
           ? `${startingClass.docente.usuario.nombre} ${startingClass.docente.usuario.apellidos}`
           : '';
+        const ambCodigo = startingClass.ambiente ? startingClass.ambiente.codigo : 'No asignado';
           
-        cell.value = `${startingClass.curso.codigo}\n${startingClass.curso.nombre}\n[${isLab ? 'LABORATORIO' : 'TEORÍA'}]\nAmb: ${startingClass.ambiente.codigo}\n${docName}${startingClass.grupo?.nombre ? `\nGr: ${startingClass.grupo.nombre}` : ''}`;
+        cell.value = `${startingClass.curso.codigo}\n${startingClass.curso.nombre}\n[${isLab ? 'LABORATORIO' : 'TEORÍA'}]\nAmb: ${ambCodigo}\n${docName}${startingClass.grupo?.nombre ? `\nGr: ${startingClass.grupo.nombre}` : ''}`;
         cell.alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
         // Fusión vertical para la duración del bloque
@@ -325,10 +326,10 @@ export async function exportarHorarioExcel(
       curso: h.curso.nombre,
       ciclo: h.curso.ciclo,
       docente: h.docente?.usuario ? `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}` : '-',
-      ambiente: h.ambiente.codigo,
-      dia: diasLabel[h.diaSemana] || h.diaSemana,
-      inicio: h.horaInicio,
-      fin: h.horaFin,
+      ambiente: h.ambiente ? h.ambiente.codigo : 'No asignado',
+      dia: h.diaSemana ? (diasLabel[h.diaSemana] || h.diaSemana) : 'No asignado',
+      inicio: h.horaInicio || '-',
+      fin: h.horaFin || '-',
       grupo: h.grupo?.nombre || '-',
       estado: h.estado
     });

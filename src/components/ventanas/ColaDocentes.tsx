@@ -48,7 +48,7 @@ export function ColaDocentes({
       </Card.Header>
       <Card.Content>
         {docentes.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-slate-400">
             <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>No hay docentes en cola</p>
           </div>
@@ -68,7 +68,7 @@ export function ColaDocentes({
         )}
       </Card.Content>
       {docentes.length > 0 && (
-        <Card.Footer className="flex items-center gap-2 text-sm text-gray-600">
+        <Card.Footer className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <Clock className="h-4 w-4" />
           <span>
             Tiempo estimado de espera:{' '}

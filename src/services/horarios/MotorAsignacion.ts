@@ -537,7 +537,22 @@ export class MotorAsignacion {
       await prisma.validacionHorario.create({
         data: {
           horarioId,
-          tipoRegla: conflicto.tipo,
+          tipoRegla: ((): any => {
+            const mapa: Record<string, string> = {
+              CRUCE_DOCENTE: 'CRUCE_DOCENTE',
+              CRUCE_AMBIENTE: 'CRUCE_AULA',
+              CRUCE_AULA: 'CRUCE_AULA',
+              CRUCE_LABORATORIO: 'CRUCE_AULA',
+              CRUCE_GRUPO: 'CRUCE_AULA',
+              HORAS_EXCEDIDAS: 'SUPERA_HORAS_MAX_DIARIAS',
+              SUPERA_HORAS_MAX_DIARIAS: 'SUPERA_HORAS_MAX_DIARIAS',
+              SUPERA_HORAS_CONTINUAS: 'SUPERA_HORAS_CONTINUAS',
+              DESCANSO_INSUFICIENTE: 'DESCANSO_INSUFICIENTE',
+              HORAS_REQUERIDAS: 'SUPERA_HORAS_MAX_DIARIAS',
+              CARGA_HORARIA: 'SUPERA_HORAS_MAX_DIARIAS',
+            };
+            return (mapa[conflicto.tipo] || 'CRUCE_DOCENTE') as any;
+          })(),
           cumple: false,
           mensaje: conflicto.mensaje,
           metadata: {

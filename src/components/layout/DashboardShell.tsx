@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Formateadores } from '@/lib/formateadores';
 import { MENU_SECTIONS } from '@/lib/menu-config';
 import { PeriodoSelector } from '@/components/layout/PeriodoSelector';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 function resolvePageTitle(pathname: string | null): string | null {
   if (!pathname) return null;
@@ -114,7 +115,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 bg-unt-blue text-white shadow-lg lg:block">
         {sidebar}
       </aside>
@@ -141,12 +142,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-header backdrop-blur-sm">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-header backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
           <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-3.5">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 lg:hidden"
+                className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Abrir menú"
               >
@@ -154,22 +155,27 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </button>
               <div className="min-w-0">
                 {pageTitle && (
-                  <p className="hidden truncate font-display text-lg font-semibold tracking-tight text-unt-blue sm:block">
+                  <p className="hidden truncate font-display text-lg font-semibold tracking-tight text-unt-blue dark:text-unt-gold-light sm:block">
                     {pageTitle}
                   </p>
                 )}
-                <p className="truncate text-xs text-slate-500 sm:hidden">
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400 sm:hidden">
                   {pageTitle ?? 'UNT Horarios'}
                 </p>
                 {user && (
-                  <p className="hidden text-xs text-slate-400 lg:block">
+                  <p className="hidden text-xs text-slate-400 dark:text-slate-500 lg:block">
                     Bienvenido,{' '}
-                    <span className="font-medium text-slate-600">{user.nombre}</span>
+                    <span className="font-medium text-slate-600 dark:text-slate-300">
+                      {user.nombre}
+                    </span>
                   </p>
                 )}
               </div>
             </div>
-            <PeriodoSelector />
+            <div className="flex shrink-0 items-center gap-2">
+              <ThemeToggle variant="ghost" />
+              <PeriodoSelector />
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-[1600px] p-4 lg:p-8">

@@ -1,12 +1,304 @@
-import { PrismaClient, Rol, CategoriaDocente, TipoAmbiente } from '@prisma/client';
+import { PrismaClient, Rol, CategoriaDocente, TipoAmbiente, DiaSemana, EstadoPeriodo, EstadoHorario, TipoComponente } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// ==================== INFORMACIÓN DE HORARIOS VÁLIDOS ====================
+const rawSchedulesText = `IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Posgrado A-307	LUNES	07:00	09:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	14:00	16:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	16:00	18:00	B	CONFIRMADO	LABORATORIO	2	0	2
+IS-102	Introducción a la Ing. de Sistemas	I	Alberto Mendoza de los Santos	Posgrado A-307	MARTES	07:00	10:00	A	CONFIRMADO	TEORIA	1	2	0
+EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	09:00	11:00	A	CONFIRMADO	LABORATORIO	0	0	2
+EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	11:00	13:00	B	CONFIRMADO	LABORATORIO	0	0	2
+EG-102	Desarrollo Personal	I	Bertha Urtecho Zavaleta	Taller Confecciones Ing. Industrial	VIERNES	09:00	13:00	A	CONFIRMADO	PRACTICA	2	2	0
+EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	MARTES	10:00	13:00	A	CONFIRMADO	TEORIA	1	4	0
+EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	VIERNES	07:00	09:00	A	CONFIRMADO	TEORIA	1	4	0
+EG-104	Lectura Crítica y Redac. Textos Académicos	I	Jorge Luis Rios Gonzales	Posgrado A-303	JUEVES	14:00	18:00	A	CONFIRMADO	TEORIA	2	2	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	09:00	11:00	A	CONFIRMADO	TEORIA	2	4	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	11:00	13:00	A	CONFIRMADO	TEORIA	2	4	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	MARTES	16:00	18:00	A	CONFIRMADO	PRACTICA	2	4	0
+EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller Confecciones Ing. Industrial	JUEVES	07:00	09:00	A	CONFIRMADO	LABORATORIO	0	2	0
+EG-106B	Estadística General	I	Martha Cardoso	Posgrado A-303	VIERNES	14:00	16:00	A	CONFIRMADO	TEORIA	2	2	0
+EG-106B	Estadística General	I	Martha Cardoso	Taller Confecciones Ing. Industrial	VIERNES	16:00	18:00	A	CONFIRMADO	LABORATORIO	2	2	0
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	LUNES	09:00	13:00	A	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	09:00	13:00	B	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	MARTES	09:00	13:00	C	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	I-4	MARTES	14:00	16:00	A	CONFIRMADO	TEORIA	2	0	4
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Posgrado A-307	MIERCOLES	09:00	12:00	A	CONFIRMADO	TEORIA	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIERCOLES	14:00	16:00	A	CONFIRMADO	LABORATORIO	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	JUEVES	16:00	18:00	C	CONFIRMADO	LABORATORIO	2	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	1	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Lab. 1	JUEVES	07:00	10:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Lab. 1	JUEVES	10:00	13:00	B	CONFIRMADO	LABORATORIO	1	1	2
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Posgrado A-303	MIERCOLES	18:00	21:00	A	CONFIRMADO	TEORIA	1	2	2
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Industrial	JUEVES	14:00	16:00	A	CONFIRMADO	PRACTICA	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	MARTES	16:00	18:00	A	CONFIRMADO	TEORIA	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Industrial	JUEVES	18:00	21:00	A	CONFIRMADO	LABORATORIO	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Industrial	VIERNES	07:00	09:00	B	CONFIRMADO	LABORATORIO	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	VIERNES	16:00	18:00	C	CONFIRMADO	TEORIA	1	2	2
+ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confecciones Ing. Industrial	LUNES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	0
+ADM-301	Administración General	III	Juan Carrascal Cabanillas	II-2	MARTES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	0
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Posgrado A-303	MARTES	15:00	20:00	A	CONFIRMADO	TEORIA	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	07:00	09:00	A	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIERCOLES	14:00	16:00	B	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	1	2	2
+PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO	TEORIA	2	2	0
+PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	VIERNES	18:00	20:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Posgrado A-303	LUNES	08:00	09:00	A	CONFIRMADO	TEORIA	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 4	LUNES	11:00	12:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 4	MARTES	08:00	09:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 2	JUEVES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 2	VIERNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	09:00	11:00	A	CONFIRMADO	PRACTICA	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 3	JUEVES	09:00	10:00	A	CONFIRMADO	LABORATORIO	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 3	JUEVES	10:00	11:00	B	CONFIRMADO	LABORATORIO	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-307	JUEVES	09:00	10:00	C	CONFIRMADO	LABORATORIO	2	2	2
+IS-503	Transformación Digital	V	Everson David Agreda Gamboa	Posgrado A-307	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Posgrado A-307	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	1	1	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Lab. 2	JUEVES	07:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Lab. 2	VIERNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Posgrado A-303	MIERCOLES	09:00	11:00	A	CONFIRMADO	TEORIA	2	2	3
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Lab. 3	JUEVES	09:00	10:00	A	CONFIRMADO	LABORATORIO	2	2	3
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Posgrado A-307	VIERNES	09:00	11:00	A	CONFIRMADO	TEORIA	2	2	3
+IS-506	Teleinformática (e)	V	Camilo Suarez Rebaza	Lab. 2	MIERCOLES	14:00	16:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-506	Teleinformática (e)	V	Camilo Suarez Rebaza	Lab. 2	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	MIERCOLES	14:00	16:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	MIERCOLES	16:00	18:00	A	CONFIRMADO	PRACTICA	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 4	JUEVES	14:00	16:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	VIERNES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MIERCOLES	14:00	16:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MARTES	14:00	15:00	A	CONFIRMADO	PRACTICA	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MARTES	19:00	20:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernandez	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	2	1	3
+IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernandez	Lab. 1	MARTES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-701B	Ingeniería de Software I	VII	Robert Jerry Sanchez Ticona	Lab. 1	LUNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	0	0	2
+IS-701B	Ingeniería de Software I	VII	Robert Jerry Sanchez Ticona	Lab. 1	LUNES	10:00	11:00	B	CONFIRMADO	LABORATORIO	0	0	2
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 2	LUNES	13:00	15:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 2	LUNES	15:00	17:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 3	LUNES	10:00	11:00	C	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Posgrado A-311	VIERNES	16:00	18:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-704	Negocios Electrónicos (e)	VII	Everson David Agreda Gamboa	Posgrado A-311	MARTES	16:00	18:00	A	CONFIRMADO	TEORIA	2	0	0
+IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	14:00	16:00	A	CONFIRMADO	LABORATORIO	0	0	2
+IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	16:00	18:00	B	CONFIRMADO	LABORATORIO	0	0	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Posgrado A-303	VIERNES	07:00	09:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	10:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	11:00	12:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-706	Metodología de la Investigación Científica	VII	Paul Cotrina Castellanos	Posgrado A-307	JUEVES	14:00	18:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Posgrado A-307	JUEVES	07:00	08:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 4	JUEVES	18:00	20:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 2	VIERNES	18:00	20:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Posgrado A-307	MARTES	13:00	15:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 4	MIERCOLES	13:00	15:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 4	MIERCOLES	15:00	17:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 3	JUEVES	09:00	11:00	C	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Audiovisuales	MIERCOLES	17:00	19:00	C	CONFIRMADO	TEORIA	1	2	2
+EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Lab. 4	MIERCOLES	07:00	11:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-901	Tesis I	IX	Juan Pedro Santos Fernandez	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	2	2	2
+IS-901	Tesis I	IX	Juan Pedro Santos Fernandez	Lab. 2	JUEVES	11:00	12:00	A	CONFIRMADO	LABORATORIO	2	2	2
+IS-902	Tesis I	IX	Ricardo Mendoza Rivera	Posgrado A-311	JUEVES	14:00	16:00	A	CONFIRMADO	TEORIA	2	2	1
+IS-903	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Posgrado A-303	VIERNES	10:00	11:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-903	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab. 4	VIERNES	14:00	15:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MIERCOLES	08:00	09:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	1	2	3
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	LUNES	10:00	11:00	A	CONFIRMADO	TEORIA	1	2	3
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	MARTES	14:00	16:00	A	CONFIRMADO	PRACTICA	1	2	3
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Posgrado A-303	VIERNES	10:00	11:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Lab. 4	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Audiovisuales	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Posgrado A-303	LUNES	18:00	20:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 3	MARTES	08:00	09:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 3	MIERCOLES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Posgrado A-303	MARTES	14:00	16:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Lab. 3	MIERCOLES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Lab. 4	MIERCOLES	06:00	08:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Posgrado A-303	LUNES	14:00	16:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	VIERNES	14:00	15:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	VIERNES	15:00	16:00	B	CONFIRMADO	LABORATORIO	2	0	2`;
+
+// ==================== FUNCIONES AUXILIARES DE NORMALIZACIÓN ====================
+
+const cleanStringForMatch = (str: string): string => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/[^a-z0-9]/g, "");     // quitar espacios y caracteres especiales
+};
+
+const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; tipo: TipoAmbiente } => {
+  const n = nombre.trim().replace(/\s+/g, ' ').replace(/"/g, '');
+  if (n.includes('Posgrado A-307')) return { codigo: 'A-307', nombre: 'Posgrado A-307', tipo: TipoAmbiente.AULA };
+  if (n.includes('Posgrado A-303')) return { codigo: 'A-303', nombre: 'Posgrado A-303', tipo: TipoAmbiente.AULA };
+  if (n.includes('Posgrado A-311')) return { codigo: 'A-311', nombre: 'Posgrado A-311', tipo: TipoAmbiente.AULA };
+  if (n.includes('Lab. 1')) return { codigo: 'Lab-1', nombre: 'Laboratorio 1', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 2')) return { codigo: 'Lab-2', nombre: 'Laboratorio 2', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 3')) return { codigo: 'Lab-3', nombre: 'Laboratorio 3', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 4')) return { codigo: 'Lab-4', nombre: 'Laboratorio 4', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. Fisica')) return { codigo: 'Lab-Fisica', nombre: 'Laboratorio de Física', tipo: TipoAmbiente.LABORATORIO };
+  
+  // Unificador potente para Taller de Confecciones (Ing. Industrial) y similares
+  if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
+    return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones - Ing. Industrial', tipo: TipoAmbiente.LABORATORIO };
+  }
+  
+  if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
+  
+  // Unificador para aulas II-2
+  if (
+    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') || 
+    n.includes('I I-2') || n.includes('I I 2') || n.includes('II 2')
+  ) {
+    return { codigo: 'II-2', nombre: 'Aula II-2 (Pabellón Ing. Industrial)', tipo: TipoAmbiente.AULA };
+  }
+  
+  if (n.includes('Audiovisuales')) return { codigo: 'AUD', nombre: 'Audiovisuales', tipo: TipoAmbiente.AUDITORIO };
+  
+  const cleanCode = n.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 10);
+  return { codigo: cleanCode, nombre: n, tipo: TipoAmbiente.AULA };
+};
+
+const mapCiclo = (ciclo: string): number => {
+  if (ciclo === 'I') return 1;
+  if (ciclo === 'III') return 3;
+  if (ciclo === 'V') return 5;
+  if (ciclo === 'VII') return 7;
+  if (ciclo === 'IX') return 9;
+  return 1;
+};
+
+const mapDia = (dia: string): DiaSemana => {
+  const d = dia.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (d === 'MIERCOLES') return DiaSemana.MIERCOLES;
+  if (d === 'SABADO') return DiaSemana.SABADO;
+  return d as DiaSemana;
+};
+
+const mapHora = (hora: string): string => {
+  let [h, m] = hora.trim().split(':');
+  let hNum = parseInt(h, 10);
+  // Si la hora es menor a 7 (e.g. 2:00, 6:00), asumimos que es de la tarde y sumamos 12
+  if (hNum < 7) {
+    hNum += 12;
+  }
+  return `${hNum.toString().padStart(2, '0')}:${m}`;
+};
+
+const calcularHoras = (inicio: string, fin: string): number => {
+  const [hIni, mIni] = mapHora(inicio).split(':').map(Number);
+  const [hFin, mFin] = mapHora(fin).split(':').map(Number);
+  return (hFin * 60 + mFin - (hIni * 60 + mIni)) / 60;
+};
+
+const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria: number; horasPractica: number; horasLaboratorio: number } => {
+  const n = cleanStringForMatch(nombre);
+  
+  if (n.includes('introduccionaprogramacion')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+  }
+  if (n.includes('introduccionalaing') || n.includes('introduccionalaingdesistemas')) {
+    return { creditos: 2, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('desarrollopersonal')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('desarrollodelpensamientologicomatematico')) {
+    return { creditos: 4, horasTeoria: 1, horasPractica: 4, horasLaboratorio: 0 };
+  }
+  if (n.includes('lecturacritica')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('introduccionalanalisismatematico')) {
+    return { creditos: 5, horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 };
+  }
+  if (n.includes('estadisticageneral')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('programacionorientadaaobjetos')) {
+    return { creditos: 5, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 };
+  }
+  if (n.includes('sistemica')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 2 };
+  }
+  if (n.includes('ingenieriagrafica')) {
+    return { creditos: 3, horasTeoria: 1, horasPractica: 1, horasLaboratorio: 2 };
+  }
+  if (n.includes('matematicaaplicada')) {
+    return { creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 };
+  }
+  if (n.includes('estadisticaaplicada')) {
+    return { creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 };
+  }
+  if (n.includes('administraciongeneral')) {
+    return { creditos: 2, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('fisicaelectronica')) {
+    return { creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 };
+  }
+  if (n.includes('psicologiaorganizacional')) {
+    return { creditos: 2, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('ingenieriadesoftware')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 3 };
+  }
+  if (n.includes('redesycomunicaciones')) {
+    return { creditos: 4, horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 };
+  }
+  if (n.includes('negocioselectronicos')) {
+    return { creditos: 2, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 0 };
+  }
+  if (n.includes('gestiondeservicios')) {
+    return { creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 };
+  }
+  if (n.includes('metodologiadelainvestigacion')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('administraciondebasedatos')) {
+    return { creditos: 4, horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 };
+  }
+  if (n.includes('planeamientoestrategico')) {
+    return { creditos: 4, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 };
+  }
+  if (n.includes('cadenadesuministros')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  
+  return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+};
+
+// ==================== PROCEDIMIENTO PRINCIPAL ====================
+
 async function main() {
   console.log('🌱 Iniciando generación de datos semilla...');
 
-  // ✅ Limpiar datos en orden correcto (respetando foreign keys)
+  // ==================== PARSEO DE TABLA ====================
+  const lines = rawSchedulesText.trim().split('\n');
+  const parsedSchedules = lines.map(line => {
+    const cols = line.split(/\t/);
+    return {
+      codigoCurso: cols[0].trim(),
+      curso: cols[1].trim(),
+      ciclo: cols[2].trim(),
+      docente: cols[3].trim(),
+      ambiente: cols[4].trim(),
+      dia: cols[5].trim(),
+      inicio: cols[6].trim(),
+      fin: cols[7].trim(),
+      grupo: cols[8].trim(),
+      estado: cols[9].trim(),
+      tipoComponente: cols[10]?.trim() ?? 'TEORIA',
+      horasT: parseInt(cols[11] ?? '0'),
+      horasP: parseInt(cols[12] ?? '0'),
+      horasL: parseInt(cols[13] ?? '0'),
+    };
+  });
+
+  console.log(`📊 Total registros de grilla analizados: ${parsedSchedules.length}`);
+
+  // ==================== LIMPIEZA ====================
   await prisma.seleccionTemporal.deleteMany();
   await prisma.envioNotificacion.deleteMany();
   await prisma.notificacion.deleteMany();
@@ -14,8 +306,8 @@ async function main() {
   await prisma.ventanaAtencion.deleteMany();
   await prisma.validacionHorario.deleteMany();
   await prisma.horario.deleteMany();
-  await prisma.matricula.deleteMany();        // ✅ ANTES de grupo
-  await prisma.estudiante.deleteMany();       // ✅ ANTES de grupo
+  await prisma.matricula.deleteMany();
+  await prisma.estudiante.deleteMany();
   await prisma.disponibilidadDocente.deleteMany();
   await prisma.restriccionAmbiente.deleteMany();
   await prisma.mantenimientoAmbiente.deleteMany();
@@ -34,90 +326,77 @@ async function main() {
 
   console.log('✅ Datos anteriores limpiados');
 
-  // Crear usuarios
+  // ==================== USUARIOS ADMINISTRATIVOS ====================
   const passwordHash = await bcrypt.hash('unt123456', 12);
 
-  await prisma.usuario.create({
-    data: {
-      email: 'admin@unitru.edu.pe',
-      password: passwordHash,
-      nombre: 'Administrador',
-      apellidos: 'Sistema',
-      rol: Rol.ADMINISTRADOR,
-      verificado: true,
-    }
+  const adminUser = await prisma.usuario.create({
+    data: { email: 'admin@unitru.edu.pe', password: passwordHash, nombre: 'Administrador', apellidos: 'Sistema', rol: Rol.ADMINISTRADOR, verificado: true }
+  });
+  const operadorUser = await prisma.usuario.create({
+    data: { email: 'operador@unitru.edu.pe', password: passwordHash, nombre: 'Operador', apellidos: 'Sistema', rol: Rol.OPERADOR, verificado: true }
+  });
+  const superAdminUser = await prisma.usuario.create({
+    data: { email: 'superadmin@unitru.edu.pe', password: passwordHash, nombre: 'Super', apellidos: 'Admin', rol: Rol.SUPER_ADMIN, verificado: true }
+  });
+  const monitorUser = await prisma.usuario.create({
+    data: { email: 'monitor@unitru.edu.pe', password: passwordHash, nombre: 'Monitor', apellidos: 'Sistema', rol: Rol.MONITOR, verificado: true }
   });
 
-  await prisma.usuario.create({
-    data: {
-      email: 'operador@unitru.edu.pe',
-      password: passwordHash,
-      nombre: 'Operador',
-      apellidos: 'Sistema',
-      rol: Rol.OPERADOR,
-      verificado: true,
-    }
-  });
+  console.log('✅ Usuarios administrativos creados');
 
-  await prisma.usuario.create({
-    data: {
-      email: 'superadmin@unitru.edu.pe',
-      password: passwordHash,
-      nombre: 'Super',
-      apellidos: 'Admin',
-      rol: Rol.SUPER_ADMIN,
-      verificado: true,
-    }
-  });
-
-  await prisma.usuario.create({
-    data: {
-      email: 'monitor@unitru.edu.pe',
-      password: passwordHash,
-      nombre: 'Monitor',
-      apellidos: 'Sistema',
-      rol: Rol.MONITOR,
-      verificado: true,
-    }
-  });
-
-  console.log('✅ Usuarios creados');
-
-  // Crear docentes
+  // ==================== DOCENTES ====================
   const docentesData = [
-    { email: 'juan.perez@unitru.edu.pe', nombre: 'Juan', apellidos: 'Pérez García', codigo: 'DOC001', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('1995-03-15') },
-    { email: 'maria.lopez@unitru.edu.pe', nombre: 'María', apellidos: 'López Torres', codigo: 'DOC002', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Matemáticas', fechaIngreso: new Date('2005-08-01') },
-    { email: 'carlos.rodriguez@unitru.edu.pe', nombre: 'Carlos', apellidos: 'Rodríguez Sánchez', codigo: 'DOC003', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Estadística', fechaIngreso: new Date('2010-03-01') },
-    { email: 'ana.martinez@unitru.edu.pe', nombre: 'Ana', apellidos: 'Martínez Díaz', codigo: 'DOC004', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Física', fechaIngreso: new Date('2018-04-01') },
-    { email: 'pedro.garcia@unitru.edu.pe', nombre: 'Pedro', apellidos: 'García Fernández', codigo: 'DOC005', categoria: CategoriaDocente.INVITADO, departamento: 'Dpto. de Lengua y Literatura', fechaIngreso: new Date('2020-03-01') },
-    { email: 'laura.fernandez@unitru.edu.pe', nombre: 'Laura', apellidos: 'Fernández Rojas', codigo: 'DOC006', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Ciencias Sicológicas', fechaIngreso: new Date('1998-03-15') },
-    { email: 'ricardo.sanchez@unitru.edu.pe', nombre: 'Ricardo', apellidos: 'Sánchez Mendoza', codigo: 'DOC007', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Ciencias Sociales', fechaIngreso: new Date('2003-08-01') },
-    { email: 'patricia.ramirez@unitru.edu.pe', nombre: 'Patricia', apellidos: 'Ramírez Castro', codigo: 'DOC008', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Filosofía y Arte', fechaIngreso: new Date('2012-03-01') },
-    { email: 'jorge.morales@unitru.edu.pe', nombre: 'Jorge', apellidos: 'Morales Vega', codigo: 'DOC009', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Administración', fechaIngreso: new Date('2019-04-01') },
-    { email: 'carmen.reyes@unitru.edu.pe', nombre: 'Carmen', apellidos: 'Reyes Ortiz', codigo: 'DOC010', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Economía', fechaIngreso: new Date('1997-03-15') },
-    { email: 'miguel.ortega@unitru.edu.pe', nombre: 'Miguel', apellidos: 'Ortega Silva', codigo: 'DOC011', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Ing. Industrial', fechaIngreso: new Date('2006-08-01') },
-    { email: 'isabel.castro@unitru.edu.pe', nombre: 'Isabel', apellidos: 'Castro Herrera', codigo: 'DOC012', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Ing. Ambiental', fechaIngreso: new Date('2013-03-01') },
-    { email: 'fernando.molina@unitru.edu.pe', nombre: 'Fernando', apellidos: 'Molina Ruiz', codigo: 'DOC013', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Derecho', fechaIngreso: new Date('2017-04-01') },
-    { email: 'veronica.diaz@unitru.edu.pe', nombre: 'Verónica', apellidos: 'Díaz Flores', codigo: 'DOC014', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Comunicación Social', fechaIngreso: new Date('1996-03-15') },
-    { email: 'roberto.jimenez@unitru.edu.pe', nombre: 'Roberto', apellidos: 'Jiménez Ríos', codigo: 'DOC015', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Educación', fechaIngreso: new Date('2007-08-01') },
-    { email: 'gloria.gutierrez@unitru.edu.pe', nombre: 'Gloria', apellidos: 'Gutiérrez Paredes', codigo: 'DOC016', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Contabilidad y Finanzas', fechaIngreso: new Date('2014-03-01') },
-    { email: 'andres.navarro@unitru.edu.pe', nombre: 'Andrés', apellidos: 'Navarro Romero', codigo: 'DOC017', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2016-04-01') },
-    { email: 'silvia.aguilar@unitru.edu.pe', nombre: 'Silvia', apellidos: 'Aguilar Méndez', codigo: 'DOC018', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Matemáticas', fechaIngreso: new Date('1999-03-15') },
-    { email: 'daniel.soto@unitru.edu.pe', nombre: 'Daniel', apellidos: 'Soto Vargas', codigo: 'DOC019', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Estadística', fechaIngreso: new Date('2008-08-01') },
-    { email: 'elena.paredes@unitru.edu.pe', nombre: 'Elena', apellidos: 'Paredes León', codigo: 'DOC020', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Física', fechaIngreso: new Date('2015-03-01') },
-    { email: 'pablo.cruz@unitru.edu.pe', nombre: 'Pablo', apellidos: 'Cruz Huamán', codigo: 'DOC021', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Ciencias Sicológicas', fechaIngreso: new Date('2019-08-01') },
-    { email: 'monica.chavez@unitru.edu.pe', nombre: 'Mónica', apellidos: 'Chávez Rivas', codigo: 'DOC022', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Ciencias Sociales', fechaIngreso: new Date('2000-03-15') },
-    { email: 'raul.medina@unitru.edu.pe', nombre: 'Raúl', apellidos: 'Medina Franco', codigo: 'DOC023', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Filosofía y Arte', fechaIngreso: new Date('2009-08-01') },
-    { email: 'lorena.vasquez@unitru.edu.pe', nombre: 'Lorena', apellidos: 'Vásquez Campos', codigo: 'DOC024', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Administración', fechaIngreso: new Date('2016-03-01') },
-    { email: 'enrique.salazar@unitru.edu.pe', nombre: 'Enrique', apellidos: 'Salazar Luna', codigo: 'DOC025', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2020-08-01') },
-    { email: 'paola.velasquez@unitru.edu.pe', nombre: 'Paola', apellidos: 'Velásquez Tello', codigo: 'DOC026', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2001-03-15') },
-    { email: 'oscar.moreno@unitru.edu.pe', nombre: 'Oscar', apellidos: 'Moreno Delgado', codigo: 'DOC027', categoria: CategoriaDocente.ASOCIADO, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2010-08-01') },
-    { email: 'teresa.cabrera@unitru.edu.pe', nombre: 'Teresa', apellidos: 'Cabrera Fuentes', codigo: 'DOC028', categoria: CategoriaDocente.AUXILIAR, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2017-03-01') },
-    { email: 'manuel.romero@unitru.edu.pe', nombre: 'Manuel', apellidos: 'Romero Quispe', codigo: 'DOC029', categoria: CategoriaDocente.CONTRATADO, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2021-04-01') },
-    { email: 'sofia.maldonado@unitru.edu.pe', nombre: 'Sofía', apellidos: 'Maldonado Pineda', codigo: 'DOC030', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Dpto. de Ing. Sistemas', fechaIngreso: new Date('2002-03-15') },
+    // Ciclo I
+    { email: 'marcelino.torres@unitru.edu.pe', nombre: 'Marcelino', apellidos: 'Torres Villanueva', codigo: 'DOC001', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'alberto.mendoza@unitru.edu.pe', nombre: 'Alberto', apellidos: 'Mendoza de los Santos', codigo: 'DOC002', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'paul.cotrina@unitru.edu.pe', nombre: 'Paul', apellidos: 'Cotrina Castellanos', codigo: 'DOC003', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'bertha.urtecho@unitru.edu.pe', nombre: 'Bertha', apellidos: 'Urtecho Zavaleta', codigo: 'DOC004', categoria: CategoriaDocente.AUXILIAR, departamento: 'CC. Psicológicas' },
+    { email: 'jose.ponte@unitru.edu.pe', nombre: 'Jose Luis', apellidos: 'Ponte Bejarano', codigo: 'DOC005', categoria: CategoriaDocente.ASOCIADO, departamento: 'Matemáticas' },
+    { email: 'jorge.rios@unitru.edu.pe', nombre: 'Jorge Luis', apellidos: 'Rios Gonzales', codigo: 'DOC006', categoria: CategoriaDocente.AUXILIAR, departamento: 'Lengua Nacional y Literatura' },
+    { email: 'segundo.guibar@unitru.edu.pe', nombre: 'Segundo', apellidos: 'Guibar Obeso', codigo: 'DOC007', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Matemáticas' },
+    { email: 'miguel.ipanaque@unitru.edu.pe', nombre: 'Miguel', apellidos: 'Ipanaque Zapata', codigo: 'DOC008', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Estadística' },
+    { email: 'martha.cardoso@unitru.edu.pe', nombre: 'Martha', apellidos: 'Cardoso', codigo: 'DOC009', categoria: CategoriaDocente.AUXILIAR, departamento: 'Estadística' },
+
+    // Ciclo III
+    { email: 'zoraida.vidal@unitru.edu.pe', nombre: 'Zoraida', apellidos: 'Vidal Melgarejo', codigo: 'DOC010', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'everson.agreda@unitru.edu.pe', nombre: 'Everson David', apellidos: 'Agreda Gamboa', codigo: 'DOC011', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'juan.obando@unitru.edu.pe', nombre: 'Juan Carlos', apellidos: 'Obando Roldan', codigo: 'DOC012', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'marcos.ferrer@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Ferrer Reyna', codigo: 'DOC013', categoria: CategoriaDocente.ASOCIADO, departamento: 'Matemáticas' },
+    { email: 'teresita.rojas@unitru.edu.pe', nombre: 'Teresita', apellidos: 'Rojas Garcia', codigo: 'DOC014', categoria: CategoriaDocente.AUXILIAR, departamento: 'Estadística' },
+    { email: 'juan.carrascal@unitru.edu.pe', nombre: 'Juan', apellidos: 'Carrascal Cabanillas', codigo: 'DOC015', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Administración' },
+    { email: 'vilma.mendez@unitru.edu.pe', nombre: 'Vilma', apellidos: 'Mendez Gil', codigo: 'DOC016', categoria: CategoriaDocente.ASOCIADO, departamento: 'Física' },
+    { email: 'sheyla.laura@unitru.edu.pe', nombre: 'Sheyla', apellidos: 'Laura Escobedo Rodriguez', codigo: 'DOC017', categoria: CategoriaDocente.AUXILIAR, departamento: 'CC. Psicológicas' },
+
+    // Ciclo V
+    { email: 'luis.boy@unitru.edu.pe', nombre: 'Luis', apellidos: 'Boy Chavil', codigo: 'DOC018', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'juan.obando.v@unitru.edu.pe', nombre: 'Juan Carlos', apellidos: 'Obando Roldan', codigo: 'DOC029', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'robert.sanchez@unitru.edu.pe', nombre: 'Robert Jerry', apellidos: 'Sanchez Ticona', codigo: 'DOC019', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
+    { email: 'cesar.arellano@unitru.edu.pe', nombre: 'Cesar', apellidos: 'Arellano Salazar', codigo: 'DOC020', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'camilo.suarez@unitru.edu.pe', nombre: 'Camilo', apellidos: 'Suarez Rebaza', codigo: 'DOC021', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'marcos.baca@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Baca Lopez', codigo: 'DOC022', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ingeniería Industrial' },
+    { email: 'ana.cuadra@unitru.edu.pe', nombre: 'Ana', apellidos: 'Cuadra Mitzugaray', codigo: 'DOC023', categoria: CategoriaDocente.AUXILIAR, departamento: 'Contabilidad y Finanzas' },
+
+    // Ciclo VII
+    { email: 'juan.santos@unitru.edu.pe', nombre: 'Juan Pedro', apellidos: 'Santos Fernandez', codigo: 'DOC024', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'ricardo.mendoza@unitru.edu.pe', nombre: 'Ricardo', apellidos: 'Mendoza Rivera', codigo: 'DOC025', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'oscar.alcantara@unitru.edu.pe', nombre: 'Oscar Romel', apellidos: 'Alcantara Moreno', codigo: 'DOC026', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
+    { email: 'jhoe.gonzalez@unitru.edu.pe', nombre: 'Jhoe', apellidos: 'Gonzalez Vasquez', codigo: 'DOC027', categoria: CategoriaDocente.CONTRATADO, departamento: 'Ing. Industrial' },
+
+    // Ciclo IX
+    { email: 'jose.gomez@unitru.edu.pe', nombre: 'Jose', apellidos: 'Gomez Avila', codigo: 'DOC028', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
   ];
 
-  const docentes = [];
+  const fechasIngreso: Record<string, string> = {
+    'DOC001': '1998-03-15', 'DOC005': '2001-08-20', 'DOC007': '1995-11-05', 'DOC008': '2003-04-10',
+    'DOC011': '1999-07-01', 'DOC015': '2000-02-28', 'DOC018': '2004-09-12', 'DOC020': '1997-06-18',
+    'DOC022': '2002-12-03', 'DOC024': '2005-03-22', 'DOC002': '2008-04-05', 'DOC003': '2012-08-14',
+    'DOC010': '2009-03-01', 'DOC012': '2011-07-20', 'DOC013': '2007-10-15', 'DOC016': '2010-01-10',
+    'DOC021': '2013-05-25', 'DOC023': '2014-02-18', 'DOC025': '2006-09-08', 'DOC028': '2015-11-30',
+    'DOC004': '2017-04-12', 'DOC006': '2016-08-01', 'DOC009': '2019-03-05', 'DOC014': '2015-06-20',
+    'DOC017': '2020-01-15', 'DOC019': '2018-09-10', 'DOC026': '2013-12-01', 'DOC027': '2022-04-01'
+  };
+
+  const docentes: any[] = [];
   for (const docenteData of docentesData) {
     const user = await prisma.usuario.create({
       data: {
@@ -135,9 +414,10 @@ async function main() {
         usuarioId: user.id,
         codigo: docenteData.codigo,
         categoria: docenteData.categoria,
+        dedicacion: docenteData.categoria === CategoriaDocente.PRINCIPAL || docenteData.categoria === CategoriaDocente.ASOCIADO ? 'TIEMPO_COMPLETO_40H' : 'TIEMPO_PARCIAL_20H',
         departamento: docenteData.departamento,
         telefono: '999123456',
-        fechaIngreso: docenteData.fechaIngreso,
+        fechaIngreso: new Date(fechasIngreso[docenteData.codigo] ?? '2015-01-01'),
         preferenciasNotificacion: {
           create: {
             correoActivo: true,
@@ -149,196 +429,126 @@ async function main() {
       }
     });
 
-    docentes.push(docente);
+    docentes.push({
+      ...docente,
+      nombre: docenteData.nombre,
+      apellidos: docenteData.apellidos,
+    });
   }
 
   console.log(`✅ ${docentes.length} docentes creados`);
 
-  // Crear cursos
-  const cursosData = [
-    // I Ciclo
-    { codigo: 'EG-101', nombre: 'Desarrollo del Pensamiento Lógico Matemático', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EG-102', nombre: 'Lectura Crítica y Redacción de Textos Académicos', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EG-103', nombre: 'Desarrollo Personal', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EG-104', nombre: 'Introducción al Análisis Matemático', creditos: 4, horasTeoria: 3, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EG-105', nombre: 'Estadística General', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 1 },
-    { codigo: 'EE-101', nombre: 'Introducción a la Ingeniería de Sistemas', creditos: 2, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EE-102', nombre: 'Introducción a la Programación', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EL-101', nombre: 'Técnicas de comunicación eficaz', creditos: 1, horasTeoria: 1, horasPractica: 0, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EL-102', nombre: 'Taller de Música', creditos: 1, horasTeoria: 0, horasPractica: 2, horasLaboratorio: 0, ciclo: 1 },
-    { codigo: 'EL-103', nombre: 'Taller de Liderazgo y trabajo en equipo', creditos: 1, horasTeoria: 1, horasPractica: 1, horasLaboratorio: 0, ciclo: 1 },
-    // II Ciclo
-    { codigo: 'EG-201', nombre: 'Ética, Convivencia Humana y Ciudadanía', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EG-202', nombre: 'Sociedad, Cultura y Ecología', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EG-203', nombre: 'Cultura Investigativa y Pensamiento Crítico', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EG-204', nombre: 'Análisis Matemático', creditos: 4, horasTeoria: 3, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EG-205', nombre: 'Física General', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 2 },
-    { codigo: 'EE-201', nombre: 'Programación Orientada a Objetos I', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 2 },
-    { codigo: 'EL-201', nombre: 'Taller de Manejo de TIC', creditos: 1, horasTeoria: 0, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EL-202', nombre: 'Taller de Danzas Folklóricas', creditos: 1, horasTeoria: 0, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    { codigo: 'EL-203', nombre: 'Taller de Deporte', creditos: 1, horasTeoria: 0, horasPractica: 2, horasLaboratorio: 0, ciclo: 2 },
-    // III Ciclo
-    { codigo: 'EP-301', nombre: 'Administración General', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 3 },
-    { codigo: 'EE-301', nombre: 'Sistémica', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 3 },
-    { codigo: 'EP-302', nombre: 'Estadística Aplicada', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 3 },
-    { codigo: 'EP-303', nombre: 'Matemática Aplicada', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 3 },
-    { codigo: 'EP-304', nombre: 'Física Electrónica', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 3 },
-    { codigo: 'EE-302', nombre: 'Programación Orientada a Objetos II', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 3 },
-    { codigo: 'EL-301', nombre: 'Ingeniería Gráfica', creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 1, ciclo: 3 },
-    { codigo: 'EL-302', nombre: 'Sicología Organizacional', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 3 },
-    // IV Ciclo
-    { codigo: 'EP-401', nombre: 'Economía General', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 4 },
-    { codigo: 'EE-401', nombre: 'Diseño Web', creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 1, ciclo: 4 },
-    { codigo: 'EP-402', nombre: 'Pensamiento de Diseño', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 4 },
-    { codigo: 'EP-403', nombre: 'Gestión por Procesos', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 4 },
-    { codigo: 'EE-402', nombre: 'Sistemas Digitales', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 4 },
-    { codigo: 'EE-403', nombre: 'Estructura de Datos Orientado a Objetos', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 4 },
-    { codigo: 'EL-401', nombre: 'Computación Gráfica y Visual', creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 1, ciclo: 4 },
-    { codigo: 'EL-402', nombre: 'Plataformas Tecnológicas', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 4 },
-    // V Ciclo
-    { codigo: 'EP-501', nombre: 'Contabilidad Gerencial', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 5 },
-    { codigo: 'EE-501', nombre: 'Tecnologías Web', creditos: 3, horasTeoria: 1, horasPractica: 2, horasLaboratorio: 1, ciclo: 5 },
-    { codigo: 'EP-502', nombre: 'Investigación de Operaciones', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 5 },
-    { codigo: 'EE-502', nombre: 'Ingeniería de Datos I', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 5 },
-    { codigo: 'EE-503', nombre: 'Arquitectura y Organización de Computadoras', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 5 },
-    { codigo: 'EE-504', nombre: 'Sistemas de Información', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 5 },
-    { codigo: 'EL-501', nombre: 'Teleinformática', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 5 },
-    { codigo: 'EL-502', nombre: 'Transformación Digital', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 5 },
-    // VI Ciclo
-    { codigo: 'EP-601', nombre: 'Finanzas Corporativas', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 6 },
-    { codigo: 'EE-601', nombre: 'Sistemas Inteligentes', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 6 },
-    { codigo: 'EP-602', nombre: 'Ingeniería Económica', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 6 },
-    { codigo: 'EE-602', nombre: 'Ingeniería de Datos II', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 6 },
-    { codigo: 'EE-603', nombre: 'Sistemas Operativos', creditos: 3, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2, ciclo: 6 },
-    { codigo: 'EE-604', nombre: 'Ingeniería de Requerimientos', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 6 },
-    { codigo: 'EL-601', nombre: 'Ingeniería Ambiental', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 6 },
-    { codigo: 'EL-602', nombre: 'Gestión del Talento Humano', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 6 },
-    // VII Ciclo
-    { codigo: 'EP-701', nombre: 'Cadena de Suministro', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 7 },
-    { codigo: 'EE-701', nombre: 'Gestión de Servicios de TIC', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 7 },
-    { codigo: 'EI-701', nombre: 'Metodología de la Investigación Científica', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 7 },
-    { codigo: 'EE-702', nombre: 'Planeamiento Estratégico de la Información', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 7 },
-    { codigo: 'EE-703', nombre: 'Redes y Comunicaciones I', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 7 },
-    { codigo: 'EE-704', nombre: 'Ingeniería del Software I', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 7 },
-    { codigo: 'EL-701', nombre: 'Administración de Base de Datos', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 7 },
-    { codigo: 'EL-702', nombre: 'Negocios Electrónicos', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 7 },
-    // VIII Ciclo
-    { codigo: 'EP-801', nombre: 'Marketing y Medios Sociales', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 8 },
-    { codigo: 'EE-801', nombre: 'Seguridad de la Información', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 8 },
-    { codigo: 'EE-802', nombre: 'Internet de las Cosas', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 8 },
-    { codigo: 'EE-803', nombre: 'Inteligencia de Negocios', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 8 },
-    { codigo: 'EE-804', nombre: 'Redes y Comunicaciones II', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 8 },
-    { codigo: 'EE-805', nombre: 'Ingeniería del Software II', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 8 },
-    { codigo: 'EL-801', nombre: 'Deontología y Derecho Informático', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 8 },
-    { codigo: 'EL-802', nombre: 'Arquitectura basada en Microservicios', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 8 },
-    // IX Ciclo
-    { codigo: 'EE-901', nombre: 'Gestión de Proyectos de TIC', creditos: 1, horasTeoria: 1, horasPractica: 0, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EE-902', nombre: 'Auditoría Informática', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EI-901', nombre: 'Tesis I', creditos: 4, horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EE-903', nombre: 'Analítica de Negocios', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EE-904', nombre: 'Computación en la Nube', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 9 },
-    { codigo: 'EE-905', nombre: 'Ingeniería Web', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EL-901', nombre: 'Emprendedurismo Tecnológico', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 9 },
-    { codigo: 'EL-902', nombre: 'Hackeo Ético', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 9 },
-    // X Ciclo
-    { codigo: 'EE-X01', nombre: 'Sistemas de Información Empresarial', creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 2, ciclo: 10 },
-    { codigo: 'EE-X02', nombre: 'Gobierno de TIC', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 10 },
-    { codigo: 'EI-X01', nombre: 'Tesis II', creditos: 4, horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0, ciclo: 10 },
-    { codigo: 'EE-X03', nombre: 'Arquitectura Empresarial', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 10 },
-    { codigo: 'EP-X01', nombre: 'Responsabilidad Social Corporativa', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, ciclo: 10 },
-    { codigo: 'EE-X04', nombre: 'Aplicaciones Móviles', creditos: 3, horasTeoria: 2, horasPractica: 1, horasLaboratorio: 1, ciclo: 10 },
-    { codigo: 'EE-X05', nombre: 'Prácticas Pre Profesionales', creditos: 4, horasTeoria: 0, horasPractica: 8, horasLaboratorio: 0, ciclo: 10 },
-  ];
+  // ==================== AMBIENTES DINÁMICOS ====================
+  const ambientesMap = new Map<string, { codigo: string; nombre: string; tipo: TipoAmbiente }>();
+  for (const item of parsedSchedules) {
+    const norm = normalizarAmbiente(item.ambiente);
+    if (!ambientesMap.has(norm.codigo)) {
+      ambientesMap.set(norm.codigo, norm);
+    }
+  }
 
-  const cursos = [];
-  for (const cursoData of cursosData) {
+  const ambientes: any[] = [];
+  for (const [_, envInfo] of ambientesMap) {
+    const ambiente = await prisma.ambiente.create({
+      data: {
+        codigo: envInfo.codigo,
+        nombre: envInfo.nombre,
+        tipo: envInfo.tipo,
+        capacidad: 40,
+        ubicacion: 'Campus Universitario UNT'
+      }
+    });
+    ambientes.push(ambiente);
+  }
+
+  console.log(`✅ ${ambientes.length} ambientes dinámicos creados`);
+
+  // ==================== CURSOS Y GRUPOS DINÁMICOS ====================
+  const cursosMap = new Map<string, { codigo: string; nombre: string; ciclo: number; horasT: number; horasP: number; horasL: number }>();
+  const uniqueGroupsMap = new Map<string, Set<string>>();
+
+  for (const item of parsedSchedules) {
+    if (!cursosMap.has(item.codigoCurso)) {
+      cursosMap.set(item.codigoCurso, {
+        codigo: item.codigoCurso,
+        nombre: item.curso,
+        ciclo: mapCiclo(item.ciclo),
+        horasT: item.horasT,
+        horasP: item.horasP,
+        horasL: item.horasL,
+      });
+    }
+    if (!uniqueGroupsMap.has(item.codigoCurso)) {
+      uniqueGroupsMap.set(item.codigoCurso, new Set());
+    }
+    uniqueGroupsMap.get(item.codigoCurso)!.add(item.grupo);
+  }
+
+  const cursos: any[] = [];
+  for (const [codigo, cursoInfo] of cursosMap) {
+    const uniqueGroups = Array.from(uniqueGroupsMap.get(codigo) || new Set(['A']));
+    const gruposData = uniqueGroups.map(g => ({ nombre: g, capacidad: 40 }));
+    
     const curso = await prisma.curso.create({
       data: {
-        ...cursoData,
+        codigo: cursoInfo.codigo,
+        nombre: cursoInfo.nombre,
+        ciclo: cursoInfo.ciclo,
+        creditos: cursoInfo.horasT + cursoInfo.horasP + cursoInfo.horasL,
+        horasTeoria: cursoInfo.horasT,
+        horasPractica: cursoInfo.horasP,
+        horasLaboratorio: cursoInfo.horasL,
         grupos: {
-          create: [
-            { nombre: 'A', capacidad: 35 },
-            { nombre: 'B', capacidad: 35 },
-            { nombre: 'C', capacidad: 35 },
-          ]
+          create: gruposData
         }
+      },
+      include: {
+        grupos: true
       }
     });
     cursos.push(curso);
   }
 
-  console.log(`✅ ${cursos.length} cursos creados con 3 grupos cada uno`);
+  console.log(`✅ ${cursos.length} cursos dinámicos creados`);
 
-  // Asignar cursos a docentes
-  const asignaciones = [];
-  for (let i = 0; i < cursos.length; i++) {
-    const numDocentes = (i % 3 === 0) ? 2 : 1;
-    const docente1Index = i % docentes.length;
-    const curso = cursos[i];
-    const horasReales = curso.horasTeoria + curso.horasPractica + curso.horasLaboratorio;
-    const horasAsignadas = horasReales;
-
-   asignaciones.push({
-      cursoIndex: i,
-      docenteIndex: docente1Index,
-      horasAsignadas: numDocentes === 2 
-        ? Math.ceil(horasReales / 2) 
-        : horasReales
-    });
-
-    if (numDocentes === 2) {
-      // Usar un docente diferente para la segunda mitad de la carga
-      const docente2Index = (i + 1) % docentes.length;
-      asignaciones.push({
-        cursoIndex: i,
-        docenteIndex: docente2Index,
-        horasAsignadas: Math.floor(horasReales / 2)
-      });
+  // ==================== ASIGNACIONES CURSO-DOCENTE ====================
+  const assignmentsMap = new Map<string, { cursoId: string; docenteId: string; horas: number }>();
+  for (const item of parsedSchedules) {
+    const curso = cursos.find(c => c.codigo === item.codigoCurso);
+    const docente = docentes.find(d => cleanStringForMatch(`${d.nombre} ${d.apellidos}`) === cleanStringForMatch(item.docente));
+    if (curso && docente) {
+      const key = `${curso.id}_${docente.id}`;
+      const horas = calcularHoras(item.inicio, item.fin);
+      if (assignmentsMap.has(key)) {
+        assignmentsMap.get(key)!.horas += horas;
+      } else {
+        assignmentsMap.set(key, { cursoId: curso.id, docenteId: docente.id, horas });
+      }
     }
   }
 
-  for (const asignacion of asignaciones) {
+  let totalAssignments = 0;
+  for (const [_, val] of assignmentsMap) {
     await prisma.cursoDocente.create({
       data: {
-        cursoId: cursos[asignacion.cursoIndex].id,
-        docenteId: docentes[asignacion.docenteIndex].id,
-        horasAsignadas: asignacion.horasAsignadas,
+        cursoId: val.cursoId,
+        docenteId: val.docenteId,
+        horasAsignadas: val.horas || 4,
       }
     });
+    totalAssignments++;
   }
 
-  console.log(`✅ ${asignaciones.length} asignaciones curso-docente creadas`);
+  console.log(`✅ ${totalAssignments} asignaciones curso-docente dinámicas creadas`);
 
-  // Crear ambientes
-  const ambientesData = [
-    { codigo: 'A101', nombre: 'Aula 101', tipo: TipoAmbiente.AULA, capacidad: 40 },
-    { codigo: 'A102', nombre: 'Aula 102', tipo: TipoAmbiente.AULA, capacidad: 40 },
-    { codigo: 'A103', nombre: 'Aula 103', tipo: TipoAmbiente.AULA, capacidad: 40 },
-    { codigo: 'A104', nombre: 'Aula 104', tipo: TipoAmbiente.AULA, capacidad: 35 },
-    { codigo: 'A201', nombre: 'Aula 201', tipo: TipoAmbiente.AULA, capacidad: 35 },
-    { codigo: 'A202', nombre: 'Aula 202', tipo: TipoAmbiente.AULA, capacidad: 35 },
-    { codigo: 'L301', nombre: 'Laboratorio de Cómputo 1', tipo: TipoAmbiente.LABORATORIO, capacidad: 30 },
-    { codigo: 'L302', nombre: 'Laboratorio de Cómputo 2', tipo: TipoAmbiente.LABORATORIO, capacidad: 30 },
-    { codigo: 'L303', nombre: 'Laboratorio de Redes', tipo: TipoAmbiente.LABORATORIO, capacidad: 25 },
-    { codigo: 'L304', nombre: 'Laboratorio de Electrónica', tipo: TipoAmbiente.LABORATORIO, capacidad: 25 },
-    { codigo: 'AUD1', nombre: 'Auditorio Principal', tipo: TipoAmbiente.AUDITORIO, capacidad: 150 },
-    { codigo: 'SC01', nombre: 'Sala de Conferencias 1', tipo: TipoAmbiente.SALA_CONFERENCIAS, capacidad: 50 },
-  ];
-
-  for (const ambienteData of ambientesData) {
-    await prisma.ambiente.create({ data: ambienteData });
-  }
-
-  console.log(`✅ ${ambientesData.length} ambientes creados`);
-
-  // Crear período académico 2026-I
+  // ==================== PERÍODO ACADÉMICO ====================
   const periodo = await prisma.periodoAcademico.create({
     data: {
       nombre: '2026-I',
-      fechaInicio: new Date('2026-03-01'),
-      fechaFin: new Date('2026-07-31'),
-      estado: 'ACTIVO',
-      activo: true,           // ✅ Activo directamente
+      fechaInicio: new Date('2026-04-13'),
+      fechaFin: new Date('2026-08-08'),
+      estado: EstadoPeriodo.ACTIVO,
+      activo: true,
       configuraciones: {
         create: {
           horasMaxDiariasDocente: 8,
@@ -350,18 +560,18 @@ async function main() {
     }
   });
 
-  console.log('✅ Período académico 2026-I creado y ACTIVO');
+  console.log('✅ Período académico 2026-I creado');
 
-  // Crear disponibilidad de docentes
-  const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+  // ==================== DISPONIBILIDAD DE DOCENTES ====================
+  const diasSemana: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
   for (const docente of docentes) {
-    for (const dia of dias) {
+    for (const dia of diasSemana) {
       await prisma.disponibilidadDocente.create({
         data: {
           docenteId: docente.id,
-          diaSemana: dia as any,
+          diaSemana: dia,
           horaInicio: '08:00',
-          horaFin: '14:00',
+          horaFin: '18:00',
           prioridad: 1
         }
       });
@@ -370,60 +580,110 @@ async function main() {
 
   console.log('✅ Disponibilidad de docentes creada');
 
-  // Crear estudiantes
-  const estudiantesData = [
-    { codigo: '1020100126', nombre: 'Carlos Alberto', apellidos: 'Sánchez Ruiz', email: 'csanchez@unitru.edu.pe', dni: '71234561' },
-    { codigo: '1020100226', nombre: 'Ana Lucía', apellidos: 'Torres Paredes', email: 'atorres@unitru.edu.pe', dni: '71234562' },
-    { codigo: '1020100326', nombre: 'Roberto Carlos', apellidos: 'García Mendoza', email: 'rgarcia@unitru.edu.pe', dni: '71234563' },
-    { codigo: '1020100426', nombre: 'María Fernanda', apellidos: 'López Castro', email: 'mlopez@unitru.edu.pe', dni: '71234564' },
-    { codigo: '1020100526', nombre: 'Diego Armando', apellidos: 'Morales Villa', email: 'dmorales@unitru.edu.pe', dni: '71234565' },
-    { codigo: '1050200125', nombre: 'Jimena Sofía', apellidos: 'Rojas Ortiz', email: 'jsofia@unitru.edu.pe', dni: '72234561' },
-    { codigo: '1050200225', nombre: 'Kevin Bryan', apellidos: 'Chávez Rivas', email: 'kchavez@unitru.edu.pe', dni: '72234562' },
-    { codigo: '1050200325', nombre: 'Paola Andrea', apellidos: 'Vásquez Tello', email: 'pvasquez@unitru.edu.pe', dni: '72234563' },
-    { codigo: '1080300124', nombre: 'Luis Miguel', apellidos: 'Pineda Rojas', email: 'lpineda@unitru.edu.pe', dni: '73234561' },
-    { codigo: '1080300224', nombre: 'Elena Victoria', apellidos: 'Salazar Luna', email: 'esalazar@unitru.edu.pe', dni: '73234562' },
-  ];
+  // ==================== HORARIOS REALES (ESTADO CONFIRMADO) ====================
+  let totalHorariosCreados = 0;
+  for (const item of parsedSchedules) {
+    const curso = cursos.find(c => c.codigo === item.codigoCurso);
+    const docente = docentes.find(d => cleanStringForMatch(`${d.nombre} ${d.apellidos}`) === cleanStringForMatch(item.docente));
+    const grupo = curso?.grupos.find((g: any) => g.nombre === item.grupo);
+    const normEnv = normalizarAmbiente(item.ambiente);
+    const ambiente = ambientes.find(a => a.codigo === normEnv.codigo);
 
-  const creadosEstudiantes = [];
-  for (const est of estudiantesData) {
-    const estudiante = await prisma.estudiante.create({
-      data: {
-        ...est,
-        ciclo: Math.floor(Math.random() * 10) + 1,
-      }
-    });
-    creadosEstudiantes.push(estudiante);
+    if (!curso || !docente || !grupo || !ambiente) {
+      console.warn(`⚠️ Omisión de registro por inconsistencia en: Curso=${item.codigoCurso}, Docente=${item.docente}, Grupo=${item.grupo}, Ambiente=${item.ambiente}`);
+      continue;
+    }
+
+    try {
+      const mapTipo = (t: string): TipoComponente => {
+        if (t === 'PRACTICA') return TipoComponente.PRACTICA;
+        if (t === 'LABORATORIO') return TipoComponente.LABORATORIO;
+        return TipoComponente.TEORIA;
+      };
+      
+      const tipoComponente: TipoComponente = mapTipo(item.tipoComponente);
+
+      await prisma.horario.create({
+        data: {
+          periodoId: periodo.id,
+          cursoId: curso.id,
+          docenteId: docente.id,
+          grupoId: grupo.id,
+          ambienteId: ambiente.id,
+          diaSemana: mapDia(item.dia),
+          horaInicio: mapHora(item.inicio),
+          horaFin: mapHora(item.fin),
+          tipoComponente,
+          estado: EstadoHorario.CONFIRMADO,
+          publicado: true,
+          creadoPor: adminUser.id,
+          fechaConfirmacion: new Date(),
+          confirmadoPor: adminUser.id,
+        }
+      });
+      totalHorariosCreados++;
+    } catch (err: any) {
+      console.warn(`⚠️ Conflicto al crear horario para ${curso.codigo} (${item.dia} ${item.inicio}-${item.fin}): ${err.message}`);
+    }
   }
 
-  // Matricular estudiantes
-  const todosLosCursos = await prisma.curso.findMany({ include: { grupos: true } });
+  console.log(`` + `✅ ${totalHorariosCreados} horarios reales registrados en estado CONFIRMADO`);
 
-  for (const curso of todosLosCursos) {
-    if (curso.grupos.length > 0) {
-      const numMatriculados = Math.floor(Math.random() * 3) + 3;
-      const estudiantesSorteados = [...creadosEstudiantes]
-        .sort(() => 0.5 - Math.random())
-        .slice(0, numMatriculados);
+  // ==================== ESTUDIANTES Y MATRÍCULAS ====================
+  const estudiantesData = [
+    { codigo: '1020100126', nombre: 'Carlos Alberto', apellidos: 'Sánchez Ruiz', email: 'csanchez@unitru.edu.pe', dni: '71234561', ciclo: 1 },
+    { codigo: '1020100226', nombre: 'Ana Lucía', apellidos: 'Torres Paredes', email: 'atorres@unitru.edu.pe', dni: '71234562', ciclo: 1 },
+    { codigo: '1020100326', nombre: 'Roberto Carlos', apellidos: 'García Mendoza', email: 'rgarcia@unitru.edu.pe', dni: '71234563', ciclo: 1 },
+    { codigo: '1020100426', nombre: 'María Fernanda', apellidos: 'López Castro', email: 'mlopez@unitru.edu.pe', dni: '71234564', ciclo: 1 },
+    { codigo: '1020100526', nombre: 'Diego Armando', apellidos: 'Morales Villa', email: 'dmorales@unitru.edu.pe', dni: '71234565', ciclo: 1 },
+    { codigo: '1020100626', nombre: 'Valeria Andrea', apellidos: 'Rojas Pineda', email: 'vrojas@unitru.edu.pe', dni: '71234566', ciclo: 3 },
+    { codigo: '1020100726', nombre: 'Javier Alejandro', apellidos: 'Castro Herrera', email: 'jcastro@unitru.edu.pe', dni: '71234567', ciclo: 3 },
+    { codigo: '1020100826', nombre: 'Daniela Fernanda', apellidos: 'Mendoza Ríos', email: 'dmendoza@unitru.edu.pe', dni: '71234568', ciclo: 5 },
+    { codigo: '1020100926', nombre: 'Sebastián', apellidos: 'Flores Vargas', email: 'sflores@unitru.edu.pe', dni: '71234569', ciclo: 7 },
+    { codigo: '1020101026', nombre: 'Camila', apellidos: 'Nuñez Rojas', email: 'cnunez@unitru.edu.pe', dni: '71234570', ciclo: 9 },
+  ];
 
-      for (const est of estudiantesSorteados) {
+  const estudiantes: any[] = [];
+  for (const est of estudiantesData) {
+    const estudiante = await prisma.estudiante.create({
+      data: est
+    });
+    estudiantes.push(estudiante);
+  }
+
+  let totalMatriculas = 0;
+  for (const estudiante of estudiantes) {
+    const cursosDelCiclo = cursos.filter(c => c.ciclo === estudiante.ciclo);
+
+    for (const curso of cursosDelCiclo) {
+      if (curso.grupos.length > 0) {
         const grupo = curso.grupos[Math.floor(Math.random() * curso.grupos.length)];
         await prisma.matricula.create({
           data: {
-            estudianteId: est.id,
+            estudianteId: estudiante.id,
             cursoId: curso.id,
             grupoId: grupo.id,
             periodoId: periodo.id,
             estado: 'ACTIVO'
           }
         });
+        totalMatriculas++;
       }
     }
   }
 
-  console.log(`✅ ${creadosEstudiantes.length} estudiantes creados y matriculados`);
-  console.log('🎉 Datos semilla generados exitosamente');
-  console.log(`📊 Resumen: ${docentes.length} docentes, ${cursos.length} cursos, ${ambientesData.length} ambientes`);
-  console.log(`📅 Período: 2026-I (Marzo - Julio 2026) — ACTIVO`);
+  console.log(`✅ ${estudiantes.length} estudiantes registrados con ${totalMatriculas} matrículas`);
+
+  // ==================== REPORTE FINAL ====================
+  console.log('\n🎉 ========== DATOS SEMILLA GENERADOS ==========');
+  console.log(`📊 Resumen:`);
+  console.log(`   👨‍🏫 Docentes: ${docentes.length}`);
+  console.log(`   📚 Cursos: ${cursos.length}`);
+  console.log(`   🏛️ Ambientes: ${ambientes.length}`);
+  console.log(`   📅 Horarios confirmados: ${totalHorariosCreados}`);
+  console.log(`   👨‍🎓 Estudiantes: ${estudiantes.length}`);
+  console.log(`   📅 Período: 2026-I (13 Abril - 08 Agosto 2026)`);
+  console.log('=============================================\n');
 }
 
 main()

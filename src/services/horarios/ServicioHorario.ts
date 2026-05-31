@@ -62,7 +62,7 @@ export class ServicioHorario {
       prisma.horario.findMany({
         where,
         include: {
-          curso: { select: { id: true, codigo: true, nombre: true } },
+          curso: { select: { id: true, codigo: true, nombre: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
           docente: {
             include: {
               usuario: { select: { id: true, nombre: true, apellidos: true } }
@@ -147,6 +147,14 @@ export class ServicioHorario {
       throw new AppError('El docente no tiene asignado este curso', 400, 'DOCENTE_NO_ASIGNADO');
     }
 
+    // Validar que el ambiente exista y esté activo
+    const ambiente = await prisma.ambiente.findUnique({
+      where: { id: datos.ambienteId },
+    });
+    if (!ambiente || !ambiente.activo) {
+      throw new AppError('Ambiente no encontrado o inactivo', 404, 'AMBIENTE_NOT_FOUND');
+    }
+
     const franja = validarFranjaHorariaPermitida(datos.horaInicio, datos.horaFin);
     if (!franja.valido) {
       throw new AppError(franja.mensaje!, 400, 'FRANJA_HORARIA_INVALIDA');
@@ -187,13 +195,7 @@ export class ServicioHorario {
       throw new AppError(errores.map((e) => e.mensaje).join(' '), 400, 'VALIDACION_HORARIO');
     }
 
-    // Validar que el ambiente exista y esté activo
-    const ambiente = await prisma.ambiente.findUnique({
-      where: { id: datos.ambienteId },
-    });
-    if (!ambiente || !ambiente.activo) {
-      throw new AppError('Ambiente no encontrado o inactivo', 404, 'AMBIENTE_NOT_FOUND');
-    }
+
 
     // Validar el grupo si se proporciona
     if (datos.grupoId) {
@@ -288,7 +290,7 @@ export class ServicioHorario {
         usuarioId: horarioConfirmado.docente.usuarioId,
         tipo: 'CONFIRMACION_HORARIO',
         titulo: 'Horario Confirmado',
-        mensaje: `Se ha confirmado tu horario para el curso ${horarioConfirmado.curso.nombre} el día ${horarioConfirmado.diaSemana} de ${horarioConfirmado.horaInicio} a ${horarioConfirmado.horaFin} en el ambiente ${horarioConfirmado.ambiente.nombre}.`,
+        mensaje: `Se ha confirmado tu horario para el curso ${horarioConfirmado.curso.nombre} el día ${horarioConfirmado.diaSemana || 'Desconocido'} de ${horarioConfirmado.horaInicio || '--:--'} a ${horarioConfirmado.horaFin || '--:--'} en el ambiente ${horarioConfirmado.ambiente ? horarioConfirmado.ambiente.nombre : 'Sin ambiente'}.`,
         prioridad: 'ALTA',
         canal: 'SISTEMA',
         metadata: {

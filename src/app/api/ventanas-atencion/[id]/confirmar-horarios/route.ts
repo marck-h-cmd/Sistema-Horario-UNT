@@ -64,7 +64,7 @@ export async function POST(
 
     const nombreDocente = `${docente.usuario.nombre} ${docente.usuario.apellidos}`;
     const detallesCursos = horariosConfirmados
-      .map(hc => `- ${hc.curso.nombre} (Día: ${hc.diaSemana}, Hora: ${hc.horaInicio} - ${hc.horaFin}, Ambiente: ${hc.ambiente.nombre})`)
+      .map(hc => `- ${hc.curso.nombre} (Día: ${hc.diaSemana || 'Desconocido'}, Hora: ${hc.horaInicio || '--:--'} - ${hc.horaFin || '--:--'}, Ambiente: ${hc.ambiente ? hc.ambiente.nombre : 'Sin ambiente'})`)
       .join('\n');
 
     // Enviar notificación consolidada por CORREO

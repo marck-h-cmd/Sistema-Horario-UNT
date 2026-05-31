@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
-import { CategoriaDocente, Prisma } from '@prisma/client';
+import { CategoriaDocente, DedicacionDocente, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export interface DocenteFiltros {
@@ -21,6 +21,7 @@ export interface DocenteCreateInput {
   apellidos: string;
   codigo: string;
   categoria: CategoriaDocente;
+  dedicacion?: DedicacionDocente;
   departamento?: string;
   telefono?: string;
   whatsapp?: string;
@@ -166,6 +167,7 @@ export class ServicioDocente {
       data: {
         codigo: datos.codigo,
         categoria: datos.categoria,
+        dedicacion: datos.dedicacion || (datos.categoria === CategoriaDocente.PRINCIPAL || datos.categoria === CategoriaDocente.ASOCIADO ? DedicacionDocente.TIEMPO_COMPLETO_40H : DedicacionDocente.TIEMPO_PARCIAL_20H),
         departamento: datos.departamento,
         telefono: datos.telefono,
         whatsapp: datos.whatsapp,
@@ -207,6 +209,7 @@ export class ServicioDocente {
 
     const updateData: any = {};
     if (datos.categoria) updateData.categoria = datos.categoria;
+    if (datos.dedicacion) updateData.dedicacion = datos.dedicacion;
     if (datos.departamento !== undefined) updateData.departamento = datos.departamento;
     if (datos.telefono !== undefined) updateData.telefono = datos.telefono;
     if (datos.whatsapp !== undefined) updateData.whatsapp = datos.whatsapp;
@@ -422,11 +425,6 @@ export class ServicioDocente {
   }
 
   private generarPasswordTemporal(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let password = '';
-    for (let i = 0; i < 10; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
+    return 'unt123456';
   }
 }

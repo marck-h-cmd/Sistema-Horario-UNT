@@ -183,14 +183,14 @@ export default function EstadisticasPage() {
 
           <div className="card">
             <div className="card-header">
-              <h3 className="text-sm font-semibold text-gray-900">Horarios por estado</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Horarios por estado</h3>
             </div>
-            <div className="card-body text-sm text-gray-700">
+            <div className="card-body text-sm text-gray-700 dark:text-slate-300">
               {resumen?.horariosPorEstado &&
                 Object.entries(resumen.horariosPorEstado).map(([k, v]) => (
-                  <div key={k} className="flex justify-between border-b border-gray-100 py-1">
+                  <div key={k} className="flex justify-between border-b border-gray-100 dark:border-slate-700 py-1">
                     <span>{Formateadores.estadoHorario(k)}</span>
-                    <span className="font-medium text-unt-blue">{v}</span>
+                    <span className="font-medium text-unt-blue dark:text-unt-gold-light">{v}</span>
                   </div>
                 ))}
             </div>
@@ -201,7 +201,6 @@ export default function EstadisticasPage() {
             data={barPorDia}
             xKey="dia"
             dataKey="cantidad"
-            color="#1a365d"
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -210,7 +209,6 @@ export default function EstadisticasPage() {
               data={barOcupacion}
               xKey="ambiente"
               dataKey="pct"
-              color="#1a365d"
             />
             <PieChartCard title="Avance horario por categoría" data={pieAvance} />
           </div>
@@ -220,7 +218,6 @@ export default function EstadisticasPage() {
             data={barMapaCalor}
             xKey="franja"
             dataKey="sesiones"
-            color="#1a365d"
           />
         </>
       )}

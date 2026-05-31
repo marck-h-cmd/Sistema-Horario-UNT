@@ -62,7 +62,8 @@ services:
       - "${APP_PORT:-3000}:3000"
     networks:
       - unt_network
-    command: sh -c "npx prisma generate && npx prisma db push && npm start"
+    # El entrypoint del Dockerfile ejecuta `prisma generate` y `prisma db push`
+    # antes de `npm start`, así no hace falta declararlo aquí.
     deploy:
       resources:
         limits:
@@ -100,7 +101,8 @@ services:
       - /app/.next
     networks:
       - unt_network
-    command: sh -c "npx prisma generate && npx prisma db push && npm run dev"
+    # Igual que en producción, el entrypoint se encarga de prisma generate +
+    # prisma db push antes de `npm run dev`.
     deploy:
       resources:
         limits:

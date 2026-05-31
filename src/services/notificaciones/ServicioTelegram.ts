@@ -14,13 +14,15 @@ export class ServicioTelegram extends ServicioNotificacionBase {
   }
 
   async enviar(datos: DatosNotificacion): Promise<boolean> {
+    let notificacionId = '';
     try {
       const notificacion = await this.crearNotificacion(datos);
+      notificacionId = notificacion.id;
 
       // Obtener chat ID de Telegram del usuario
       const chatId = await this.obtenerChatIdUsuario(datos.usuarioId);
       if (!chatId) {
-        await this.registrarEnvio(notificacion.id, false, 'Usuario sin Telegram registrado');
+        await this.registrarEnvio(notificacionId, false, 'Usuario sin Telegram registrado');
         return false;
       }
 
@@ -33,12 +35,14 @@ export class ServicioTelegram extends ServicioNotificacionBase {
       });
 
       const exito = response.data?.ok === true;
-      await this.registrarEnvio(notificacion.id, exito);
+      await this.registrarEnvio(notificacionId, exito);
 
       return exito;
     } catch (error: any) {
       console.error('Error enviando Telegram:', error);
-      await this.registrarEnvio('', false, error.message);
+      if (notificacionId) {
+        await this.registrarEnvio(notificacionId, false, error.message);
+      }
       return false;
     }
   }

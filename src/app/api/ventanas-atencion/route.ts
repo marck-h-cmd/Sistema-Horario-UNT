@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
     const periodoId = searchParams.get('periodoId') || undefined;
     const estado = searchParams.get('estado') as any || undefined;
 
+    // Sincronizar automáticamente ventanas por fecha/hora
+    await gestorVentanas.autoProcesarVentanas();
+
     const ventanas = await gestorVentanas.listarVentanas(periodoId, estado);
 
     return createSuccessResponse(ventanas);
@@ -23,7 +26,8 @@ export async function GET(request: NextRequest) {
 const crearVentanaSchema = z.object({
   periodoId: z.string().uuid(),
   nombre: z.string().min(3).max(100),
-  categoria: z.enum(['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO']),
+  categorias: z.array(z.string()).optional(),
+  categoria: z.enum(['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO']).optional(),
   fechaInicio: z.string(),
   fechaFin: z.string(),
   ordenAtencion: z.array(z.string()).optional(),
@@ -38,9 +42,16 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos inválidos', 400, validation.error.errors);
     }
 
+    const categorias = validation.data.categorias ?? 
+                       (validation.data.categoria ? [validation.data.categoria] : 
+                        validation.data.ordenAtencion ?? ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO']);
+
     const ventana = await gestorVentanas.crearVentana({
-      ...validation.data,
-      ordenAtencion: validation.data.ordenAtencion ?? [],
+      periodoId: validation.data.periodoId,
+      nombre: validation.data.nombre,
+      categorias,
+      fechaInicio: validation.data.fechaInicio,
+      fechaFin: validation.data.fechaFin,
     });
 
     return createSuccessResponse(ventana, undefined, 201);

@@ -100,14 +100,16 @@ export default function VentanasAtencionPage() {
     return tomorrow.toISOString().split('T')[0];
   });
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!periodoId) {
       setData([]);
       setReporte([]);
       return;
     }
-    setLoading(true);
-    setLoadingReporte(true);
+    if (!silent) {
+      setLoading(true);
+      setLoadingReporte(true);
+    }
     setError(null);
     try {
       const res = await apiGet<VentanaRow[]>('/api/ventanas-atencion', { periodoId });
@@ -122,13 +124,21 @@ export default function VentanasAtencionPage() {
       setError(e instanceof ApiClientError ? e.message : 'Error al cargar ventanas');
       setData([]);
     } finally {
-      setLoading(false);
-      setLoadingReporte(false);
+      if (!silent) {
+        setLoading(false);
+        setLoadingReporte(false);
+      }
     }
   };
 
   useEffect(() => {
     load();
+
+    const interval = setInterval(() => {
+      load(true);
+    }, 15000); // Polling cada 15 segundos
+
+    return () => clearInterval(interval);
   }, [periodoId]);
 
   // Agrupar ventanas por día en Configuración
@@ -208,8 +218,8 @@ export default function VentanasAtencionPage() {
         periodoId,
         nombre: form.nombre,
         categoria: form.categoria,
-        fechaInicio: form.fechaInicio,
-        fechaFin: form.fechaFin,
+        fechaInicio: form.fechaInicio ? new Date(form.fechaInicio).toISOString() : '',
+        fechaFin: form.fechaFin ? new Date(form.fechaFin).toISOString() : '',
       });
       toast.success('Ventana creada');
       setDialogOpen(false);
@@ -238,6 +248,7 @@ export default function VentanasAtencionPage() {
           periodoId,
           date: addDayForm.date,
           type: addDayForm.type,
+          timezoneOffset: new Date().getTimezoneOffset(),
         }),
       });
       const resJson = await res.json();
@@ -410,7 +421,7 @@ export default function VentanasAtencionPage() {
           className={`py-3 px-6 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'config'
               ? 'border-primary-600 text-primary-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <Calendar className="h-4 w-4" />
@@ -421,7 +432,7 @@ export default function VentanasAtencionPage() {
           className={`py-3 px-6 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'monitor'
               ? 'border-primary-600 text-primary-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <History className="h-4 w-4" />
@@ -437,20 +448,20 @@ export default function VentanasAtencionPage() {
         /* ==================== TAB 1: CONFIGURACIÓN ==================== */
         <div className="space-y-8">
           {windowsByDay.length === 0 ? (
-            <div className="border border-dashed rounded-xl p-12 text-center text-gray-500 bg-white">
+            <div className="border border-dashed rounded-xl p-12 text-center text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800/30 dark:border-slate-700">
               <Calendar className="h-12 w-12 mx-auto mb-2 opacity-30 text-primary-600" />
               <p className="font-semibold text-sm">No hay ventanas de atención configuradas</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
                 Haz clic en &quot;Agregar Día&quot; para generar las ventanas recomendadas.
               </p>
             </div>
           ) : (
             windowsByDay.map((day) => (
-              <div key={day.date} className="bg-white border rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gray-50/70 border-b px-5 py-4 flex items-center justify-between">
+              <div key={day.date} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gray-50/70 dark:bg-slate-800/50 border-b dark:border-slate-700 px-5 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-bold text-gray-900">
+                    <Calendar className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+                    <h3 className="font-bold text-gray-900 dark:text-slate-100">
                       Día {day.dayNumber}: {day.date}
                     </h3>
                     {day.windows.some((w) => w.nombre.includes('Continuación')) && (
@@ -462,8 +473,8 @@ export default function VentanasAtencionPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50/30 border-b">
+                  <table className="w-full text-sm text-left text-gray-700 dark:text-slate-300">
+                    <thead className="text-xs text-gray-700 dark:text-slate-400 uppercase bg-gray-50/30 dark:bg-slate-800/50 border-b dark:border-slate-700">
                       <tr>
                         <th className="px-6 py-3 w-16">Orden</th>
                         <th className="px-6 py-3">Categoría / Nombre</th>
@@ -474,7 +485,7 @@ export default function VentanasAtencionPage() {
                         <th className="px-6 py-3 text-right">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                       {day.windows.map((w, index) => {
                         const start = new Date(w.fechaInicio).toLocaleTimeString('es-PE', {
                           hour: '2-digit',
@@ -486,24 +497,24 @@ export default function VentanasAtencionPage() {
                         });
 
                         return (
-                          <tr key={w.id} className="hover:bg-gray-50/50">
-                            <td className="px-6 py-4 font-semibold text-gray-900">{index + 1}</td>
+                          <tr key={w.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30">
+                            <td className="px-6 py-4 font-semibold text-gray-900 dark:text-slate-100">{index + 1}</td>
                             <td className="px-6 py-4">
-                              <span className="font-semibold text-gray-900">{w.nombre}</span>
+                              <span className="font-semibold text-gray-900 dark:text-slate-100">{w.nombre}</span>
                             </td>
                             <td className="px-6 py-4">
                               {Formateadores.categoriaDocente(w.categoria)}
                             </td>
-                            <td className="px-6 py-4 font-semibold text-gray-700">{start}</td>
-                            <td className="px-6 py-4 font-semibold text-gray-700">{end}</td>
+                            <td className="px-6 py-4 font-semibold text-gray-700 dark:text-slate-300">{start}</td>
+                            <td className="px-6 py-4 font-semibold text-gray-700 dark:text-slate-300">{end}</td>
                             <td className="px-6 py-4">
                               <span
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                                   w.estado === 'ABIERTA' || w.estado === 'EN_CURSO'
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
                                     : w.estado === 'CERRADA'
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
-                                    : 'bg-gray-50 text-gray-600 border border-gray-200'
+                                    ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700'
+                                    : 'bg-gray-50 text-gray-600 border border-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'
                                 }`}
                               >
                                 {w.estado}
@@ -538,13 +549,40 @@ export default function VentanasAtencionPage() {
                                   </Button>
                                 )}
                                 {(w.estado === 'ABIERTA' || w.estado === 'EN_CURSO') && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => setSelectedVentanaId(w.id)}
-                                    className="bg-unt-blue hover:bg-unt-blue/90 text-white font-semibold text-xs py-1 px-3"
-                                  >
-                                    Atender
-                                  </Button>
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setSelectedVentanaId(w.id)}
+                                      className="bg-unt-blue hover:bg-unt-blue/90 text-white font-semibold text-xs py-1 px-3"
+                                    >
+                                      Atender
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={async () => {
+                                        if (!confirm('¿Está seguro de finalizar esta ventana de atención?')) return;
+                                        try {
+                                          const res = await fetch(`/api/ventanas-atencion/${w.id}/estado`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ accion: 'cerrar' }),
+                                          });
+                                          if (res.ok) {
+                                            toast.success('Ventana de atención finalizada');
+                                            load();
+                                          } else {
+                                            const err = await res.json();
+                                            throw new Error(err.message || 'Error al finalizar');
+                                          }
+                                        } catch (err: any) {
+                                          toast.error(err.message);
+                                        }
+                                      }}
+                                      className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs py-1 px-3"
+                                    >
+                                      Finalizar
+                                    </Button>
+                                  </>
                                 )}
                                 {w.estado === 'PROGRAMADA' && (
                                   <button
@@ -571,23 +609,23 @@ export default function VentanasAtencionPage() {
         /* ==================== TAB 2: MONITOR DE VENTANAS ==================== */
         <div className="space-y-8">
           {statsByDay.length === 0 ? (
-            <div className="border border-dashed rounded-xl p-12 text-center text-gray-500 bg-white">
+            <div className="border border-dashed rounded-xl p-12 text-center text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800/30 dark:border-slate-700">
               <History className="h-12 w-12 mx-auto mb-2 opacity-30 text-primary-600" />
               <p className="font-semibold text-sm">No hay datos de monitoreo disponibles</p>
             </div>
           ) : (
             statsByDay.map((day) => (
-              <div key={day.date} className="bg-white border rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gray-50/70 border-b px-5 py-4 flex items-center justify-between">
+              <div key={day.date} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gray-50/70 dark:bg-slate-800/50 border-b dark:border-slate-700 px-5 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-bold text-gray-900">{day.date}</h3>
+                    <Calendar className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+                    <h3 className="font-bold text-gray-900 dark:text-slate-100">{day.date}</h3>
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50/30 border-b">
+                  <table className="w-full text-sm text-left text-gray-700 dark:text-slate-300">
+                    <thead className="text-xs text-gray-700 dark:text-slate-400 uppercase bg-gray-50/30 dark:bg-slate-800/50 border-b dark:border-slate-700">
                       <tr>
                         <th className="px-6 py-3">Categoría</th>
                         <th className="px-6 py-3">Estado</th>
@@ -596,31 +634,31 @@ export default function VentanasAtencionPage() {
                         <th className="px-6 py-3 text-right">Historial</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                       {day.windows.map((w) => {
                         const completado = w.atendidos === w.total && w.total > 0;
                         const enProceso = w.estado === 'ABIERTA' || w.estado === 'EN_CURSO';
 
                         return (
-                          <tr key={w.id} className="hover:bg-gray-50/50">
-                            <td className="px-6 py-4 font-semibold text-gray-900">{w.nombre}</td>
+                          <tr key={w.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30">
+                            <td className="px-6 py-4 font-semibold text-gray-900 dark:text-slate-100">{w.nombre}</td>
                             <td className="px-6 py-4">
                               <span
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                                   completado
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700'
                                     : enProceso
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
+                                    : 'bg-yellow-50 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
                                 }`}
                               >
                                 {completado ? '✅ Completado' : enProceso ? '🔄 En proceso' : '⏳ Pendiente'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 font-semibold text-gray-700">
+                            <td className="px-6 py-4 font-semibold text-gray-700 dark:text-slate-300">
                               {w.atendidos} / {w.total}
                             </td>
-                            <td className="px-6 py-4 font-semibold text-gray-700">{w.pendientes}</td>
+                            <td className="px-6 py-4 font-semibold text-gray-700 dark:text-slate-300">{w.pendientes}</td>
                             <td className="px-6 py-4 text-right">
                               <Button
                                 variant="outline"
@@ -684,15 +722,15 @@ export default function VentanasAtencionPage() {
                 </div>
 
                 <div className="bg-white border border-amber-100 rounded-xl overflow-hidden shadow-sm">
-                  <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 bg-gray-50">
+                  <table className="w-full text-sm text-left text-gray-700 dark:text-slate-300">
+                    <thead className="text-xs text-gray-700 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/50">
                       <tr>
                         <th className="px-5 py-3">Categoría de Continuación</th>
                         <th className="px-5 py-3">Hora Producida</th>
                         <th className="px-5 py-3">Docentes Pendientes</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y dark:divide-slate-700">
                       {pendingReprograms.map((w) => {
                         const start = new Date(w.fechaInicio).toLocaleTimeString('es-PE', {
                           hour: '2-digit',
@@ -704,13 +742,13 @@ export default function VentanasAtencionPage() {
                         });
                         return (
                           <tr key={w.id}>
-                            <td className="px-5 py-3 font-semibold text-gray-900">
+                            <td className="px-5 py-3 font-semibold text-gray-900 dark:text-slate-100">
                               {w.nombre} (Continuación)
                             </td>
-                            <td className="px-5 py-3 text-gray-600">
+                            <td className="px-5 py-3 text-gray-600 dark:text-slate-400">
                               {start} - {end}
                             </td>
-                            <td className="px-5 py-3 text-gray-700 font-semibold">
+                            <td className="px-5 py-3 text-gray-700 dark:text-slate-300 font-semibold">
                               {w.pendientes} (continuación)
                             </td>
                           </tr>
@@ -771,7 +809,7 @@ export default function VentanasAtencionPage() {
                     type: e.target.value as 'NOMBRADOS' | 'CONTRATADOS',
                   })
                 }
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="NOMBRADOS">Día Nombrados (Principal, Asociado, Auxiliar, JP)</option>
                 <option value="CONTRATADOS">
@@ -830,7 +868,7 @@ export default function VentanasAtencionPage() {
             <div>
               <Label>Categoría atendida</Label>
               <select
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 value={form.categoria}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, categoria: e.target.value as CategoriaDocente }))
@@ -888,20 +926,20 @@ export default function VentanasAtencionPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
             </div>
           ) : !selectedHistorialWindow ? (
-            <p className="text-sm text-gray-500 py-4">No se pudo cargar el historial.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 py-4">No se pudo cargar el historial.</p>
           ) : (
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500">Programación original</p>
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-xs text-gray-500 dark:text-slate-400">Programación original</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                   {new Date(selectedHistorialWindow.fechaInicio).toLocaleString('es-PE')} -{' '}
                   {new Date(selectedHistorialWindow.fechaFin).toLocaleString('es-PE')}
                 </p>
               </div>
 
-              <div className="border rounded-xl overflow-hidden">
-                <table className="w-full text-sm text-left text-gray-500">
-                  <thead className="text-xs text-gray-700 bg-gray-50 uppercase">
+              <div className="border dark:border-slate-700 rounded-xl overflow-hidden">
+                <table className="w-full text-sm text-left text-gray-700 dark:text-slate-300">
+                  <thead className="text-xs text-gray-700 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/50 uppercase">
                     <tr>
                       <th className="px-4 py-2.5 w-16">Pos</th>
                       <th className="px-4 py-2.5">Código / Nombre</th>
@@ -910,10 +948,10 @@ export default function VentanasAtencionPage() {
                       <th className="px-4 py-2.5">Justificación</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y dark:divide-slate-700">
                     {selectedHistorialWindow.atenciones.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-8 text-gray-500">
+                        <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-slate-400">
                           Ningún docente registrado en cola para esta ventana.
                         </td>
                       </tr>
@@ -923,30 +961,30 @@ export default function VentanasAtencionPage() {
                           n.metadata?.atencionId === a.id && n.metadata?.ventanaId === selectedHistorialWindow.id
                         );
                         return (
-                          <tr key={a.id} className="hover:bg-gray-50/50">
-                            <td className="px-4 py-2.5 font-bold text-gray-900">{a.posicion}</td>
+                          <tr key={a.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30">
+                            <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-slate-100">{a.posicion}</td>
                             <td className="px-4 py-2.5">
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-gray-900 dark:text-slate-100">
                                 {a.docente.usuario.nombre} {a.docente.usuario.apellidos}
                               </div>
-                              <div className="text-xs text-gray-500">{a.docente.codigo}</div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400">{a.docente.codigo}</div>
                             </td>
                             <td className="px-4 py-2.5">
                               <span
                                 className={`text-xs font-semibold px-2 py-0.5 rounded ${
                                   a.estado === 'ATENDIDO'
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700'
                                     : a.estado === 'EN_ATENCION'
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
                                     : a.estado === 'AUSENTE'
-                                    ? 'bg-red-50 text-red-700 border border-red-200'
-                                    : 'bg-gray-50 text-gray-600 border border-gray-200'
+                                    ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700'
+                                    : 'bg-gray-50 text-gray-600 border border-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'
                                 }`}
                               >
                                 {a.estado}
                               </span>
                             </td>
-                            <td className="px-4 py-2.5 text-xs text-gray-500">
+                            <td className="px-4 py-2.5 text-xs text-gray-500 dark:text-slate-400">
                               {a.horaInicio
                                 ? new Date(a.horaInicio).toLocaleTimeString('es-PE', {
                                     hour: '2-digit',
@@ -962,17 +1000,47 @@ export default function VentanasAtencionPage() {
                                 : '—'}
                             </td>
                             <td className="px-4 py-2.5">
-                              {a.estado === 'AUSENTE' && justificacion && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedJustificacion(justificacion);
-                                    setJustificacionOpen(true);
-                                  }}
-                                  className="text-xs text-red-600 underline hover:text-red-800"
-                                >
-                                  Ver justificación
-                                </button>
-                              )}
+                              <div className="flex flex-col gap-1 items-start">
+                                {a.estado === 'AUSENTE' && justificacion && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedJustificacion(justificacion);
+                                      setJustificacionOpen(true);
+                                    }}
+                                    className="text-xs text-red-600 underline hover:text-red-800 text-left"
+                                  >
+                                    Ver justificación
+                                  </button>
+                                )}
+                                {a.estado === 'AUSENTE' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('¿Está seguro de reprogramar el turno de este docente? Se colocará al final de la cola activa de espera.')) {
+                                        try {
+                                          const res = await fetch(`/api/ventanas-atencion/${selectedHistorialWindow.id}/reprogramar`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ docenteId: a.docenteId }),
+                                          });
+                                          if (res.ok) {
+                                            toast.success('Docente reprogramado exitosamente');
+                                            // Refrescar el historial
+                                            handleVerHistorial(selectedHistorialWindow.id);
+                                          } else {
+                                            const err = await res.json();
+                                            throw new Error(err.message || 'Error al reprogramar');
+                                          }
+                                        } catch (err: any) {
+                                          toast.error(err.message);
+                                        }
+                                      }
+                                    }}
+                                    className="text-xs text-unt-blue hover:underline text-left font-semibold mt-1"
+                                  >
+                                    Reprogramar turno
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

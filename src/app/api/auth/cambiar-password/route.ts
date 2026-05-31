@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { AuthService } from '@/services/auth/AuthService';
 import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
+import { withAuth } from '@/middleware/auth';
 
 const authService = new AuthService();
 
@@ -16,6 +17,9 @@ const cambiarPasswordSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await withAuth(request);
+    if (authResult) return authResult;
+
     const user = (request as any).user;
     const body = await request.json();
     

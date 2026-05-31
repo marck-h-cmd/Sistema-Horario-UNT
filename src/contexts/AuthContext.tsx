@@ -23,6 +23,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   hasRole: (...roles: Rol[]) => boolean;
   can: (permission: keyof typeof PERMISOS) => boolean;
+  actualizarUsuario: (usuario: Record<string, any>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -180,6 +181,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  const actualizarUsuario = useCallback((usuario: Record<string, any>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return null;
+      const sessionUser = toUserSession(usuario);
+      if (!sessionUser.docenteId && currentUser.docenteId) {
+        sessionUser.docenteId = currentUser.docenteId;
+      }
+      localStorage.setItem('user', JSON.stringify(sessionUser));
+      return sessionUser;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -189,8 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       hasRole,
       can,
+      actualizarUsuario,
     }),
-    [user, loading, login, logout, hasRole, can]
+    [user, loading, login, logout, hasRole, can, actualizarUsuario]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,8 +5,8 @@ import { apiGet } from '@/lib/api-client';
 import { HorarioCalendarioPublico } from '@/components/horarios/HorarioCalendarioPublico';
 import { Loader2 } from 'lucide-react';
 
-const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
-const DIA_LABEL: Record<string, string> = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes' };
+const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+const DIA_LABEL: Record<string, string> = { LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles', JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado' };
 const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 a 21:00
 
 export default function HorariosPublicosPage() {

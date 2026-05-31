@@ -47,11 +47,28 @@ export default function CursosPage() {
 
   const [qInput, setQInput] = useState('');
   const [search, setSearch] = useState('');
-  const listParams = useMemo(() => ({ search: search || undefined }), [search]);
+  const [cicloFiltro, setCicloFiltro] = useState<string>('');
+  const [activoFiltro, setActivoFiltro] = useState<string>('');
+
+  const listParams = useMemo(() => ({
+    search: search || undefined,
+    ciclo: cicloFiltro || undefined,
+    activo: activoFiltro || undefined,
+  }), [search, cicloFiltro, activoFiltro]);
+
   const { data, meta, loading, error, page, setPage, refresh } = usePaginatedQuery<CursoRow>(
     '/api/cursos',
     listParams
   );
+
+  const limpiarFiltros = () => {
+    setCicloFiltro('');
+    setActivoFiltro('');
+    setSearch('');
+    setQInput('');
+  };
+
+  const hayFiltrosActivos = cicloFiltro || activoFiltro || search;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CursoRow | null>(null);
@@ -170,11 +187,11 @@ export default function CursosPage() {
     }
   };
 
-  useEffect(() => setPage(1), [search, setPage]);
+  useEffect(() => setPage(1), [search, cicloFiltro, activoFiltro, setPage]);
 
   const columns: Column<CursoRow>[] = [
     { key: 'codigo', header: 'Código', cell: (r) => <span className="font-mono text-sm">{r.codigo}</span> },
-    { key: 'nombre', header: 'Nombre', cell: (r) => <span className="font-medium text-gray-900">{r.nombre}</span> },
+    { key: 'nombre', header: 'Nombre', cell: (r) => <span className="font-medium text-gray-900 dark:text-slate-100">{r.nombre}</span> },
     { key: 'ciclo', header: 'Ciclo', cell: (r) => Formateadores.ciclo(r.ciclo) },
     {
       key: 'creditos',
@@ -197,7 +214,7 @@ export default function CursosPage() {
       cell: (r) => (
         <Link
           href={`/dashboard/grupos?cursoId=${r.id}`}
-          className="inline-flex items-center gap-1 text-sm font-medium text-unt-blue hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-medium text-unt-blue dark:text-unt-gold-light hover:underline"
         >
           <Users className="h-3.5 w-3.5" />
           Ver grupos
@@ -242,16 +259,67 @@ export default function CursosPage() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchBar
-          value={qInput}
-          onChange={setQInput}
-          placeholder="Buscar por código o nombre…"
-          onSubmit={() => setSearch(qInput.trim())}
-        />
-        <Button type="button" variant="outline" onClick={() => setSearch(qInput.trim())}>
-          Buscar
-        </Button>
+      {/* Barra de filtros */}
+      <div className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/90">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Búsqueda */}
+          <div className="min-w-[200px] flex-1">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Buscar
+            </label>
+            <SearchBar
+              value={qInput}
+              onChange={setQInput}
+              placeholder="Código o nombre…"
+              onSubmit={() => setSearch(qInput.trim())}
+            />
+          </div>
+
+          {/* Filtro ciclo */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Ciclo
+            </label>
+            <select
+              value={cicloFiltro}
+              onChange={(e) => setCicloFiltro(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-unt-blue/50 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            >
+              <option value="">Todos</option>
+              {[1,2,3,4,5,6,7,8,9,10].map((c) => (
+                <option key={c} value={c}>Ciclo {c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro activo */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Estado
+            </label>
+            <select
+              value={activoFiltro}
+              onChange={(e) => setActivoFiltro(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-unt-blue/50 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            >
+              <option value="">Todos</option>
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+          </div>
+
+          {/* Botón buscar */}
+          <Button type="button" onClick={() => setSearch(qInput.trim())} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
+            Buscar
+          </Button>
+
+          {/* Limpiar filtros */}
+          {hayFiltrosActivos && (
+            <Button type="button" variant="outline" onClick={limpiarFiltros} className="text-slate-500 dark:text-slate-400">
+              Limpiar
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && <ErrorAlert message={error} className="mb-4" onRetry={refresh} />}

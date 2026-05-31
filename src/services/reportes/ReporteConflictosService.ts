@@ -68,14 +68,20 @@ export class ReporteConflictosService {
         `${this.formatearTipoConflicto(tipo)} (${lista.length})`
       );
 
-      const filas = lista.slice(0, 30).map((c) => [
-        c.horario.curso.codigo,
-        c.horario.curso.nombre,
-        Formateadores.nombreUsuario(c.horario.docente.usuario),
-        c.horario.ambiente.codigo,
-        `${UtilidadesFecha.nombreDia(c.horario.diaSemana)} ${c.horario.horaInicio.slice(0, 5)}–${c.horario.horaFin.slice(0, 5)}`,
-        c.mensaje || 'Sin detalle',
-      ]);
+      const filas = lista.slice(0, 30).map((c) => {
+        const dia = c.horario.diaSemana ? UtilidadesFecha.nombreDia(c.horario.diaSemana) : 'Sin día';
+        const inicio = c.horario.horaInicio ? c.horario.horaInicio.slice(0, 5) : '--:--';
+        const fin = c.horario.horaFin ? c.horario.horaFin.slice(0, 5) : '--:--';
+        const ambiente = c.horario.ambiente ? c.horario.ambiente.codigo : 'Sin ambiente';
+        return [
+          c.horario.curso.codigo,
+          c.horario.curso.nombre,
+          Formateadores.nombreUsuario(c.horario.docente.usuario),
+          ambiente,
+          `${dia} ${inicio}–${fin}`,
+          c.mensaje || 'Sin detalle',
+        ];
+      });
 
       contenido += generarTablaHTML(
         ['Código', 'Curso', 'Docente', 'Ambiente', 'Horario', 'Descripción'],

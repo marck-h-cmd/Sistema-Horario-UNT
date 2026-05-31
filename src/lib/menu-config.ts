@@ -14,6 +14,7 @@ import {
   Bell,
   Shield,
   Settings,
+  User,
 } from 'lucide-react';
 import type { PERMISOS } from '@/lib/constantes';
 
@@ -32,7 +33,10 @@ export interface MenuSection {
 export const MENU_SECTIONS: MenuSection[] = [
   {
     titulo: 'Principal',
-    items: [{ nombre: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null }],
+    items: [
+      { nombre: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null },
+      { nombre: 'Mi Perfil', href: '/dashboard/perfil', icon: User, permission: null },
+    ],
   },
   {
     titulo: 'Gestión',

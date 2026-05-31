@@ -4,20 +4,32 @@
 
 @layer base {
   :root {
-    --unt-blue: 15 45 85; /* Refined deeper blue */
-    --unt-gold: 184 146 58; /* Muted gold */
+    --unt-blue: 15 45 85;
+    --unt-gold: 184 146 58;
     --unt-red: 180 20 50;
-    --background: 252 253 255;
-    --foreground: 30 41 59;
+    /* Modo claro: fondos blancos, texto oscuro */
+    --background: 248 250 252;
+    --foreground: 15 23 42;
     --card: 255 255 255;
-    --card-foreground: 30 41 59;
+    --card-foreground: 15 23 42;
     --primary: 15 45 85;
     --primary-foreground: 255 255 255;
     --accent: 184 146 58;
     --border: 226 232 240;
     --input: 241 245 249;
     --ring: 15 45 85;
-    --radius: 0.5rem; /* Clean professional radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Modo oscuro: fondos oscuros, texto claro */
+    --background: 15 23 42;
+    --foreground: 241 245 249;
+    --card: 30 41 59;
+    --card-foreground: 241 245 249;
+    --border: 51 65 85;
+    --input: 30 41 59;
+    --ring: 148 163 184;
   }
 
   * {
@@ -41,23 +53,23 @@
 
 @layer components {
   .page-title {
-    @apply font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
+    @apply font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-50;
   }
 
   .page-description {
-    @apply mt-1 text-sm leading-relaxed text-slate-500;
+    @apply mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400;
   }
 
   .section-title {
-    @apply font-display text-lg font-semibold tracking-tight text-slate-800;
+    @apply font-display text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100;
   }
 
   .kpi-value {
-    @apply font-display text-3xl font-bold tabular-nums tracking-tight text-slate-900;
+    @apply font-display text-3xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50;
   }
 
   .text-muted {
-    @apply text-sm text-slate-400;
+    @apply text-sm text-slate-400 dark:text-slate-500;
   }
 
   .btn {
@@ -69,7 +81,7 @@
   }
 
   .btn-secondary {
-    @apply btn bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-400;
+    @apply btn bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-400 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600;
   }
 
   .btn-danger {
@@ -77,23 +89,23 @@
   }
 
   .btn-outline {
-    @apply btn border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200;
+    @apply btn border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700;
   }
 
   .input {
-    @apply block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-unt-blue/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-unt-blue/5 disabled:bg-slate-100 disabled:text-slate-400;
+    @apply block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-unt-blue/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-unt-blue/5 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-unt-gold/40 dark:focus:bg-slate-800 dark:disabled:bg-slate-900;
   }
 
   .label {
-    @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500;
+    @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400;
   }
 
   .card {
-    @apply rounded-xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md;
+    @apply rounded-xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800/90 dark:shadow-none dark:hover:shadow-lg dark:hover:shadow-black/20;
   }
 
   .card-header {
-    @apply border-b border-slate-100 px-6 py-4;
+    @apply border-b border-slate-100 px-6 py-4 dark:border-slate-700;
   }
 
   .card-body {
@@ -101,7 +113,7 @@
   }
 
   .card-footer {
-    @apply border-t border-slate-100 px-6 py-4;
+    @apply border-t border-slate-100 px-6 py-4 dark:border-slate-700;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -114,27 +126,27 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-slate-200 hover:bg-slate-300;
+    @apply rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500;
   }
 
   .table-container {
-    @apply overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-card;
+    @apply overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-card dark:border-slate-700 dark:bg-slate-800/90;
   }
 
   .table {
-    @apply min-w-full divide-y divide-slate-200;
+    @apply min-w-full divide-y divide-slate-200 dark:divide-slate-700;
   }
 
   .table thead {
-    @apply sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm;
+    @apply sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm dark:bg-slate-800/95;
   }
 
   .table th {
-    @apply px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600;
+    @apply px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300;
   }
 
   .table tbody {
-    @apply divide-y divide-slate-100 bg-white;
+    @apply divide-y divide-slate-100 bg-white dark:divide-slate-700 dark:bg-slate-800/50;
   }
 
   .table tbody tr {
@@ -142,15 +154,15 @@
   }
 
   .table tbody tr:nth-child(even) {
-    @apply bg-slate-50/40;
+    @apply bg-slate-50/40 dark:bg-slate-800/60;
   }
 
   .table tbody tr:hover {
-    @apply bg-unt-blue/[0.04];
+    @apply bg-unt-blue/[0.04] dark:bg-unt-gold/10;
   }
 
   .table td {
-    @apply whitespace-nowrap px-6 py-3.5 text-sm text-slate-800;
+    @apply whitespace-nowrap px-6 py-3.5 text-sm text-slate-800 dark:text-slate-200;
   }
 
   .table-actions {
@@ -162,27 +174,27 @@
   }
 
   .badge-success {
-    @apply badge bg-emerald-100 text-emerald-800;
+    @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300;
   }
 
   .badge-warning {
-    @apply badge bg-amber-100 text-amber-900;
+    @apply badge bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200;
   }
 
   .badge-danger {
-    @apply badge bg-red-100 text-unt-red;
+    @apply badge bg-red-100 text-unt-red dark:bg-red-900/40 dark:text-red-300;
   }
 
   .badge-info {
-    @apply badge bg-slate-100 text-unt-blue;
+    @apply badge bg-slate-100 text-unt-blue dark:bg-slate-700 dark:text-slate-200;
   }
 
   .badge-accent {
-    @apply badge bg-unt-gold/20 text-unt-blue;
+    @apply badge bg-unt-gold/20 text-unt-blue dark:bg-unt-gold/30 dark:text-unt-gold-light;
   }
 
   .badge-gray {
-    @apply badge bg-slate-100 text-slate-700;
+    @apply badge bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300;
   }
 
   .spinner {
@@ -190,7 +202,11 @@
   }
 
   .skeleton {
-    @apply animate-pulse rounded bg-slate-200;
+    @apply animate-pulse rounded bg-slate-200 dark:bg-slate-700;
+  }
+
+  .alert-warning {
+    @apply rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200;
   }
 
   .nav-item {

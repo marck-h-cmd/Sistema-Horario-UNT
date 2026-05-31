@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
         periodoId,
         horario.docenteId,
         horario.cursoId,
-        horario.ambienteId,
+        horario.ambienteId || '',
         horario.grupoId || undefined,
-        horario.diaSemana,
-        horario.horaInicio,
-        horario.horaFin,
+        horario.diaSemana || 'LUNES',
+        horario.horaInicio || '',
+        horario.horaFin || '',
         horario.id
       );
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       await prisma.validacionHorario.create({
         data: {
           horarioId: horario.id,
-          tipoRegla: 'VALIDACION_COMPLETA',
+          tipoRegla: 'CRUCE_DOCENTE' as any,
           cumple: resultado.valido,
           mensaje: resultado.conflictos.map(c => c.mensaje).join('; '),
           metadata: resultado as any,

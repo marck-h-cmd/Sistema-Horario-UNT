@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, FileDown, Loader2, Plus, TableIcon, ExternalLink, Users, MapPin, Search, BookOpen } from 'lucide-react';
+import { AlertTriangle, FileDown, Loader2, Plus, TableIcon, ExternalLink, Users, MapPin, Search, BookOpen, CheckCircle2, X } from 'lucide-react';
 import { FormField, FormModalFooter, FormSection, FormSelect } from '@/components/forms';
 import { formControlClass } from '@/components/forms/FormField';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,8 @@ interface AmbienteOpt {
   codigo: string;
   nombre: string;
   tipo?: string;
+  capacidad?: number;
+  ubicacion?: string;
 }
 
 interface GrupoOpt {
@@ -89,6 +91,7 @@ const DIAS: DiaSemana[] = [
   DiaSemana.MIERCOLES,
   DiaSemana.JUEVES,
   DiaSemana.VIERNES,
+  DiaSemana.SABADO,
 ];
 
 const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 7 to 20
@@ -99,6 +102,7 @@ const DIA_LABEL: Record<string, string> = {
   MIERCOLES: 'MIÉRCOLES',
   JUEVES: 'JUEVES',
   VIERNES: 'VIERNES',
+  SABADO: 'SÁBADO',
 };
 
 const CICLO_OPTIONS = [
@@ -195,6 +199,7 @@ export default function HorariosPage() {
 
   const [diaResaltado, setDiaResaltado] = useState<string | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<string>('Todos');
+  const [grupoFiltro, setGrupoFiltro] = useState<string>('Todos');
   const [vistaTipo, setVistaTipo] = useState<'General' | 'Por Docente' | 'Por Aula'>('General');
 
   const fetchHorarios = useCallback(async () => {
@@ -381,6 +386,37 @@ export default function HorariosPage() {
     }
   };
 
+  const getDisponibilidadAmbiente = (ambienteId: string) => {
+    const { diaSemana, horaInicio, horaFin } = form;
+    
+    const parseTime = (t: string) => {
+      const parts = t.split(':');
+      if (parts.length < 2) return NaN;
+      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    };
+    
+    const start = parseTime(horaInicio);
+    const end = parseTime(horaFin);
+
+    if (isNaN(start) || isNaN(end) || start >= end) return { disponible: false, mensaje: 'Hora inválida' };
+
+    const cruces = horarios.filter(h => {
+      if (editingId && h.id === editingId) return false;
+      if (h.ambiente.id !== ambienteId) return false;
+      if (h.diaSemana !== diaSemana) return false;
+      
+      const hStart = parseTime(h.horaInicio);
+      const hEnd = parseTime(h.horaFin);
+      
+      return Math.max(start, hStart) < Math.min(end, hEnd);
+    });
+
+    if (cruces.length > 0) {
+      return { disponible: false, mensaje: `Ocupado (${cruces[0].curso.codigo})` };
+    }
+    return { disponible: true, mensaje: 'Sí' };
+  };
+
   const handleEditOpen = (h: HorarioCell) => {
     setEditingId(h.id);
     setForm({
@@ -563,26 +599,27 @@ export default function HorariosPage() {
 
   const columnsConflictos: Column<ConflictoDetalle>[] = [
     { key: 't', header: 'Tipo', cell: (r) => r.tipoRegla },
-    { key: 'm', header: 'Detalle', cell: (r) => <span className="text-sm text-gray-700">{r.mensaje || r.horario?.curso?.codigo || '—'}</span> },
+    { key: 'm', header: 'Detalle', cell: (r) => <span className="text-sm text-gray-700 dark:text-slate-300">{r.mensaje || r.horario?.curso?.codigo || '—'}</span> },
   ];
 
   const horariosFiltrados = useMemo(() => {
     return horarios.filter(h => {
-      // Filtrar por sábado ya que fue eliminado
-      if (h.diaSemana === DiaSemana.SABADO) return false;
       if (estadoFiltro !== 'Todos' && h.estado !== estadoFiltro) {
         if (h.estado) return h.estado === estadoFiltro;
       }
+      if (grupoFiltro !== 'Todos') {
+        return h.grupo?.nombre === grupoFiltro;
+      }
       return true;
     });
-  }, [horarios, estadoFiltro]);
+  }, [horarios, estadoFiltro, grupoFiltro]);
 
   const getTotalHoras = (dia: string) => {
     return horariosFiltrados
-      .filter((h) => h.diaSemana === dia)
+      .filter((h) => h.diaSemana === dia && h.horaInicio && h.horaFin)
       .reduce((acc, h) => {
-        const inicio = parseInt(h.horaInicio.split(':')[0], 10);
-        const fin = parseInt(h.horaFin.split(':')[0], 10);
+        const inicio = parseInt(h.horaInicio!.split(':')[0], 10);
+        const fin = parseInt(h.horaFin!.split(':')[0], 10);
         return acc + (fin - inicio);
       }, 0);
   };
@@ -596,6 +633,55 @@ export default function HorariosPage() {
     });
     return Array.from(map.values());
   }, [horariosFiltrados]);
+
+  // Agrupar clases por carriles (lanes) para cada día
+  const lanesPorDia = useMemo(() => {
+    const res: Record<string, HorarioCell[][]> = {};
+    const parseTime = (t: string) => parseInt(t.split(':')[0], 10);
+    
+    DIAS.forEach(dia => {
+      const dayClasses = horariosFiltrados.filter(h => h.diaSemana === dia && h.horaInicio && h.horaFin);
+      const lanes: HorarioCell[][] = [];
+      const sortedClasses = [...dayClasses].sort((a, b) => parseTime(a.horaInicio!) - parseTime(b.horaInicio!));
+
+      sortedClasses.forEach(c => {
+        const start = parseTime(c.horaInicio);
+        const end = parseTime(c.horaFin);
+
+        let placed = false;
+        for (let i = 0; i < lanes.length; i++) {
+          const hasOverlap = lanes[i].some(existing => {
+            const estart = parseTime(existing.horaInicio);
+            const eend = parseTime(existing.horaFin);
+            return Math.max(start, estart) < Math.min(end, eend);
+          });
+          if (!hasOverlap) {
+            lanes[i].push(c);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          lanes.push([c]);
+        }
+      });
+
+      if (lanes.length === 0) {
+        lanes.push([]);
+      }
+      res[dia] = lanes;
+    });
+    return res;
+  }, [horariosFiltrados]);
+
+  const totalLanes = useMemo(() => {
+    return DIAS.reduce((sum, d) => sum + (lanesPorDia[d]?.length || 1), 0);
+  }, [lanesPorDia]);
+
+  const minTableWidth = useMemo(() => {
+    return Math.max(1000, totalLanes * 100 + 160); // 100px por carril, más 80px por cada columna de hora lateral
+  }, [totalLanes]);
+
 
   if (authLoading || periodoLoading) {
     return (
@@ -691,21 +777,25 @@ export default function HorariosPage() {
       {error && <ErrorAlert message={error} onRetry={fetchHorarios} />}
 
       {/* FILTROS FUNCIONALES */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row justify-between gap-4">
           
           <div className="flex flex-wrap items-center gap-4 flex-1">
-            <div className="flex bg-slate-100 p-1 rounded-lg">
+            <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
               {['General', 'Por Docente', 'Por Aula'].map(v => (
                 <button
                   key={v}
                   onClick={() => {
                     setVistaTipo(v as any);
-                    if (v === 'General') limpiarFiltros();
+                    if (v === 'General') {
+                      limpiarFiltros();
+                      setEstadoFiltro('Todos');
+                      setGrupoFiltro('Todos');
+                    }
                   }}
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                    vistaTipo === v ? "bg-white shadow-sm text-[#1a365d]" : "text-slate-600 hover:text-slate-900"
+                    vistaTipo === v ? "bg-white dark:bg-slate-800 shadow-sm text-[#1a365d] dark:text-unt-gold-light" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
                   {v}
@@ -716,7 +806,7 @@ export default function HorariosPage() {
             <select
               value={filtros.ciclo || ''}
               onChange={(e) => actualizarFiltro('ciclo', e.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d] min-w-[140px]"
+              className="rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d] min-w-[140px]"
             >
               {CICLO_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -742,7 +832,7 @@ export default function HorariosPage() {
                   }
                 }}
                 list="docentes-list"
-                className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d]"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 pl-9 pr-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d]"
               />
               <datalist id="docentes-list">
                 {docentesAll.map(d => (
@@ -755,7 +845,7 @@ export default function HorariosPage() {
               <select
                 value={filtros.ambienteId || ''}
                 onChange={(e) => actualizarFiltro('ambienteId', e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d]"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:border-[#1a365d] focus:outline-none focus:ring-1 focus:ring-[#1a365d]"
               >
                 <option value="">Tipo ambiente...</option>
                 {ambientesAll.map((a) => (
@@ -765,7 +855,11 @@ export default function HorariosPage() {
             </div>
             
             <button 
-              onClick={limpiarFiltros} 
+              onClick={() => {
+                limpiarFiltros();
+                setEstadoFiltro('Todos');
+                setGrupoFiltro('Todos');
+              }} 
               className="text-sm font-medium text-[#1a365d] hover:underline whitespace-nowrap"
             >
               Limpiar filtros
@@ -773,9 +867,9 @@ export default function HorariosPage() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-4 border-t border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-slate-500 mr-2">Día:</span>
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 mr-2">Día:</span>
             {DIAS.map(d => (
               <button
                 key={d}
@@ -784,7 +878,7 @@ export default function HorariosPage() {
                   "px-3 py-1 text-sm font-medium rounded-full transition-colors border",
                   diaResaltado === d 
                     ? "bg-[#1a365d] text-white border-[#1a365d]" 
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
                 )}
               >
                 {DIA_LABEL[d].slice(0, 3)}
@@ -792,29 +886,49 @@ export default function HorariosPage() {
             ))}
           </div>
           
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-slate-500 mr-2">Estado:</span>
-            {['Todos', 'CONFIRMADO', 'PUBLICADO', 'BORRADOR'].map(est => (
-              <button
-                key={est}
-                onClick={() => setEstadoFiltro(est)}
-                className={cn(
-                  "px-3 py-1 text-xs font-semibold rounded-full transition-colors border",
-                  estadoFiltro === est
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                )}
-              >
-                {est}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-6 items-center">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 mr-2">Estado:</span>
+              {['Todos', 'CONFIRMADO', 'PUBLICADO', 'BORRADOR'].map(est => (
+                <button
+                  key={est}
+                  onClick={() => setEstadoFiltro(est)}
+                  className={cn(
+                    "px-3 py-1 text-xs font-semibold rounded-full transition-colors border",
+                    estadoFiltro === est
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700"
+                      : "bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+                  )}
+                >
+                  {est}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 mr-2">Grupo:</span>
+              {['Todos', 'A', 'B', 'C'].map(grp => (
+                <button
+                  key={grp}
+                  onClick={() => setGrupoFiltro(grp)}
+                  className={cn(
+                    "px-3 py-1 text-xs font-semibold rounded-full transition-colors border",
+                    grupoFiltro === grp
+                      ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700"
+                      : "bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+                  )}
+                >
+                  {grp === 'Todos' ? 'Todos' : `Grupo ${grp}`}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* LEYENDA */}
       {cursosUnicos.length > 0 && (
-        <div className="flex flex-wrap gap-3 p-3 bg-white rounded-lg border border-slate-200 shadow-sm items-center">
+        <div className="flex flex-wrap gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm items-center">
           <div className="flex items-center gap-2 mr-2">
              <BookOpen className="w-4 h-4 text-slate-400" />
              <span className="text-sm font-semibold text-slate-600">Asignaturas:</span>
@@ -832,42 +946,50 @@ export default function HorariosPage() {
       )}
 
       {/* GRILLA CON ROWSPAN */}
-      <div className="shadow-lg rounded-xl overflow-hidden border border-slate-200 bg-white">
+      <div className="shadow-lg rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="overflow-x-auto">
           {loadingHor ? (
             <div className="flex min-h-[400px] items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-[#1a365d]" />
             </div>
           ) : (
-            <table className="w-full text-sm text-left border-collapse min-w-[1000px] table-fixed">
+            <table 
+              style={{ minWidth: `${minTableWidth}px` }}
+              className="w-full text-sm text-left border-collapse table-fixed"
+            >
               <thead className="bg-[#1a365d] text-white">
                 <tr>
                   <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
-                  {DIAS.map(d => (
-                    <th 
-                      key={d} 
-                      className={cn(
-                        "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700",
-                        diaResaltado === d && "bg-blue-800"
-                      )}
-                    >
-                      {DIA_LABEL[d]}
-                    </th>
-                  ))}
+                  {DIAS.map(d => {
+                    const lanesCount = lanesPorDia[d]?.length || 1;
+                    const percentWidth = (lanesCount / totalLanes) * 100;
+                    return (
+                      <th 
+                        key={d} 
+                        style={{ width: `${percentWidth}%` }}
+                        className={cn(
+                          "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700",
+                          diaResaltado === d && "bg-blue-800"
+                        )}
+                      >
+                        {DIA_LABEL[d]}
+                      </th>
+                    );
+                  })}
                   <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {HORAS.map((horaNum, rowIndex) => (
                   <tr 
                     key={horaNum} 
                     className={cn(
                       "group h-16",
-                      rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                      rowIndex % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-slate-50/30 dark:bg-slate-700/20"
                     )}
                   >
                     {/* HORA Izquierda */}
-                    <td className="py-2 px-2 text-center border-r border-slate-200 bg-slate-100 text-slate-500 font-mono text-sm whitespace-nowrap">
+                    <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
                       {`${horaNum.toString().padStart(2, '0')}:00`}
                       <br />
                       <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
@@ -877,48 +999,16 @@ export default function HorariosPage() {
                     {DIAS.map(dia => {
                       if (rowIndex > 0) return null; // Solo renderizar el TD en la primera fila (rowSpan={14})
 
-                      // Encontrar todos los horarios para este día
                       const dayClasses = horariosFiltrados.filter(h => h.diaSemana === dia);
-
-                      // Agrupar en lanes (sub-columnas) que no se crucen entre sí
-                      const lanes: typeof dayClasses[] = [];
+                      const lanes = lanesPorDia[dia] || [[]];
                       const parseTime = (t: string) => parseInt(t.split(':')[0], 10);
-                      
-                      const sortedClasses = [...dayClasses].sort((a, b) => parseTime(a.horaInicio) - parseTime(b.horaInicio));
-
-                      sortedClasses.forEach(c => {
-                        const start = parseTime(c.horaInicio);
-                        const end = parseTime(c.horaFin);
-
-                        let placed = false;
-                        for (let i = 0; i < lanes.length; i++) {
-                          const hasOverlap = lanes[i].some(existing => {
-                            const estart = parseTime(existing.horaInicio);
-                            const eend = parseTime(existing.horaFin);
-                            return Math.max(start, estart) < Math.min(end, eend);
-                          });
-                          if (!hasOverlap) {
-                            lanes[i].push(c);
-                            placed = true;
-                            break;
-                          }
-                        }
-                        if (!placed) {
-                          lanes.push([c]);
-                        }
-                      });
-
-                      // Si no hay clases, mostrar una lane vacía
-                      if (lanes.length === 0) {
-                        lanes.push([]);
-                      }
 
                       return (
                         <td 
                           key={dia} 
                           rowSpan={14}
                           className={cn(
-                            "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px]",
+                            "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px] overflow-hidden",
                             diaResaltado === dia && "bg-blue-50/30"
                           )}
                         >
@@ -970,8 +1060,9 @@ export default function HorariosPage() {
                               return (
                                 <div 
                                   key={laneIdx} 
-                                  className="flex flex-col flex-1 h-full justify-between items-stretch"
+                                  className="flex flex-col flex-1 min-w-0 h-full justify-between items-stretch"
                                 >
+
                                   {laneItems.map((item, itemIdx) => {
                                     if (item.type === 'class') {
                                       const h = item.class!;
@@ -1182,7 +1273,7 @@ export default function HorariosPage() {
                     })}
 
                     {/* HORA Derecha */}
-                    <td className="py-2 px-2 text-center bg-slate-100 text-slate-500 font-mono text-sm whitespace-nowrap">
+                    <td className="py-2 px-2 text-center bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
                       {`${horaNum.toString().padStart(2, '0')}:00`}
                       <br />
                       <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
@@ -1223,7 +1314,7 @@ export default function HorariosPage() {
             emptyTitle="Sin conflictos"
           />
         ) : (
-          <p className="text-sm text-gray-500">No hay registros de conflicto con cumple = false.</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">No hay registros de conflicto con cumple = false.</p>
         )}
       </div>
 
@@ -1378,6 +1469,113 @@ export default function HorariosPage() {
               )}
             </FormSection>
           </div>
+
+          {/* TABLAS DE DISPONIBILIDAD DE AMBIENTES */}
+          {form.cursoId && form.horaInicio && form.horaFin && (() => {
+            const selectedCurso = cursos.find(c => c.id === form.cursoId);
+            const aulas = ambientesAll.filter(a => a.tipo === 'AULA');
+            const labs = ambientesAll.filter(a => a.tipo === 'LABORATORIO');
+            
+            return (
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-2">
+                <h3 className="text-sm font-bold text-[#1a365d] dark:text-blue-400 mb-4 uppercase tracking-wide">
+                  Configuración: Ambientes disponibles por curso
+                  {selectedCurso && <span className="block font-normal text-slate-500 mt-1 capitalize normal-case">Curso: {selectedCurso.nombre}</span>}
+                </h3>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* TEORÍA */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Ambientes para TEORÍA:</h4>
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden text-xs max-h-60 overflow-y-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Ambiente</th>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400 text-center">Capacidad</th>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Disponible</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                          {aulas.map(a => {
+                            const { disponible, mensaje } = getDisponibilidadAmbiente(a.id);
+                            return (
+                              <tr 
+                                key={a.id} 
+                                className={cn(
+                                  disponible ? "bg-white dark:bg-slate-800" : "bg-red-50/50 dark:bg-red-900/10 opacity-75",
+                                  "hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
+                                )}
+                                onClick={() => {
+                                  if(disponible) setForm(f => ({...f, ambienteId: a.id}));
+                                }}
+                              >
+                                <td className="px-3 py-2 font-medium dark:text-slate-200">
+                                  {a.codigo}
+                                  {form.ambienteId === a.id && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-emerald-500"></span>}
+                                </td>
+                                <td className="px-3 py-2 text-slate-500 dark:text-slate-400 text-center">{a.capacidad ?? '-'}</td>
+                                <td className="px-3 py-2">
+                                  {disponible 
+                                    ? <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {mensaje}</span> 
+                                    : <span className="text-red-500 dark:text-red-400 flex items-center gap-1"><X className="w-3 h-3"/> {mensaje}</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* LABORATORIO */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Ambientes para LABORATORIO:</h4>
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden text-xs max-h-60 overflow-y-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Ambiente</th>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400 text-center">Capacidad</th>
+                            <th className="px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Disponible</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                          {labs.map(a => {
+                            const { disponible, mensaje } = getDisponibilidadAmbiente(a.id);
+                            return (
+                              <tr 
+                                key={a.id} 
+                                className={cn(
+                                  disponible ? "bg-white dark:bg-slate-800" : "bg-red-50/50 dark:bg-red-900/10 opacity-75",
+                                  "hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
+                                )}
+                                onClick={() => {
+                                  if(disponible) setForm(f => ({...f, ambienteId: a.id}));
+                                }}
+                              >
+                                <td className="px-3 py-2 font-medium dark:text-slate-200">
+                                  {a.codigo}
+                                  {form.ambienteId === a.id && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-emerald-500"></span>}
+                                </td>
+                                <td className="px-3 py-2 text-slate-500 dark:text-slate-400 text-center">{a.capacidad ?? '-'}</td>
+                                <td className="px-3 py-2">
+                                  {disponible 
+                                    ? <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {mensaje}</span> 
+                                    : <span className="text-red-500 dark:text-red-400 flex items-center gap-1"><X className="w-3 h-3"/> {mensaje}</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <FormModalFooter
             onCancel={() => {
               setCreateOpen(false);

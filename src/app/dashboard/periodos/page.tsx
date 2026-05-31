@@ -125,7 +125,7 @@ export default function PeriodosPage() {
   };
 
   const columns: Column<PeriodoRow>[] = [
-    { key: 'nom', header: 'Nombre', cell: (r) => <span className="font-medium text-gray-900">{r.nombre}</span> },
+    { key: 'nom', header: 'Nombre', cell: (r) => <span className="font-medium text-gray-900 dark:text-slate-100">{r.nombre}</span> },
     {
       key: 'ini',
       header: 'Inicio',
@@ -154,7 +154,7 @@ export default function PeriodosPage() {
       key: 'counts',
       header: 'Hor./Vent.',
       cell: (r) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-gray-600 dark:text-slate-400">
           {r._count ? `${r._count.horarios} / ${r._count.ventanas}` : '—'}
         </span>
       ),

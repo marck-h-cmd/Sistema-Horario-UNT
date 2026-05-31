@@ -87,6 +87,7 @@ export class ValidadorHorario {
       ambienteId,
       horaInicio,
       horaFin,
+      grupoId,
       horarioIdExcluir
     );
 
@@ -181,7 +182,7 @@ export class ValidadorHorario {
     for (const cruce of cruces) {
       conflictos.push({
         tipo: 'CRUCE_DOCENTE',
-        mensaje: `El docente ya tiene asignado el curso "${cruce.curso.nombre}" en el ambiente "${cruce.ambiente.nombre}" de ${cruce.horaInicio} a ${cruce.horaFin}`,
+        mensaje: `El docente ya tiene asignado el curso "${cruce.curso.nombre}" en el ambiente "${cruce.ambiente ? cruce.ambiente.nombre : 'Sin ambiente'}" de ${cruce.horaInicio} a ${cruce.horaFin}`,
         severidad: 'ERROR',
         detalle: { horarioId: cruce.id },
       });
@@ -341,7 +342,9 @@ export class ValidadorHorario {
 
     let horasAsignadas = 0;
     for (const h of horariosExistentes) {
-      horasAsignadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      if (h.horaInicio && h.horaFin) {
+        horasAsignadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      }
     }
 
     if (horasAsignadas + horasNuevoHorario > horasMaximas) {
@@ -416,6 +419,7 @@ export class ValidadorHorario {
     ambienteId: string,
     horaInicio: string,
     horaFin: string,
+    grupoId?: string,
     horarioIdExcluir?: string
   ) {
     const [curso, ambiente] = await Promise.all([
@@ -456,6 +460,7 @@ export class ValidadorHorario {
         docenteId,
         cursoId,
         estado: { not: 'CANCELADO' },
+        ...(grupoId ? { grupoId } : {}),
         ...(horarioIdExcluir ? { id: { not: horarioIdExcluir } } : {}),
         ambiente: {
           tipo: esLaboratorio ? 'LABORATORIO' : { not: 'LABORATORIO' },
@@ -465,7 +470,9 @@ export class ValidadorHorario {
 
     let horasAsignadas = 0;
     for (const h of horariosAsignados) {
-      horasAsignadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      if (h.horaInicio && h.horaFin) {
+        horasAsignadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      }
     }
 
     const horasNuevas = calcularHorasEntre(horaInicio, horaFin);
@@ -505,7 +512,7 @@ export class ValidadorHorario {
       },
     });
 
-    if (!carga) return;
+    if (!carga || !carga.curso) return;
 
     const horasRequeridas =
       carga.horasAsignadas > 0
@@ -528,7 +535,9 @@ export class ValidadorHorario {
 
     let horasProgramadas = 0;
     for (const h of horarios) {
-      horasProgramadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      if (h.horaInicio && h.horaFin) {
+        horasProgramadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+      }
     }
 
     const horasNuevas = calcularHorasEntre(horaInicio, horaFin);
@@ -599,7 +608,9 @@ export class ValidadorHorario {
 
       let horasProgramadas = 0;
       for (const h of horarios) {
-        horasProgramadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+        if (h.horaInicio && h.horaFin) {
+          horasProgramadas += calcularHorasEntre(h.horaInicio, h.horaFin);
+        }
       }
 
       if (Math.abs(horasProgramadas - horasRequeridas) > 0.01) {

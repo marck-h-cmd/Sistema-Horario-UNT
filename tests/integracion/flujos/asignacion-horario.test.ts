@@ -155,38 +155,38 @@ describe('Flujo de Asignación de Horario - Integración', () => {
       });
 
       // Ambiente disponible
-      (prisma.ambiente.findMany as any).mockResolvedValueOnce([
+      (prisma.ambiente.findMany as any).mockResolvedValue([
         { id: 'amb-2', codigo: 'A102', nombre: 'Aula 102', tipo: 'AULA', capacidad: 35 },
       ]);
 
       // Docente ocupado en ese horario
-      (prisma.horario.findMany as any)
-        .mockResolvedValueOnce([  // 1. Cruce docente (Ocupado)
-          {
-            id: 'horario-conflicto',
-            curso: { id: 'c-otro', codigo: 'IS201', nombre: 'Otro Curso' },
-            docente: {
-              usuario: { nombre: 'Juan', apellidos: 'Pérez' },
+      (prisma.horario.findMany as any).mockImplementation((args: any) => {
+        // Retornar conflicto de docente si se consulta el horario ocupado (LUNES 08:00-10:00)
+        if (
+          args?.where?.docenteId === 'doc-1' && 
+          args?.where?.diaSemana === 'LUNES' && 
+          args?.where?.OR?.[0]?.horaInicio?.lt === '10:00'
+        ) {
+          return Promise.resolve([
+            {
+              id: 'horario-conflicto',
+              curso: { id: 'c-otro', codigo: 'IS201', nombre: 'Otro Curso' },
+              docente: {
+                usuario: { nombre: 'Juan', apellidos: 'Pérez' },
+              },
+              ambiente: { id: 'amb-x', codigo: 'A103', nombre: 'Aula 103', tipo: 'AULA' },
+              grupo: null,
+              diaSemana: 'LUNES',
+              horaInicio: '08:00',
+              horaFin: '10:00',
             },
-            ambiente: { id: 'amb-x', codigo: 'A103', nombre: 'Aula 103', tipo: 'AULA' },
-            grupo: null,
-            diaSemana: 'LUNES',
-            horaInicio: '08:00',
-            horaFin: '10:00',
-          },
-        ])
-        .mockResolvedValueOnce([]) // 2. Cruce docente (Llamada para el curso alternativo)
-        .mockResolvedValueOnce([]) // 3. Cruce grupo (Libre)
-        .mockResolvedValueOnce([]) // 4. Cruce ambiente (Libre)
-        .mockResolvedValueOnce([]) // 5. Alternativa: ambiente (Libre)
-        .mockResolvedValueOnce([]); // 6. Alternativa: docente (Libre)
+          ]);
+        }
+        return Promise.resolve([]);
+      });
 
       // El ambiente alternativo está libre
-      (prisma.horario.count as any)
-        .mockResolvedValueOnce(1) // docente ocupado
-        .mockResolvedValueOnce(0) // ambiente alt libre
-        .mockResolvedValueOnce(0) // docente en alt libre
-        .mockResolvedValue(0);
+      (prisma.horario.count as any).mockResolvedValue(0);
 
       const resultado = await motor.asignarHorario({
         periodoId: 'periodo-1',

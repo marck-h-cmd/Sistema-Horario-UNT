@@ -219,21 +219,21 @@ export class ValidadorConflictos {
     return horariosConflicto.map(hc => ({
       tipo: 'CRUCE_DOCENTE' as TipoConflicto,
       severidad: 'ERROR' as SeveridadConflicto,
-      mensaje: `El docente "${horarioActual.docenteNombre}" ya tiene asignado el curso "${hc.curso.nombre}" en el ambiente "${hc.ambiente.codigo} - ${hc.ambiente.nombre}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin}. No puede estar en dos lugares al mismo tiempo.`,
+      mensaje: `El docente "${horarioActual.docenteNombre}" ya tiene asignado el curso "${hc.curso.nombre}" en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin}. No puede estar en dos lugares al mismo tiempo.`,
       horarioActual,
       horarioConflicto: {
         id: hc.id,
         cursoNombre: hc.curso.nombre,
         docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
-        ambienteNombre: `${hc.ambiente.codigo} - ${hc.ambiente.nombre}`,
-        diaSemana: hc.diaSemana,
-        horaInicio: hc.horaInicio,
-        horaFin: hc.horaFin,
+        ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
+        diaSemana: hc.diaSemana!,
+        horaInicio: hc.horaInicio!,
+        horaFin: hc.horaFin!,
       },
       metadata: {
         horarioConflictoId: hc.id,
         cursoCodigo: hc.curso.codigo,
-        ambienteCodigo: hc.ambiente.codigo,
+        ambienteCodigo: hc.ambiente ? hc.ambiente.codigo : undefined,
       },
     }));
   }
@@ -279,32 +279,37 @@ export class ValidadorConflictos {
     });
 
     return horariosConflicto.map(hc => {
-      const tipoAmbiente = hc.ambiente.tipo;
+      const tipoAmbiente = hc.ambiente ? hc.ambiente.tipo : 'AULA';
       const tipoConflicto: TipoConflicto = 
         tipoAmbiente === 'LABORATORIO' ? 'CRUCE_LABORATORIO' : 'CRUCE_AULA';
 
       let caso = '';
-      if (horaInicio === hc.horaInicio && horaFin === hc.horaFin) {
+      const hcInicio = hc.horaInicio || '';
+      const hcFin = hc.horaFin || '';
+      if (horaInicio === hcInicio && horaFin === hcFin) {
         caso = '(Duplicado exacto) ';
-      } else if ((horaInicio <= hc.horaInicio && horaFin >= hc.horaFin) || (hc.horaInicio <= horaInicio && hc.horaFin >= horaFin)) {
+      } else if ((horaInicio <= hcInicio && horaFin >= hcFin) || (hcInicio <= horaInicio && hcFin >= horaFin)) {
         caso = '(Contención) ';
       } else {
         caso = '(Solapamiento) ';
       }
 
+      const descAmbiente = hc.ambiente 
+        ? `${this.traducirTipoAmbiente(tipoAmbiente)} ${hc.ambiente.codigo} - ${hc.ambiente.nombre}`
+        : 'Sin ambiente';
       return {
         tipo: tipoConflicto,
         severidad: 'ERROR' as SeveridadConflicto,
-        mensaje: `${caso}El ambiente ${hc.ambiente.codigo} ya está ocupado por ${hc.curso.codigo} de ${hc.horaInicio} a ${hc.horaFin}`,
+        mensaje: `${caso}El ${descAmbiente} ya está ocupado por ${hc.curso.codigo} de ${hc.horaInicio} a ${hc.horaFin}`,
         horarioActual,
         horarioConflicto: {
           id: hc.id,
           cursoNombre: hc.curso.nombre,
           docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
-          ambienteNombre: `${hc.ambiente.codigo} - ${hc.ambiente.nombre}`,
-          diaSemana: hc.diaSemana,
-          horaInicio: hc.horaInicio,
-          horaFin: hc.horaFin,
+          ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
+          diaSemana: hc.diaSemana!,
+          horaInicio: hc.horaInicio!,
+          horaFin: hc.horaFin!,
         },
         metadata: {
           horarioConflictoId: hc.id,
@@ -358,16 +363,16 @@ export class ValidadorConflictos {
     return horariosConflicto.map(hc => ({
       tipo: 'CRUCE_GRUPO' as TipoConflicto,
       severidad: 'ERROR' as SeveridadConflicto,
-      mensaje: `El grupo "${hc.grupo?.nombre || 'Desconocido'}" ya tiene programado el curso "${hc.curso.nombre}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin} en el ambiente "${hc.ambiente.codigo} - ${hc.ambiente.nombre}".`,
+      mensaje: `El grupo "${hc.grupo?.nombre || 'Desconocido'}" ya tiene programado el curso "${hc.curso.nombre}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin} en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}".`,
       horarioActual,
       horarioConflicto: {
         id: hc.id,
         cursoNombre: hc.curso.nombre,
         docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
-        ambienteNombre: `${hc.ambiente.codigo} - ${hc.ambiente.nombre}`,
-        diaSemana: hc.diaSemana,
-        horaInicio: hc.horaInicio,
-        horaFin: hc.horaFin,
+        ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
+        diaSemana: hc.diaSemana!,
+        horaInicio: hc.horaInicio!,
+        horaFin: hc.horaFin!,
       },
       metadata: {
         horarioConflictoId: hc.id,
@@ -460,12 +465,18 @@ export class ValidadorConflictos {
     });
 
     const conflictos: ConflictoHorario[] = [];
+    
+    // Filtrar solo los horarios que están programados (no son borradores sin fecha/hora)
+    const horariosValidos = horarios.filter(
+      (h): h is typeof h & { diaSemana: DiaSemana; horaInicio: string; horaFin: string } =>
+        h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null
+    );
 
     // Comparar cada par de horarios
-    for (let i = 0; i < horarios.length; i++) {
-      for (let j = i + 1; j < horarios.length; j++) {
-        const h1 = horarios[i];
-        const h2 = horarios[j];
+    for (let i = 0; i < horariosValidos.length; i++) {
+      for (let j = i + 1; j < horariosValidos.length; j++) {
+        const h1 = horariosValidos[i];
+        const h2 = horariosValidos[j];
 
         if (h1.diaSemana === h2.diaSemana) {
           // Verificar solapamiento
@@ -478,7 +489,7 @@ export class ValidadorConflictos {
                 id: h1.id,
                 cursoNombre: h1.curso.nombre,
                 docenteNombre: `${h1.docente.usuario.nombre} ${h1.docente.usuario.apellidos}`,
-                ambienteNombre: h1.ambiente.nombre,
+                ambienteNombre: h1.ambiente?.nombre || 'Sin ambiente',
                 diaSemana: h1.diaSemana,
                 horaInicio: h1.horaInicio,
                 horaFin: h1.horaFin,
@@ -487,7 +498,7 @@ export class ValidadorConflictos {
                 id: h2.id,
                 cursoNombre: h2.curso.nombre,
                 docenteNombre: `${h2.docente.usuario.nombre} ${h2.docente.usuario.apellidos}`,
-                ambienteNombre: h2.ambiente.nombre,
+                ambienteNombre: h2.ambiente?.nombre || 'Sin ambiente',
                 diaSemana: h2.diaSemana,
                 horaInicio: h2.horaInicio,
                 horaFin: h2.horaFin,

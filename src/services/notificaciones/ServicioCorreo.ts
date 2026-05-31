@@ -9,12 +9,12 @@ export class ServicioCorreo extends ServicioNotificacionBase {
   constructor() {
     super();
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
+        pass: process.env.SMTP_PASSWORD || process.env.SMTP_PASS,
       },
     });
   }
@@ -26,8 +26,13 @@ export class ServicioCorreo extends ServicioNotificacionBase {
       const usuario = await this.obtenerEmailUsuario(datos.usuarioId);
       if (!usuario) return false;
 
+      // Para pruebas locales: configura SMTP_USER y SMTP_PASS en .env.local
+      // Usar App Password de Gmail (no la contraseña normal):
+      // Google Account → Seguridad → Verificación en 2 pasos → Contraseñas de aplicación
+      const fromSender = process.env.SMTP_FROM || `"${process.env.SMTP_FROM_NAME || 'Sistema de Horarios UNT'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`;
+
       await this.transporter.sendMail({
-        from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
+        from: fromSender,
         to: usuario,
         subject: datos.titulo,
         html: this.generarHTML(datos),

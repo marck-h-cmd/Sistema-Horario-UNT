@@ -262,4 +262,86 @@ export class ControladorColaDocentes {
       ausentes,
     };
   }
+
+  /**
+   * Reprograma el turno de un docente ausente o justificado colocándolo al final de la cola activa de espera
+   * @param ventanaId ID de la ventana de atención
+   * @param docenteId ID del docente a reprogramar
+   */
+  async reprogramarTurno(ventanaId: string, docenteId: string): Promise<void> {
+    const atencion = await prisma.atencionVentana.findFirst({
+      where: {
+        ventanaId,
+        docenteId,
+      },
+    });
+
+    if (!atencion) {
+      throw new AppError('Registro de atención no encontrado para el docente', 404, 'ATENCION_NOT_FOUND');
+    }
+
+    if (atencion.estado !== 'AUSENTE') {
+      throw new AppError('Solo se pueden reprogramar docentes con estado AUSENTE o JUSTIFICADO', 400, 'DOCENTE_NO_AUSENTE');
+    }
+
+    // Obtener la posición máxima actual entre docentes con estado ESPERANDO
+    const maxAtencion = await prisma.atencionVentana.findFirst({
+      where: {
+        ventanaId,
+        estado: 'ESPERANDO',
+      },
+      orderBy: {
+        posicion: 'desc',
+      },
+    });
+
+    const maxPosicion = maxAtencion?.posicion || 0;
+    const nuevaPosicion = maxPosicion + 1;
+
+    // Desplazar docentes desde la posición indicada para evitar colisión de posiciones
+    await prisma.atencionVentana.updateMany({
+      where: {
+        ventanaId,
+        posicion: { gte: nuevaPosicion },
+      },
+      data: {
+        posicion: { increment: 1 },
+      },
+    });
+
+    // Actualizar posición y cambiar estado a ESPERANDO
+    await prisma.atencionVentana.update({
+      where: { id: atencion.id },
+      data: {
+        posicion: nuevaPosicion,
+        estado: 'ESPERANDO',
+        horaInicio: null,
+        horaFin: null,
+      },
+    });
+
+    // Registrar log de auditoría
+    await prisma.registroAuditoria.create({
+      data: {
+        accion: 'REPROGRAMAR_TURNO',
+        entidad: 'AtencionVentana',
+        entidadId: atencion.id,
+        datos: {
+          docenteId,
+          ventanaId,
+          posicionAnterior: atencion.posicion,
+          posicionNueva: nuevaPosicion,
+          motivo: 'Docente reprogramado después de ausencia/justificación',
+        },
+      },
+    });
+
+    // Emitir evento WebSocket "cola:actualizada"
+    await redis.publish('ws:ventanas', JSON.stringify({
+      type: 'cola:actualizada',
+      channel: `ventana:${ventanaId}`,
+      data: { ventanaId, docenteId, posicionAnterior: atencion.posicion, posicionNueva: nuevaPosicion },
+      timestamp: new Date().toISOString(),
+    }));
+  }
 }

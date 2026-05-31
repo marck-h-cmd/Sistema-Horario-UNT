@@ -9,6 +9,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Sincronizar automáticamente ventanas por fecha/hora
+    await gestorVentanas.autoProcesarVentanas();
+
     const ventana = await gestorVentanas.obtenerVentana(params.id);
     return createSuccessResponse(ventana);
   } catch (error: any) {

@@ -1,5 +1,6 @@
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
+import { GestorNotificaciones } from '../notificaciones/GestorNotificaciones';
 
 export interface TemporizadorConfig {
   ventanaId: string;
@@ -143,6 +144,73 @@ export class TemporizadorService {
         },
         timestamp: new Date().toISOString(),
       }));
+
+      // Si el tiempo de atención ha finalizado, marcar en la base de datos como AUSENTE
+      if (tarea.mensaje === 'Tiempo de atención finalizado') {
+        try {
+          const atencion = await prisma.atencionVentana.findUnique({
+            where: { id: tarea.atencionId },
+            include: {
+              docente: {
+                include: { preferenciasNotificacion: true }
+              }
+            }
+          });
+
+          if (atencion && atencion.estado === 'EN_ATENCION') {
+            // Marcar como ausente
+            await prisma.atencionVentana.update({
+              where: { id: tarea.atencionId },
+              data: { estado: 'AUSENTE' },
+            });
+
+            // Enviar notificación de expiración omnicanal
+            const gestorNotificaciones = new GestorNotificaciones();
+            const prefs = atencion.docente.preferenciasNotificacion;
+            const canales: any[] = [];
+            if (prefs) {
+              if (prefs.correoActivo) canales.push('CORREO');
+              if (prefs.whatsappActivo && atencion.docente.whatsapp) canales.push('WHATSAPP');
+              if (prefs.telegramActivo && atencion.docente.telegramId) canales.push('TELEGRAM');
+              if (prefs.sistemaActivo) canales.push('SISTEMA');
+            } else {
+              canales.push('SISTEMA');
+            }
+
+            for (const canal of canales) {
+              try {
+                await gestorNotificaciones.enviarNotificacion({
+                  usuarioId: atencion.docente.usuarioId,
+                  tipo: 'VENTANA_ATENCION',
+                  titulo: 'Turno Expirado',
+                  mensaje: 'Su tiempo límite de 15 minutos para seleccionar horario ha finalizado y su turno ha sido marcado como ausente.',
+                  prioridad: 'ALTA',
+                  canal,
+                  metadata: {
+                    ventanaId: tarea.ventanaId,
+                    atencionId: tarea.atencionId,
+                  },
+                });
+              } catch (err) {
+                console.error(`Error enviando notificación de turno expirado al docente por canal ${canal}:`, err);
+              }
+            }
+
+            // WebSocket para notificar el fin de turno en la grilla y cola
+            await redis.publish('ws:ventanas', JSON.stringify({
+              type: 'TURNO_EXPIRADO',
+              channel: `ventana:${tarea.ventanaId}`,
+              data: {
+                atencionId: tarea.atencionId,
+                docenteId: atencion.docenteId,
+              },
+              timestamp: new Date().toISOString(),
+            }));
+          }
+        } catch (error) {
+          console.error('Error procesando expiración de turno en backend:', error);
+        }
+      }
 
       // Eliminar de pendientes
       await redis.zrem('temporizadores:programados', pendiente);

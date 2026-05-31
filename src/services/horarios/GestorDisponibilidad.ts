@@ -71,14 +71,16 @@ export class GestorDisponibilidad {
       codigo: ambiente.codigo,
       nombre: ambiente.nombre,
       tipo: ambiente.tipo,
-      horariosOcupados: ambiente.horarios.map(h => ({
-        diaSemana: h.diaSemana,
-        horaInicio: h.horaInicio,
-        horaFin: h.horaFin,
-        cursoId: h.cursoId,
-        cursoNombre: h.curso.nombre,
-        docenteNombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
-      })),
+      horariosOcupados: ambiente.horarios
+        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+        .map(h => ({
+          diaSemana: h.diaSemana!,
+          horaInicio: h.horaInicio!,
+          horaFin: h.horaFin!,
+          cursoId: h.cursoId,
+          cursoNombre: h.curso.nombre,
+          docenteNombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
+        })),
     }));
 
     // Guardar en caché

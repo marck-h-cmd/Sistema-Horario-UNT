@@ -53,7 +53,7 @@ export default function NotificacionesPage() {
       {
         key: 'titulo',
         header: 'Título',
-        cell: (r) => <span className="font-medium text-gray-900">{r.titulo}</span>,
+        cell: (r) => <span className="font-medium text-gray-900 dark:text-slate-100">{r.titulo}</span>,
       },
       {
         key: 'tipo',

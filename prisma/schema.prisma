@@ -27,6 +27,25 @@ enum CategoriaDocente {
   INVITADO
 }
 
+enum DedicacionDocente {
+  TIEMPO_COMPLETO_40H
+  TIEMPO_PARCIAL_20H
+  DEDICACION_EXCLUSIVA
+}
+
+enum TipoSede {
+  SEDE_CENTRAL
+  SEDE_DESCENTRALIZADA
+}
+
+enum SedeDescentralizada {
+  CASAS
+  HUAMACHUCO
+  TAYABAMBA
+  SANTIAGO_DE_CHUCO
+  OTRA
+}
+
 enum TipoAmbiente {
   AULA
   LABORATORIO
@@ -81,6 +100,7 @@ enum TipoNotificacion {
   CAMBIO_HORARIO
   VENTANA_ATENCION
   RECORDATORIO
+  INCOMPATIBILIDAD_DETECTADA
   SISTEMA
 }
 
@@ -106,6 +126,61 @@ enum PrioridadNotificacion {
   URGENTE
 }
 
+enum TipoCargoAdministrativo {
+  DECANO
+  DIRECTOR_DE_ESCUELA
+  DIRECTOR_DE_POSTGRADO
+  JEFE_DE_DEPARTAMENTO
+  PROFESOR_SECRETARIO
+  JEFE_DE_OFICINA_GENERAL
+  DIRECTOR_DE_CENTRO_PRODUCCION
+  OTRO
+}
+
+enum TipoBeca {
+  MAESTRIA
+  DOCTORADO
+  SEGUNDA_ESPECIALIDAD
+}
+
+enum TipoActividadNoLectiva {
+  PREPARACION_Y_EVALUACION
+  CONSEJERIA
+  INVESTIGACION
+  CAPACITACION
+  ACTIVIDADES_DE_GOBIERNO
+  ACTIVIDADES_DE_ADMINISTRACION
+  ASESORIA_DE_TESIS
+  RESPONSABILIDAD_SOCIAL_UNIVERSITARIA
+  COMITES_TECNICOS_Y_COMISIONES
+}
+
+enum TipoComponente {
+  TEORIA
+  PRACTICA
+  LABORATORIO
+}
+
+enum TipoReglaValidacion {
+  CRUCE_DOCENTE
+  CRUCE_AULA
+  EXCEDE_LIMITE_SEDE_DESCENTRALIZADA
+  INCOMPATIBILIDAD_CARGO
+  INCOMPATIBILIDAD_BECA
+  FALTA_COMISION_SERVICIO
+  SUPERA_HORAS_MAX_DIARIAS
+  SUPERA_HORAS_CONTINUAS
+  DESCANSO_INSUFICIENTE
+}
+
+enum EstadoIncumplimiento {
+  DETECTADO
+  EN_REVISION
+  CONFIRMADO
+  RECHAZADO
+  SANCIONADO
+}
+
 // ============================================
 // MODELOS PRINCIPALES
 // ============================================
@@ -122,7 +197,6 @@ model Usuario {
   tokenVersion  Int       @default(0)
   ultimoAcceso  DateTime?
   
-  // Relaciones
   docente       Docente?
   sesiones      Sesion[]
   notificaciones Notificacion[]
@@ -157,11 +231,16 @@ model Sesion {
   @@map("sesiones")
 }
 
+// ============================================
+// DOCENTES Y DATOS PERSONALES
+// ============================================
+
 model Docente {
   id              String    @id @default(uuid())
   usuarioId       String    @unique
   codigo          String    @unique
   categoria       CategoriaDocente
+  dedicacion      DedicacionDocente @default(TIEMPO_COMPLETO_40H)
   departamento    String?
   telefono        String?
   whatsapp        String?
@@ -177,15 +256,101 @@ model Docente {
   cursos          CursoDocente[]
   ventanasAtendidas AtencionVentana[]
   disponibilidad  DisponibilidadDocente[]
+  cargos          CargoAdministrativo[]
+  becas           BecaDocente[]
+  comisiones      ComisionServicio[]
+  declaracionesNoLectiva DeclaracionNoLectiva[]
+  incumplimientos Incumplimiento[]
+  distribucionesNoLectiva DistribucionNoLectiva[]
+  comisionesReemplazo ComisionServicio[] @relation("DocenteReemplazo")
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([codigo])
   @@index([categoria])
+  @@index([dedicacion])
   @@index([departamento])
   @@map("docentes")
 }
+
+// ============================================
+// CARGOS ADMINISTRATIVOS
+// ============================================
+
+model CargoAdministrativo {
+  id          String                @id @default(uuid())
+  docenteId   String
+  tipoCargo   TipoCargoAdministrativo
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  activo      Boolean               @default(true)
+  resolucion  String?
+  observaciones String?
+  
+  docente     Docente               @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([docenteId, activo])
+  @@index([tipoCargo])
+  @@map("cargos_administrativos")
+}
+
+// ============================================
+// BECAS DE ESTUDIO
+// ============================================
+
+model BecaDocente {
+  id          String        @id @default(uuid())
+  docenteId   String
+  tipoBeca    TipoBeca
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  institucion String?
+  resolucion  String?
+  activo      Boolean       @default(true)
+  
+  docente     Docente       @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([docenteId, activo])
+  @@index([tipoBeca])
+  @@map("becas_docentes")
+}
+
+// ============================================
+// COMISIONES DE SERVICIO (Para sedes especiales)
+// ============================================
+
+model ComisionServicio {
+  id                String              @id @default(uuid())
+  docenteId         String
+  sedeDestino       SedeDescentralizada
+  fechaInicio       DateTime
+  fechaFin          DateTime
+  licenciaDocumento String              // N° de resolución/licencia
+  docenteReemplazoId String?            // Docente que asume su carga en sede central
+  activo            Boolean             @default(true)
+  
+  docente           Docente             @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+  docenteReemplazo  Docente?            @relation("DocenteReemplazo", fields: [docenteReemplazoId], references: [id])
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([docenteId, activo])
+  @@index([sedeDestino])
+  @@index([docenteReemplazoId])
+  @@map("comisiones_servicio")
+}
+
+// ============================================
+// CURSOS Y GRUPOS
+// ============================================
 
 model Curso {
   id              String    @id @default(uuid())
@@ -199,7 +364,6 @@ model Curso {
   planEstudios    String?
   activo          Boolean   @default(true)
   
-  // Relaciones
   grupos          Grupo[]
   cursosDocente   CursoDocente[]
   horarios        Horario[]
@@ -217,11 +381,10 @@ model Curso {
 model Grupo {
   id          String   @id @default(uuid())
   cursoId     String
-  nombre      String   // Ej: "A", "B", "C"
+  nombre      String
   capacidad   Int
   activo      Boolean  @default(true)
   
-  // Relaciones
   curso       Curso    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   horarios    Horario[]
   matriculas  Matricula[]
@@ -233,93 +396,6 @@ model Grupo {
   @@unique([cursoId, nombre])
   @@map("grupos")
 }
-// ambiente o aula
-model Ambiente {
-  id              String    @id @default(uuid())
-  codigo          String    @unique
-  nombre          String
-  tipo            TipoAmbiente
-  capacidad       Int
-  ubicacion       String?
-  activo          Boolean   @default(true)
-  
-  // Relaciones
-  horarios        Horario[]
-  mantenimientos  MantenimientoAmbiente[]
-  restricciones   RestriccionAmbiente[]
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@index([tipo])
-  @@index([activo])
-  @@map("ambientes")
-}
-
-model PeriodoAcademico {
-  id              String        @id @default(uuid())
-  nombre          String
-  fechaInicio     DateTime
-  fechaFin        DateTime
-  estado          EstadoPeriodo @default(BORRADOR)
-  activo          Boolean       @default(false)
-  
-  // Relaciones
-  horarios        Horario[]
-  ventanas        VentanaAtencion[]
-  matriculas      Matricula[]
-  configuraciones ConfiguracionPeriodo?
-
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@index([estado])
-  @@index([activo])
-  @@map("periodos_academicos")
-}
-
-model Horario {
-  id              String        @id @default(uuid())
-  periodoId       String
-  cursoId         String
-  docenteId       String
-  grupoId         String?
-  ambienteId      String
-  diaSemana       DiaSemana
-  horaInicio      String        // Formato: "HH:mm"
-  horaFin         String        // Formato: "HH:mm"
-  estado          EstadoHorario @default(BORRADOR)
-  publicado       Boolean       @default(false)
-  
-  // Metadatos
-  creadoPor       String?
-  fechaCreacion   DateTime      @default(now())
-  confirmadoPor   String?
-  fechaConfirmacion DateTime?
-  
-  // Relaciones
-  periodo         PeriodoAcademico @relation(fields: [periodoId], references: [id])
-  curso           Curso            @relation(fields: [cursoId], references: [id])
-  docente         Docente          @relation(fields: [docenteId], references: [id])
-  grupo           Grupo?           @relation(fields: [grupoId], references: [id])
-  ambiente        Ambiente         @relation(fields: [ambienteId], references: [id])
-  
-  validaciones    ValidacionHorario[]
-
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([periodoId, diaSemana, horaInicio, ambienteId])
-  @@unique([periodoId, diaSemana, horaInicio, docenteId])
-  @@index([periodoId, estado])
-  @@index([docenteId, periodoId])
-  @@index([ambienteId, periodoId])
-  @@map("horarios")
-}
-
-// ============================================
-// MODELOS DE SOPORTE
-// ============================================
 
 model CursoDocente {
   id            String   @id @default(uuid())
@@ -339,13 +415,176 @@ model CursoDocente {
   @@map("cursos_docentes")
 }
 
+// ============================================
+// AMBIENTES
+// ============================================
+
+model Ambiente {
+  id              String    @id @default(uuid())
+  codigo          String    @unique
+  nombre          String
+  tipo            TipoAmbiente
+  capacidad       Int
+  ubicacion       String?
+  sede            TipoSede  @default(SEDE_CENTRAL)
+  sedeDescentralizadaRef SedeDescentralizada?
+  activo          Boolean   @default(true)
+  
+  horarios        Horario[]
+  mantenimientos  MantenimientoAmbiente[]
+  restricciones   RestriccionAmbiente[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tipo])
+  @@index([sede])
+  @@index([activo])
+  @@map("ambientes")
+}
+
+// ============================================
+// PERIODOS ACADÉMICOS
+// ============================================
+
+model PeriodoAcademico {
+  id              String        @id @default(uuid())
+  nombre          String
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  estado          EstadoPeriodo @default(BORRADOR)
+  activo          Boolean       @default(false)
+  
+  horarios        Horario[]
+  ventanas        VentanaAtencion[]
+  matriculas      Matricula[]
+  configuraciones ConfiguracionPeriodo?
+  distribucionesNoLectiva DistribucionNoLectiva[]
+  declaracionesNoLectiva DeclaracionNoLectiva[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([estado])
+  @@index([activo])
+  @@map("periodos_academicos")
+}
+
+// ============================================
+// HORARIOS (CORE)
+// ============================================
+
+model Horario {
+  id              String        @id @default(uuid())
+  periodoId       String
+  cursoId         String
+  docenteId       String
+  grupoId         String?
+  ambienteId      String?
+  sede            TipoSede      @default(SEDE_CENTRAL)
+  sedeDescentralizadaRef SedeDescentralizada?
+  diaSemana       DiaSemana?
+  horaInicio      String?
+  horaFin         String?
+  tipoComponente  TipoComponente @default(TEORIA)
+  estado          EstadoHorario @default(BORRADOR)
+  publicado       Boolean       @default(false)
+  
+  // Metadatos
+  creadoPor       String?
+  fechaCreacion   DateTime      @default(now())
+  confirmadoPor   String?
+  fechaConfirmacion DateTime?
+  
+  // Relaciones
+  periodo         PeriodoAcademico @relation(fields: [periodoId], references: [id])
+  curso           Curso            @relation(fields: [cursoId], references: [id])
+  docente         Docente          @relation(fields: [docenteId], references: [id])
+  grupo           Grupo?           @relation(fields: [grupoId], references: [id])
+  ambiente        Ambiente?        @relation(fields: [ambienteId], references: [id])
+  
+  validaciones    ValidacionHorario[]
+  incumplimientos Incumplimiento[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // NOTA: Las constraints únicas se validan a nivel de aplicación
+  // debido a la necesidad de lógica compleja de superposición parcial
+  
+  @@index([periodoId, estado])
+  @@index([docenteId, periodoId])
+  @@index([ambienteId, periodoId])
+  @@index([sede])
+  @@map("horarios")
+}
+
+// ============================================
+// DECLARACIÓN DE CARGA NO LECTIVA
+// ============================================
+
+model DeclaracionNoLectiva {
+  id              String    @id @default(uuid())
+  docenteId       String
+  periodoId       String
+  fechaDeclaracion DateTime  @default(now())
+  totalHoras      Int       // Suma de todas las actividades, debe cuadrar con dedicación
+  observaciones   String?
+  
+  docente         Docente   @relation(fields: [docenteId], references: [id])
+  periodo         PeriodoAcademico @relation(fields: [periodoId], references: [id])
+  items           DeclaracionNoLectivaItem[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([docenteId, periodoId])
+  @@map("declaraciones_no_lectiva")
+}
+
+model DeclaracionNoLectivaItem {
+  id              String                  @id @default(uuid())
+  declaracionId   String
+  tipoActividad   TipoActividadNoLectiva
+  horasSemanales  Int
+  descripcion     String?
+  metadata        Json?                   // Para datos adicionales (ej: N° de alumnos, código de proyecto, etc.)
+  
+  declaracion     DeclaracionNoLectiva    @relation(fields: [declaracionId], references: [id], onDelete: Cascade)
+  distribuciones  DistribucionNoLectiva[]
+
+  createdAt       DateTime                @default(now())
+
+  @@map("declaraciones_no_lectiva_items")
+}
+
+model DistribucionNoLectiva {
+  id                 String                   @id @default(uuid())
+  docenteId          String
+  periodoId          String
+  declaracionItemId  String
+  diaSemana          DiaSemana
+  horaInicio         String
+  horaFin            String
+  
+  docente            Docente                  @relation(fields: [docenteId], references: [id])
+  periodo            PeriodoAcademico         @relation(fields: [periodoId], references: [id])
+  declaracionItem    DeclaracionNoLectivaItem @relation(fields: [declaracionItemId], references: [id], onDelete: Cascade)
+
+  @@map("distribuciones_no_lectivas")
+}
+
+// ============================================
+// DISPONIBILIDAD Y RESTRICCIONES
+// ============================================
+
 model DisponibilidadDocente {
   id          String    @id @default(uuid())
   docenteId   String
   diaSemana   DiaSemana
   horaInicio  String
   horaFin     String
-  prioridad   Int       @default(1) // 1=Alta, 2=Media, 3=Baja
+  prioridad   Int       @default(1)
   
   docente     Docente   @relation(fields: [docenteId], references: [id], onDelete: Cascade)
 
@@ -390,20 +629,51 @@ model MantenimientoAmbiente {
   @@map("mantenimientos_ambientes")
 }
 
+// ============================================
+// VALIDACIONES AUTOMÁTICAS
+// ============================================
+
 model ValidacionHorario {
-  id          String   @id @default(uuid())
+  id          String             @id @default(uuid())
   horarioId   String
-  tipoRegla   String   // Ej: "CRUCE_DOCENTE", "CRUCE_AULA", etc.
+  tipoRegla   TipoReglaValidacion
   cumple      Boolean
   mensaje     String?
   metadata    Json?
   
-  horario     Horario  @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+  horario     Horario            @relation(fields: [horarioId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt   DateTime           @default(now())
 
   @@index([horarioId])
+  @@index([tipoRegla])
   @@map("validaciones_horarios")
+}
+
+// ============================================
+// INCUMPLIMIENTOS (Para sanciones)
+// ============================================
+
+model Incumplimiento {
+  id          String                 @id @default(uuid())
+  docenteId   String
+  horarioId   String?
+  tipoRegla   TipoReglaValidacion
+  descripcion String
+  estado      EstadoIncumplimiento   @default(DETECTADO)
+  detectadoPor String?               // usuarioId que registró (si es manual)
+  sancionAplicada String?
+  resolucion  String?
+  
+  docente     Docente                @relation(fields: [docenteId], references: [id])
+  horario     Horario?               @relation(fields: [horarioId], references: [id])
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([docenteId, estado])
+  @@index([horarioId])
+  @@map("incumplimientos")
 }
 
 // ============================================
@@ -414,11 +684,10 @@ model VentanaAtencion {
   id            String        @id @default(uuid())
   periodoId     String
   nombre        String
-  categoria     CategoriaDocente
+  categorias Json @default("[]")        // Array de categorías en orden de atención (ej: ["PRINCIPAL", "ASOCIADO", ...])
   fechaInicio   DateTime
   fechaFin      DateTime
   estado        EstadoVentana @default(PROGRAMADA)
-  ordenAtencion Json          // Orden de categorías y prioridades
   
   periodo       PeriodoAcademico @relation(fields: [periodoId], references: [id])
   atenciones    AtencionVentana[]
@@ -427,7 +696,6 @@ model VentanaAtencion {
   updatedAt     DateTime      @updatedAt
 
   @@index([periodoId, estado])
-  @@index([categoria])
   @@map("ventanas_atencion")
 }
 
@@ -542,8 +810,8 @@ model ConfiguracionPeriodo {
   periodoId           String    @unique
   horasMaxDiariasDocente Int   @default(8)
   horasMaxContinuas   Int       @default(4)
-  descansoMinEntreHoras Int    @default(1) // en horas
-  ordenCategorias     Json      // Array de categorías en orden de atención
+  descansoMinEntreHoras Int    @default(1)
+  ordenCategorias     Json?
   
   periodo             PeriodoAcademico @relation(fields: [periodoId], references: [id], onDelete: Cascade)
 
@@ -567,9 +835,9 @@ model DiaNoLaborable {
 }
 
 // ============================================
-// SELECTIONES TEMPORALES (para Redis, referencia)
-// Nota: Estos datos se almacenan en Redis, 
-// este modelo es para documentación
+// SELECCIONES TEMPORALES (Redis)
+// NOTA: Este modelo es solo para referencia/documentación.
+// Los datos reales se almacenan en Redis con TTL.
 // ============================================
 
 model SeleccionTemporal {
@@ -578,7 +846,7 @@ model SeleccionTemporal {
   docenteId   String
   periodoId   String
   cursoId     String
-  datos       Json     // Matriz de selección
+  datos       Json
   expiraEn    DateTime
   
   createdAt   DateTime @default(now())
@@ -603,7 +871,6 @@ model Estudiante {
   ciclo           Int       @default(1)
   activo          Boolean   @default(true)
   
-  // Relaciones
   matriculas      Matricula[]
 
   createdAt       DateTime  @default(now())
@@ -621,9 +888,8 @@ model Matricula {
   cursoId         String
   grupoId         String
   periodoId       String
-  estado          String    @default("ACTIVO") // ACTIVO, RETIRADO, etc.
+  estado          String    @default("ACTIVO")
   
-  // Relaciones
   estudiante      Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
   curso           Curso      @relation(fields: [cursoId], references: [id])
   grupo           Grupo      @relation(fields: [grupoId], references: [id])

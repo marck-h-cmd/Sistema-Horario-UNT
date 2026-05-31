@@ -230,7 +230,7 @@ export default function AmbientesPage() {
               'rounded-md border px-4 py-2 text-sm font-medium transition-colors',
               tab === t
                 ? 'border-unt-blue bg-unt-blue text-white'
-                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600'
             )}
           >
             {t === 'AULA' ? 'Aulas' : 'Laboratorios'}
@@ -298,7 +298,7 @@ export default function AmbientesPage() {
               <Label htmlFor="tipo">Tipo</Label>
               <select
                 id="tipo"
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-unt-blue/20"
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as TipoAmbiente }))}
               >

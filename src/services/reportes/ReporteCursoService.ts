@@ -28,7 +28,7 @@ export class ReporteCursoService {
       include: {
         horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
       },
-    });
+    }) as any;
 
     if (!curso) {
       throw new Error('Curso no encontrado');
@@ -58,7 +58,7 @@ export class ReporteCursoService {
         horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
       },
       orderBy: [{ ciclo: 'asc' }, { codigo: 'asc' }],
-    });
+    }) as any[];
 
     const conHorario = cursos.filter((c) => c.horarios.length > 0);
     const totalSesiones = cursos.reduce((s, c) => s + c.horarios.length, 0);

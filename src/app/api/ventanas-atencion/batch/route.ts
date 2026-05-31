@@ -8,6 +8,7 @@ const batchSchema = z.object({
   periodoId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD requerido'),
   type: z.enum(['NOMBRADOS', 'CONTRATADOS']),
+  timezoneOffset: z.number().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos inválidos', 400, validation.error.errors);
     }
 
-    const { periodoId, date, type } = validation.data;
+    const { periodoId, date, type, timezoneOffset } = validation.data;
+    const offsetMinutos = timezoneOffset !== undefined ? timezoneOffset : 300; // Default a Perú (GMT-5 = 300)
 
     // Verificar que el período exista
     const periodo = await prisma.periodoAcademico.findUnique({
@@ -47,17 +49,19 @@ export async function POST(request: NextRequest) {
     const creadas = [];
 
     for (const c of configSeleccionada) {
-      const fechaInicio = new Date(`${date}T${c.inicio}:00`);
-      const fechaFin = new Date(`${date}T${c.fin}:00`);
+      const utcMsInicio = Date.parse(`${date}T${c.inicio}:00Z`);
+      const utcMsFin = Date.parse(`${date}T${c.fin}:00Z`);
+
+      const fechaInicio = new Date(utcMsInicio + offsetMinutos * 60 * 1000);
+      const fechaFin = new Date(utcMsFin + offsetMinutos * 60 * 1000);
 
       const ventana = await prisma.ventanaAtencion.create({
         data: {
           periodoId,
           nombre: c.nombre,
-          categoria: c.categoria,
+          categorias: [c.categoria] as any,
           fechaInicio,
           fechaFin,
-          ordenAtencion: ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO'],
           estado: 'PROGRAMADA',
         },
       });

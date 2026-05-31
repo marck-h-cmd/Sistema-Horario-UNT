@@ -33,7 +33,7 @@ export class ReporteLaboratorioService {
         },
       },
       orderBy: { codigo: 'asc' },
-    });
+    }) as any[];
 
     const totalHorarios = laboratorios.reduce((sum, l) => sum + l.horarios.length, 0);
 
@@ -65,9 +65,11 @@ export class ReporteLaboratorioService {
 
       const horariosPorDia: Record<string, typeof laboratorio.horarios> = {};
       for (const h of laboratorio.horarios) {
-        const dia = UtilidadesFecha.nombreDia(h.diaSemana);
-        if (!horariosPorDia[dia]) horariosPorDia[dia] = [];
-        horariosPorDia[dia].push(h);
+        const dia = h.diaSemana ? UtilidadesFecha.nombreDia(h.diaSemana) : '';
+        if (dia) {
+          if (!horariosPorDia[dia]) horariosPorDia[dia] = [];
+          horariosPorDia[dia].push(h);
+        }
       }
 
       const diasOrdenados = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -75,8 +77,8 @@ export class ReporteLaboratorioService {
         const horariosDia = horariosPorDia[dia] || [];
         if (horariosDia.length === 0) continue;
 
-        const filas = horariosDia.map((h) => [
-          `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`,
+        const filas = horariosDia.map((h: any) => [
+          h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : '',
           h.curso.codigo,
           h.curso.nombre,
           Formateadores.nombreUsuario(h.docente.usuario),

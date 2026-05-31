@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 interface ConfirmDialogProps {
   open: boolean;
   title?: string;
-  message: string;
+  message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'default' | 'destructive';

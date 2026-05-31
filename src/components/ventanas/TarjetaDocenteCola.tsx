@@ -125,10 +125,10 @@ export function TarjetaDocenteCola({
       <div
         onClick={onClick}
         className={cn(
-          'flex flex-col gap-3 p-3 border rounded-lg transition-colors',
-          isAusente ? 'border-red-300 bg-red-50' : 'hover:bg-gray-50 cursor-pointer',
-          docente.prioridad === 'urgente' && !isAusente && 'border-red-300 bg-red-50',
-          docente.prioridad === 'alta' && !isAusente && 'border-yellow-300 bg-yellow-50',
+          'flex flex-col gap-3 p-3 border dark:border-slate-700 rounded-lg transition-colors',
+          isAusente ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer',
+          docente.prioridad === 'urgente' && !isAusente && 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700',
+          docente.prioridad === 'alta' && !isAusente && 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700',
           className
         )}
       >
@@ -158,15 +158,15 @@ export function TarjetaDocenteCola({
                 />
               )}
             </div>
-            <p className="text-xs text-gray-600 truncate">{docente.email}</p>
+            <p className="text-xs text-gray-600 dark:text-slate-400 truncate">{docente.email}</p>
             {antiguedad && (
-              <p className="text-[10px] text-gray-400 italic mt-1">{antiguedad}</p>
+              <p className="text-[10px] text-gray-400 dark:text-slate-500 italic mt-1">{antiguedad}</p>
             )}
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline" className="text-xs">
                 {docente.categoria}
               </Badge>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                 <Clock className="h-3 w-3" />
                 {docente.horaLlegada}
               </div>
@@ -198,29 +198,29 @@ export function TarjetaDocenteCola({
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Docente</p>
-                <p className="text-sm font-medium text-gray-900">{docente.nombre}</p>
-                <p className="text-xs text-gray-500">{docente.categoria}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Docente</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{docente.nombre}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{docente.categoria}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo de ausencia</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tipo de ausencia</p>
                 <Badge className="bg-amber-500 text-white text-xs">{docente.observaciones?.tipo ?? 'No especificado'}</Badge>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Motivo</p>
-                <div className="p-3 bg-gray-100 rounded-lg border border-gray-200">
-                  <p className="text-sm text-gray-800">{docente.observaciones?.motivo ?? 'Sin motivo'}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Motivo</p>
+                <div className="p-3 bg-gray-100 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
+                  <p className="text-sm text-gray-800 dark:text-slate-200">{docente.observaciones?.motivo ?? 'Sin motivo'}</p>
                 </div>
               </div>
               {docente.observaciones?.documento && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Documento de respaldo</p>
-                  <p className="text-sm text-gray-800">{docente.observaciones.documento}</p>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Documento de respaldo</p>
+                  <p className="text-sm text-gray-800 dark:text-slate-200">{docente.observaciones.documento}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Fecha de envío</p>
-                <div className="flex items-center gap-2 text-sm text-gray-800">
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Fecha de envío</p>
+                <div className="flex items-center gap-2 text-sm text-gray-800 dark:text-slate-200">
                   <Calendar className="h-4 w-4 text-gray-400" />
                   {docente.observaciones?.fecha ? new Date(docente.observaciones.fecha).toLocaleString('es-PE') : 'No disponible'}
                 </div>
@@ -236,7 +236,7 @@ export function TarjetaDocenteCola({
           <ModalFooter className="flex justify-between items-center pt-4 border-t">
             <button
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
               Cerrar
             </button>

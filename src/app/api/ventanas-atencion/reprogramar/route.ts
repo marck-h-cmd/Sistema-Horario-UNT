@@ -71,10 +71,9 @@ export async function POST(request: NextRequest) {
         data: {
           periodoId,
           nombre: `${w.nombre} (Continuación)`,
-          categoria: w.categoria,
+          categorias: w.categorias as any,
           fechaInicio,
           fechaFin,
-          ordenAtencion: w.ordenAtencion || ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO'],
           estado: 'PROGRAMADA',
         }
       });

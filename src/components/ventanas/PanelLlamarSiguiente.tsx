@@ -48,8 +48,8 @@ export function PanelLlamarSiguiente({
     return (
       <Card className={className}>
         <Card.Content className="flex flex-col items-center justify-center py-12">
-          <UserPlus className="h-16 w-16 text-gray-300 mb-4" />
-          <p className="text-gray-500 text-center">
+          <UserPlus className="h-16 w-16 text-gray-300 dark:text-slate-600 mb-4" />
+          <p className="text-gray-500 dark:text-slate-400 text-center">
             No hay más docentes en la cola
           </p>
         </Card.Content>
@@ -77,10 +77,10 @@ export function PanelLlamarSiguiente({
           <Avatar fallback={iniciales} className="h-16 w-16 text-lg" />
           <div className="flex-1">
             <h3 className="font-semibold text-lg">{docenteSiguiente.nombre}</h3>
-            <p className="text-sm text-gray-600">{docenteSiguiente.email}</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400">{docenteSiguiente.email}</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline">{docenteSiguiente.categoria}</Badge>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                 <Clock className="h-3 w-3" />
                 {docenteSiguiente.horaLlegada}
               </div>

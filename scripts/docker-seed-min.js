@@ -58,6 +58,7 @@ async function main() {
         usuarioId: docenteUser.id,
         codigo: 'DOC001',
         categoria: 'PRINCIPAL',
+        dedicacion: 'TIEMPO_COMPLETO_40H',
         departamento: 'Dpto. de Ing. Sistemas',
         telefono: '999123456',
         preferenciasNotificacion: {

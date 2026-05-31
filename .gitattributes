@@ -1,0 +1,6 @@
+# Forzar LF en archivos que se ejecutan en contenedores Linux,
+# aunque el repo se clone en Windows.
+*.sh           text eol=lf
+Dockerfile     text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf

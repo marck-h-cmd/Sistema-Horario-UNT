@@ -42,7 +42,7 @@ export const DEMO_USERS: DemoUser[] = [
   {
     id: 'docente',
     label: 'Docente',
-    email: 'juan.perez@unitru.edu.pe',
+    email: 'marcelino.torres@unitru.edu.pe',
     password: 'unt123456',
     rol: 'DOCENTE',
     description: 'Consulta de horarios asignados',

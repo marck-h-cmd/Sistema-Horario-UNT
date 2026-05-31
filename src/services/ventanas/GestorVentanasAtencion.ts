@@ -2,14 +2,15 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
 import { EstadoVentana, EstadoAtencion, CategoriaDocente } from '@prisma/client';
+import { TemporizadorService } from './TemporizadorService';
+import { GestorNotificaciones } from '../notificaciones/GestorNotificaciones';
 
 export interface CrearVentanaDTO {
   periodoId: string;
   nombre: string;
-  categoria: CategoriaDocente;
+  categorias: string[];
   fechaInicio: Date | string;
   fechaFin: Date | string;
-  ordenAtencion: string[];
 }
 
 export interface ConfigurarVentanaDTO {
@@ -42,6 +43,44 @@ export class GestorVentanasAtencion {
     });
 
     return ventanas;
+  }
+
+  async autoProcesarVentanas() {
+    const ahora = new Date();
+
+    // 1. Abrir ventanas PROGRAMADAS cuya fechaInicio ya pasó
+    const programadas = await prisma.ventanaAtencion.findMany({
+      where: {
+        estado: 'PROGRAMADA',
+        fechaInicio: { lte: ahora },
+      },
+    });
+
+    for (const v of programadas) {
+      try {
+        console.log(`[Auto-Open] Abriendo ventana ${v.nombre} (${v.id})...`);
+        await this.abrirVentana(v.id);
+      } catch (err) {
+        console.error(`Error abriendo ventana automáticamente (${v.id}):`, err);
+      }
+    }
+
+    // 2. Cerrar ventanas ABIERTAS o EN_CURSO cuya fechaFin ya pasó
+    const activas = await prisma.ventanaAtencion.findMany({
+      where: {
+        estado: { in: ['ABIERTA', 'EN_CURSO'] },
+        fechaFin: { lte: ahora },
+      },
+    });
+
+    for (const v of activas) {
+      try {
+        console.log(`[Auto-Close] Cerrando ventana ${v.nombre} (${v.id})...`);
+        await this.cerrarVentana(v.id);
+      } catch (err) {
+        console.error(`Error cerrando ventana automáticamente (${v.id}):`, err);
+      }
+    }
   }
 
   async obtenerVentana(id: string) {
@@ -83,18 +122,23 @@ export class GestorVentanasAtencion {
       throw new AppError('Período no encontrado', 404, 'PERIODO_NOT_FOUND');
     }
 
-    // Verificar que no haya otra ventana activa para la misma categoría
-    const ventanaActiva = await prisma.ventanaAtencion.findFirst({
+    // Verificar que no haya otra ventana activa para alguna de las categorías
+    const ventanasActivas = await prisma.ventanaAtencion.findMany({
       where: {
         periodoId: datos.periodoId,
-        categoria: datos.categoria,
         estado: { in: ['PROGRAMADA', 'ABIERTA', 'EN_CURSO'] },
       },
     });
 
-    if (ventanaActiva) {
+    const catSet = new Set(datos.categorias);
+    const overlapping = ventanasActivas.some(v => {
+      const vCats = v.categorias as string[];
+      return vCats.some(c => catSet.has(c));
+    });
+
+    if (overlapping) {
       throw new AppError(
-        'Ya existe una ventana activa para esta categoría',
+        'Ya existe una ventana activa para alguna de estas categorías',
         409,
         'VENTANA_DUPLICADA'
       );
@@ -104,10 +148,9 @@ export class GestorVentanasAtencion {
       data: {
         periodoId: datos.periodoId,
         nombre: datos.nombre,
-        categoria: datos.categoria,
+        categorias: datos.categorias,
         fechaInicio: new Date(datos.fechaInicio),
         fechaFin: new Date(datos.fechaFin),
-        ordenAtencion: datos.ordenAtencion || ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO'],
       },
       include: {
         periodo: true,
@@ -232,6 +275,52 @@ export class GestorVentanasAtencion {
       },
     });
 
+    // Iniciar temporizador en Redis
+    const temporizadorService = new TemporizadorService();
+    await temporizadorService.iniciarTemporizador({
+      ventanaId: ventana.id,
+      atencionId: siguiente.id,
+      duracionMinutos: 15,
+      inicio: new Date(),
+    });
+
+    // Enviar notificaciones omnicanal
+    const gestorNotificaciones = new GestorNotificaciones();
+    const tituloNotif = 'Es su turno de atención';
+    const mensajeNotif = `Por favor, acérquese a la ${ventana.nombre} para seleccionar su horario. Dispone de 15 minutos.`;
+    const prefs = siguiente.docente.preferenciasNotificacion;
+    
+    // Canales habilitados para el envío
+    const canales: any[] = [];
+    if (prefs) {
+      if (prefs.correoActivo) canales.push('CORREO');
+      if (prefs.whatsappActivo && siguiente.docente.whatsapp) canales.push('WHATSAPP');
+      if (prefs.telegramActivo && siguiente.docente.telegramId) canales.push('TELEGRAM');
+      if (prefs.sistemaActivo) canales.push('SISTEMA');
+    } else {
+      canales.push('SISTEMA');
+    }
+
+    for (const canal of canales) {
+      try {
+        await gestorNotificaciones.enviarNotificacion({
+          usuarioId: siguiente.docente.usuarioId,
+          tipo: 'VENTANA_ATENCION',
+          titulo: tituloNotif,
+          mensaje: mensajeNotif,
+          prioridad: 'URGENTE',
+          canal,
+          metadata: {
+            ventanaId,
+            atencionId: siguiente.id,
+            tiempoLimiteSegundos: 900,
+          },
+        });
+      } catch (err) {
+        console.error(`Error enviando notificación de turno al docente por canal ${canal}:`, err);
+      }
+    }
+
     // Actualizar estado de la ventana
     if (ventana.estado === 'ABIERTA') {
       await prisma.ventanaAtencion.update({
@@ -348,16 +437,46 @@ export class GestorVentanasAtencion {
     };
   }
 
+  /**
+   * Calcula la hora estimada de inicio del turno de un docente en la cola
+   * @param ventanaId ID de la ventana de atención
+   * @param posicion Posición del docente en la cola (1-indexed)
+   * @returns Date con la hora estimada de inicio
+   */
+  async calcularHoraEstimadaTurno(ventanaId: string, posicion: number): Promise<Date> {
+    const ventana = await prisma.ventanaAtencion.findUnique({
+      where: { id: ventanaId },
+      select: { fechaInicio: true },
+    });
+
+    if (!ventana) {
+      throw new AppError('Ventana de atención no encontrada', 404, 'VENTANA_NOT_FOUND');
+    }
+
+    const DURACION_TURNO_MS = 15 * 60 * 1000; // 15 minutos en milisegundos
+    const delay = (posicion - 1) * DURACION_TURNO_MS;
+    return new Date(new Date(ventana.fechaInicio).getTime() + delay);
+  }
+
   private async generarColaDocentes(ventanaId: string) {
     const ventana = await this.obtenerVentana(ventanaId);
 
-    // Obtener docentes de la categoría de la ventana
+    const cats = ventana.categorias as CategoriaDocente[];
+    // Obtener docentes de las categorías de la ventana
     const docentes = await prisma.docente.findMany({
       where: {
-        categoria: ventana.categoria,
+        categoria: { in: cats },
         usuario: { activo: true },
       },
       orderBy: { codigo: 'asc' },
+    });
+
+    // Ordenar docentes según el orden de categorias en la ventana, y luego por código
+    docentes.sort((a, b) => {
+      const idxA = cats.indexOf(a.categoria);
+      const idxB = cats.indexOf(b.categoria);
+      if (idxA !== idxB) return idxA - idxB;
+      return a.codigo.localeCompare(b.codigo);
     });
 
     // Crear atenciones en orden

@@ -10,9 +10,11 @@ const botonVariants = cva(
       variant: {
         default: 'bg-primary-600 text-white hover:bg-primary-700',
         destructive: 'bg-red-600 text-white hover:bg-red-700',
-        outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700',
-        secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
-        ghost: 'hover:bg-gray-100 text-gray-700',
+        outline:
+          'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
+        secondary:
+          'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600',
+        ghost: 'hover:bg-gray-100 text-gray-700 dark:text-slate-300 dark:hover:bg-slate-800',
         link: 'text-primary-600 underline-offset-4 hover:underline',
       },
       size: {

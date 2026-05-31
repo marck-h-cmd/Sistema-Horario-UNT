@@ -35,12 +35,12 @@ export function Calendario({
   };
 
   return (
-    <div className={cn('rounded-lg border bg-white p-4', className)}>
+    <div className={cn('rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900', className)}>
       <div className="mb-4 flex items-center justify-between">
         <Boton variant="ghost" size="icon" onClick={mesAnterior}>
           <ChevronLeft className="h-4 w-4" />
         </Boton>
-        <h2 className="text-sm font-semibold">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {format(mesActual, 'MMMM yyyy', { locale: es })}
         </h2>
         <Boton variant="ghost" size="icon" onClick={mesSiguiente}>
@@ -52,7 +52,7 @@ export function Calendario({
         {diasSemana.map((dia) => (
           <div
             key={dia}
-            className="text-center text-xs font-medium text-gray-500"
+            className="text-center text-xs font-medium text-gray-500 dark:text-slate-400"
           >
             {dia}
           </div>
@@ -69,10 +69,10 @@ export function Calendario({
               key={dia.toString()}
               onClick={() => onSeleccionarFecha?.(dia)}
               className={cn(
-                'aspect-square rounded-md p-0 text-sm transition-colors hover:bg-gray-100',
+                'aspect-square rounded-md p-0 text-sm text-slate-800 transition-colors hover:bg-gray-100 dark:text-slate-100 dark:hover:bg-slate-800',
                 esHoy && 'font-bold text-primary-600',
                 estaSeleccionado && 'bg-primary-600 text-white hover:bg-primary-700',
-                !isSameMonth(dia, mesActual) && 'text-gray-400'
+                !isSameMonth(dia, mesActual) && 'text-gray-400 dark:text-slate-600'
               )}
             >
               {format(dia, 'd')}

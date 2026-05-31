@@ -17,6 +17,22 @@ function getColor(v: number): string {
   return '#1e3a8a';
 }
 
+const HeatTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ 
+      background: '#1e293b', 
+      border: '1px solid #334155', 
+      borderRadius: '10px', 
+      padding: '8px 14px', 
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)' 
+    }}>
+      <p style={{ color: '#94a3b8', fontSize: '11px', marginBottom: '2px' }}>{label}</p>
+      <p style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: '700' }}>{payload[0].value}</p>
+    </div>
+  );
+};
+
 export default function MapaCalorOcupacion({ periodoId }: { periodoId?: string }) {
   const [rawData, setRawData] = useState<CalorData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +85,7 @@ export default function MapaCalorOcupacion({ periodoId }: { periodoId?: string }
                   const val = cell?.ocupacion ?? 0;
                   return (
                     <div key={dia}
-                      className="h-7 rounded-sm flex items-center justify-center text-[9px] font-medium cursor-default transition-transform hover:scale-110"
+                      className="h-7 rounded-md flex items-center justify-center text-[9px] font-medium cursor-default transition-transform hover:scale-110"
                       style={{ background: getColor(val), color: val >= 60 ? '#fff' : '#374151' }}
                       onMouseEnter={() => setHover(cell ?? null)}
                       onMouseLeave={() => setHover(null)}
