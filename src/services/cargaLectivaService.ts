@@ -108,7 +108,7 @@ export class CargaLectivaService {
     };
 
     if (departamento) {
-      where.departamento = { equals: departamento, mode: 'insensitive' };
+      where.departamento = { nombre: { equals: departamento, mode: 'insensitive' } };
     }
 
     const docentes = await prisma.docente.findMany({
@@ -117,6 +117,9 @@ export class CargaLectivaService {
         usuario: {
           select: { nombre: true, apellidos: true, email: true },
         },
+        departamento: {
+          select: { nombre: true }
+        }
       },
       orderBy: [{ codigo: 'asc' }],
     });
@@ -152,7 +155,7 @@ export class CargaLectivaService {
         dedicacion: docente.dedicacion,
         horasDedicacion: this.obtenerHorasDedicacion(docente.dedicacion),
         horasLectivasAsignadas,
-        departamento: docente.departamento,
+        departamento: docente.departamento?.nombre,
       });
     }
 

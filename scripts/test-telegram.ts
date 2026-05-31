@@ -121,6 +121,24 @@ async function main() {
     });
 
     if (!docente) {
+      console.log('   👨‍🏫 Buscando o creando departamento para docente de prueba...');
+      let dept = await prisma.departamentoAcademico.findFirst({
+        where: { nombre: 'Ing. de Sistemas' }
+      });
+      if (!dept) {
+        let fac = await prisma.facultad.findFirst({
+          where: { nombre: 'Facultad de Ingeniería' }
+        });
+        if (!fac) {
+          fac = await prisma.facultad.create({
+            data: { nombre: 'Facultad de Ingeniería', decano: 'Decano General' }
+          });
+        }
+        dept = await prisma.departamentoAcademico.create({
+          data: { nombre: 'Ing. de Sistemas', facultadId: fac.id }
+        });
+      }
+
       console.log('   👨‍🏫 Creando docente temporal con Telegram ID y verificado...');
       docente = await prisma.docente.create({
         data: {
@@ -128,7 +146,8 @@ async function main() {
           codigo: 'TELE-TEST',
           categoria: 'PRINCIPAL',
           dedicacion: 'TIEMPO_COMPLETO_40H',
-          departamento: 'Sistemas',
+          departamentoId: dept.id,
+          dni: '77777778',
           telefono: '999999999',
           whatsapp: '999999999',
           telegramId: targetChatId,
