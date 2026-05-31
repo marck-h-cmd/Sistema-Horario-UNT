@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
         diaSemana: true,
         horaInicio: true,
         horaFin: true,
-        curso: { select: { codigo: true, nombre: true, ciclo: true } },
-        docente: { select: { usuario: { select: { nombre: true, apellidos: true } } } },
+        curso: { select: { codigo: true, nombre: true, ciclo: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
+        docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: true } },
         ambiente: { select: { codigo: true, nombre: true } },
         grupo: { select: { nombre: true } }
       },

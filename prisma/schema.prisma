@@ -684,7 +684,7 @@ model VentanaAtencion {
   id            String        @id @default(uuid())
   periodoId     String
   nombre        String
-  categorias    Json          // Array de categorías en orden de atención (ej: ["PRINCIPAL", "ASOCIADO", ...])
+  categorias Json @default("[]")        // Array de categorías en orden de atención (ej: ["PRINCIPAL", "ASOCIADO", ...])
   fechaInicio   DateTime
   fechaFin      DateTime
   estado        EstadoVentana @default(PROGRAMADA)
