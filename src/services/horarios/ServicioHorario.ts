@@ -62,7 +62,7 @@ export class ServicioHorario {
       prisma.horario.findMany({
         where,
         include: {
-          curso: { select: { id: true, codigo: true, nombre: true } },
+          curso: { select: { id: true, codigo: true, nombre: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
           docente: {
             include: {
               usuario: { select: { id: true, nombre: true, apellidos: true } }

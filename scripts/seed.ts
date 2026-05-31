@@ -1,75 +1,123 @@
-import { PrismaClient, Rol, CategoriaDocente, TipoAmbiente, DiaSemana, EstadoPeriodo, EstadoHorario } from '@prisma/client';
+import { PrismaClient, Rol, CategoriaDocente, TipoAmbiente, DiaSemana, EstadoPeriodo, EstadoHorario, TipoComponente } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 // ==================== INFORMACIÓN DE HORARIOS VÁLIDOS ====================
-const rawSchedulesText = `IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Posgrado A-307	LUNES	07:00	09:00	A	CONFIRMADO
-IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	14:00	16:00	A	CONFIRMADO
-IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	16:00	18:00	B	CONFIRMADO
-IS-102	Introducción a la Ing. de Sistemas	I	Alberto Mendoza de los Santos	Posgrado A-307	MARTES	7:00	10:00	A	CONFIRMADO
-EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	09:00	11:00	A	CONFIRMADO
-EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	11:00	13:00	B	CONFIRMADO
-EG-102	Desarrollo Personal	I	Bertha Urtecho Zavaleta	Taller Confecciones Ing. Industrial	VIERNES	9:00	13:00	A	CONFIRMADO
-EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	MARTES	10:00	13:00	A	CONFIRMADO
-EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	VIERNES	7:00	9:00	A	CONFIRMADO
-EG-104	Lectura Crítica y Redac. Textos Académicos	I	Jorge Luis Rios Gonzales	Posgrado A-303	JUEVES	2:00	6:00	A	CONFIRMADO
-EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	09:00	11:00	A	CONFIRMADO
-EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	11:00	13:00	A	CONFIRMADO
-EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	MARTES	16:00	18:00	A	CONFIRMADO
-EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller Confecciones Ing. Industrial	JUEVES	7:00	09:00	A	CONFIRMADO
-EG-106B	Estadística General	I	Martha Cardoso	Posgrado A-303	VIERNES	14:00	16:00	A	CONFIRMADO
-EG-106B	Estadística General	I	Martha Cardoso	Taller Confecciones Ing. Industrial	VIERNES	16:00	18:00	A	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	LUNES	9:00	13:00	A	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	9:00	13:00	B	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	MARTES	9:00	13:00	C	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	I-4	MARTES	14:00	16:00	A	CONFIRMADO
-IS-302	Sistémica	III	Everson David Agreda Gamboa	Posgrado A-307	MIÉRCOLES	9:00	12:00	A	CONFIRMADO
-IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	14:00	16:00	A	CONFIRMADO
-IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
-IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	JUEVES	16:00	18:00	C	CONFIRMADO
-IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Posgrado A-303	MIÉRCOLES	7:00	9:00	A	CONFIRMADO
-IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	7:00	10:00	A	CONFIRMADO
-IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	10:00	13:00	B	CONFIRMADO
-MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Posgrado A-303	MIÉRCOLES	18:00	21:00	A	CONFIRMADO
-MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Indust.	JUEVES	14:00	16:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	MARTES	16:00	18:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Indust.	JUEVES	18:00	21:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Indust.	VIERNES	7:00	9:00	B	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	VIERNES	16:00	18:00	C	CONFIRMADO
-ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confecciones - Ing. Indust.	LUNES	07:00	9:00	A	CONFIRMADO
-ADM-301	Administración General	III	Juan Carrascal Cabanillas	I I 2 (Pabellon Ing. Industrial)	MARTES	07:00	9:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Posgrado A-303	MARTES	15:00	20:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	7:00	9:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	14:00	16:00	B	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
-PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO
-PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	VIERNES	18:00	20:00	A	CONFIRMADO
-IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Lab. 1	MARTES	7:00	10:00	C	CONFIRMADO
-IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Posgrado A-303	MARTES	10:00	13:00	A	CONFIRMADO
-IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Lab. 2	LUNES	13:00	16:00	A	CONFIRMADO
-IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Lab. 2	LUNES	16:00	19:00	B	CONFIRMADO
-IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Lab. 3	LUNES	10:00	13:00	C	CONFIRMADO
-IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Posgrado A-311	VIERNES	16:00	18:00	A	CONFIRMADO
-IS-701B	Ingeniería de Software I	VII	Robert Jerry Sánchez Ticona	Lab. 1	LUNES	7:00	10:00	A	CONFIRMADO
-IS-701B	Ingeniería de Software I	VII	Robert Jerry Sánchez Ticona	Lab. 1	LUNES	10:00	13:00	B	CONFIRMADO
-IS-704	Negocios Electrónicos (e)	VII	Everson David Agreda Gamboa	Posgrado A-311	MARTES	16:00	18:00	A	CONFIRMADO
-IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	10:00	12:00	A	CONFIRMADO
-IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	12:00	14:00	B	CONFIRMADO
-IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Posgrado A-303	VIERNES	7:00	10:00	A	CONFIRMADO
-IS-706	Metodología de la Investigación Científica	VII	Paul Cotrina Castellanos	Posgrado A-307	JUEVES	14:00	18:00	A	CONFIRMADO
-IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Posgrado A-307	JUEVES	7:00	9:00	A	CONFIRMADO
-IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 4	JUEVES	18:00	21:00	A	CONFIRMADO
-IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 2	VIERNES	18:00	21:00	B	CONFIRMADO
-IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Posgrado A-307	MARTES	13:00	16:00	A	CONFIRMADO
-IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Lab. 4	MIÉRCOLES	13:00	15:00	A	CONFIRMADO
-IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Lab. 4	MIÉRCOLES	15:00	17:00	B	CONFIRMADO
-IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Lab. 3	JUEVES	9:00	11:00	C	CONFIRMADO
-IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Audiovisuales	MIÉRCOLES	17:00	19:00	C	CONFIRMADO
-IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	14:00	16:00	A	CONFIRMADO
-IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	16:00	18:00	B	CONFIRMADO
-EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Lab. 4	MIÉRCOLES	7:00	11:00	A	CONFIRMADO`;
+const rawSchedulesText = `IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Posgrado A-307	LUNES	07:00	09:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	14:00	16:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Lab. 3	LUNES	16:00	18:00	B	CONFIRMADO	LABORATORIO	2	0	2
+IS-102	Introducción a la Ing. de Sistemas	I	Alberto Mendoza de los Santos	Posgrado A-307	MARTES	07:00	10:00	A	CONFIRMADO	TEORIA	1	2	0
+EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	09:00	11:00	A	CONFIRMADO	LABORATORIO	0	0	2
+EG-101	Introducción a la Programación (EG)	I	Paul Cotrina Castellanos	Lab. 4	JUEVES	11:00	13:00	B	CONFIRMADO	LABORATORIO	0	0	2
+EG-102	Desarrollo Personal	I	Bertha Urtecho Zavaleta	Taller Confecciones Ing. Industrial	VIERNES	09:00	13:00	A	CONFIRMADO	PRACTICA	2	2	0
+EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	MARTES	10:00	13:00	A	CONFIRMADO	TEORIA	1	4	0
+EG-103	Desarrollo del Pensamiento Lógico Matemático	I	Jose Luis Ponte Bejarano	Posgrado A-307	VIERNES	07:00	09:00	A	CONFIRMADO	TEORIA	1	4	0
+EG-104	Lectura Crítica y Redac. Textos Académicos	I	Jorge Luis Rios Gonzales	Posgrado A-303	JUEVES	14:00	18:00	A	CONFIRMADO	TEORIA	2	2	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	09:00	11:00	A	CONFIRMADO	TEORIA	2	4	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	11:00	13:00	A	CONFIRMADO	TEORIA	2	4	0
+EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	MARTES	16:00	18:00	A	CONFIRMADO	PRACTICA	2	4	0
+EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller Confecciones Ing. Industrial	JUEVES	07:00	09:00	A	CONFIRMADO	LABORATORIO	0	2	0
+EG-106B	Estadística General	I	Martha Cardoso	Posgrado A-303	VIERNES	14:00	16:00	A	CONFIRMADO	TEORIA	2	2	0
+EG-106B	Estadística General	I	Martha Cardoso	Taller Confecciones Ing. Industrial	VIERNES	16:00	18:00	A	CONFIRMADO	LABORATORIO	2	2	0
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	LUNES	09:00	13:00	A	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	09:00	13:00	B	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	MARTES	09:00	13:00	C	CONFIRMADO	LABORATORIO	2	0	4
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	I-4	MARTES	14:00	16:00	A	CONFIRMADO	TEORIA	2	0	4
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Posgrado A-307	MIERCOLES	09:00	12:00	A	CONFIRMADO	TEORIA	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIERCOLES	14:00	16:00	A	CONFIRMADO	LABORATORIO	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	2	1	2
+IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	JUEVES	16:00	18:00	C	CONFIRMADO	LABORATORIO	2	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	1	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Lab. 1	JUEVES	07:00	10:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldan	Lab. 1	JUEVES	10:00	13:00	B	CONFIRMADO	LABORATORIO	1	1	2
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Posgrado A-303	MIERCOLES	18:00	21:00	A	CONFIRMADO	TEORIA	1	2	2
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Industrial	JUEVES	14:00	16:00	A	CONFIRMADO	PRACTICA	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	MARTES	16:00	18:00	A	CONFIRMADO	TEORIA	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Industrial	JUEVES	18:00	21:00	A	CONFIRMADO	LABORATORIO	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Industrial	VIERNES	07:00	09:00	B	CONFIRMADO	LABORATORIO	1	2	2
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	VIERNES	16:00	18:00	C	CONFIRMADO	TEORIA	1	2	2
+ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confecciones Ing. Industrial	LUNES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	0
+ADM-301	Administración General	III	Juan Carrascal Cabanillas	II-2	MARTES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	0
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Posgrado A-303	MARTES	15:00	20:00	A	CONFIRMADO	TEORIA	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	07:00	09:00	A	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIERCOLES	14:00	16:00	B	CONFIRMADO	LABORATORIO	1	2	2
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	1	2	2
+PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO	TEORIA	2	2	0
+PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	VIERNES	18:00	20:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Posgrado A-303	LUNES	08:00	09:00	A	CONFIRMADO	TEORIA	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 4	LUNES	11:00	12:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 4	MARTES	08:00	09:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 2	JUEVES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	Lab. 2	VIERNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-303	MIERCOLES	09:00	11:00	A	CONFIRMADO	PRACTICA	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 3	JUEVES	09:00	10:00	A	CONFIRMADO	LABORATORIO	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 3	JUEVES	10:00	11:00	B	CONFIRMADO	LABORATORIO	2	2	2
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Posgrado A-307	JUEVES	09:00	10:00	C	CONFIRMADO	LABORATORIO	2	2	2
+IS-503	Transformación Digital	V	Everson David Agreda Gamboa	Posgrado A-307	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Posgrado A-307	MIERCOLES	07:00	09:00	A	CONFIRMADO	TEORIA	1	1	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Lab. 2	JUEVES	07:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-504	Tecnología Web	V	Robert Jerry Sanchez Ticona	Lab. 2	VIERNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	2
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Posgrado A-303	MIERCOLES	09:00	11:00	A	CONFIRMADO	TEORIA	2	2	3
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Lab. 3	JUEVES	09:00	10:00	A	CONFIRMADO	LABORATORIO	2	2	3
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Posgrado A-307	VIERNES	09:00	11:00	A	CONFIRMADO	TEORIA	2	2	3
+IS-506	Teleinformática (e)	V	Camilo Suarez Rebaza	Lab. 2	MIERCOLES	14:00	16:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-506	Teleinformática (e)	V	Camilo Suarez Rebaza	Lab. 2	MIERCOLES	16:00	18:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	MIERCOLES	14:00	16:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	MIERCOLES	16:00	18:00	A	CONFIRMADO	PRACTICA	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 4	JUEVES	14:00	16:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-507	Investigación de Operaciones	V	Marcos Baca Lopez	Posgrado A-307	VIERNES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MIERCOLES	14:00	16:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MARTES	14:00	15:00	A	CONFIRMADO	PRACTICA	1	2	2
+IS-508	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	Lab. 4	MARTES	19:00	20:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernandez	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	2	1	3
+IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernandez	Lab. 1	MARTES	07:00	08:00	A	CONFIRMADO	LABORATORIO	2	1	3
+IS-701B	Ingeniería de Software I	VII	Robert Jerry Sanchez Ticona	Lab. 1	LUNES	07:00	08:00	A	CONFIRMADO	LABORATORIO	0	0	2
+IS-701B	Ingeniería de Software I	VII	Robert Jerry Sanchez Ticona	Lab. 1	LUNES	10:00	11:00	B	CONFIRMADO	LABORATORIO	0	0	2
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 2	LUNES	13:00	15:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 2	LUNES	15:00	17:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Lab. 3	LUNES	10:00	11:00	C	CONFIRMADO	LABORATORIO	1	1	3
+IS-702	Redes y Comunicaciones I	VII	Cesar Arellano Salazar	Posgrado A-311	VIERNES	16:00	18:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-704	Negocios Electrónicos (e)	VII	Everson David Agreda Gamboa	Posgrado A-311	MARTES	16:00	18:00	A	CONFIRMADO	TEORIA	2	0	0
+IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	14:00	16:00	A	CONFIRMADO	LABORATORIO	0	0	2
+IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	16:00	18:00	B	CONFIRMADO	LABORATORIO	0	0	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Posgrado A-303	VIERNES	07:00	09:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	10:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	11:00	12:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-706	Metodología de la Investigación Científica	VII	Paul Cotrina Castellanos	Posgrado A-307	JUEVES	14:00	18:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Posgrado A-307	JUEVES	07:00	08:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 4	JUEVES	18:00	20:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 2	VIERNES	18:00	20:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Posgrado A-307	MARTES	13:00	15:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 4	MIERCOLES	13:00	15:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 4	MIERCOLES	15:00	17:00	B	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Lab. 3	JUEVES	09:00	11:00	C	CONFIRMADO	LABORATORIO	1	2	2
+IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcantara Moreno	Audiovisuales	MIERCOLES	17:00	19:00	C	CONFIRMADO	TEORIA	1	2	2
+EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Lab. 4	MIERCOLES	07:00	11:00	A	CONFIRMADO	TEORIA	2	2	0
+IS-901	Tesis I	IX	Juan Pedro Santos Fernandez	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	2	2	2
+IS-901	Tesis I	IX	Juan Pedro Santos Fernandez	Lab. 2	JUEVES	11:00	12:00	A	CONFIRMADO	LABORATORIO	2	2	2
+IS-902	Tesis I	IX	Ricardo Mendoza Rivera	Posgrado A-311	JUEVES	14:00	16:00	A	CONFIRMADO	TEORIA	2	2	1
+IS-903	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Posgrado A-303	VIERNES	10:00	11:00	A	CONFIRMADO	TEORIA	1	2	2
+IS-903	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab. 4	VIERNES	14:00	15:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MIERCOLES	08:00	09:00	A	CONFIRMADO	LABORATORIO	1	2	2
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	JUEVES	08:00	09:00	A	CONFIRMADO	TEORIA	1	2	3
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	LUNES	10:00	11:00	A	CONFIRMADO	TEORIA	1	2	3
+IS-905	Gestión de Proyectos de TI	IX	Jose Gomez Avila	Posgrado A-303	MARTES	14:00	16:00	A	CONFIRMADO	PRACTICA	1	2	3
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Posgrado A-303	VIERNES	10:00	11:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Lab. 4	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcantara Moreno	Audiovisuales	MARTES	10:00	11:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Posgrado A-303	LUNES	18:00	20:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 3	MARTES	08:00	09:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 3	MIERCOLES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Posgrado A-303	MARTES	14:00	16:00	A	CONFIRMADO	TEORIA	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Lab. 3	MIERCOLES	06:00	08:00	A	CONFIRMADO	LABORATORIO	1	1	3
+IS-908	Computación en la Nube	IX	Jose Gomez Avila	Lab. 4	MIERCOLES	06:00	08:00	B	CONFIRMADO	LABORATORIO	1	1	3
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Posgrado A-303	LUNES	14:00	16:00	A	CONFIRMADO	TEORIA	2	0	2
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	VIERNES	14:00	15:00	A	CONFIRMADO	LABORATORIO	2	0	2
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	VIERNES	15:00	16:00	B	CONFIRMADO	LABORATORIO	2	0	2`;
 
 // ==================== FUNCIONES AUXILIARES DE NORMALIZACIÓN ====================
 
@@ -94,7 +142,7 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   
   // Unificador potente para Taller de Confecciones (Ing. Industrial) y similares
   if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
-    return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones', tipo: TipoAmbiente.LABORATORIO };
+    return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones - Ing. Industrial', tipo: TipoAmbiente.LABORATORIO };
   }
   
   if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
@@ -116,7 +164,9 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
 const mapCiclo = (ciclo: string): number => {
   if (ciclo === 'I') return 1;
   if (ciclo === 'III') return 3;
+  if (ciclo === 'V') return 5;
   if (ciclo === 'VII') return 7;
+  if (ciclo === 'IX') return 9;
   return 1;
 };
 
@@ -238,7 +288,11 @@ async function main() {
       inicio: cols[6].trim(),
       fin: cols[7].trim(),
       grupo: cols[8].trim(),
-      estado: cols[9].trim()
+      estado: cols[9].trim(),
+      tipoComponente: cols[10]?.trim() ?? 'TEORIA',
+      horasT: parseInt(cols[11] ?? '0'),
+      horasP: parseInt(cols[12] ?? '0'),
+      horasL: parseInt(cols[13] ?? '0'),
     };
   });
 
@@ -297,38 +351,39 @@ async function main() {
     { email: 'alberto.mendoza@unitru.edu.pe', nombre: 'Alberto', apellidos: 'Mendoza de los Santos', codigo: 'DOC002', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
     { email: 'paul.cotrina@unitru.edu.pe', nombre: 'Paul', apellidos: 'Cotrina Castellanos', codigo: 'DOC003', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
     { email: 'bertha.urtecho@unitru.edu.pe', nombre: 'Bertha', apellidos: 'Urtecho Zavaleta', codigo: 'DOC004', categoria: CategoriaDocente.AUXILIAR, departamento: 'CC. Psicológicas' },
-    { email: 'jose.ponte@unitru.edu.pe', nombre: 'José Luis', apellidos: 'Ponte Bejarano', codigo: 'DOC005', categoria: CategoriaDocente.ASOCIADO, departamento: 'Matemáticas' },
-    { email: 'jorge.rios@unitru.edu.pe', nombre: 'Jorge Luis', apellidos: 'Ríos Gonzales', codigo: 'DOC006', categoria: CategoriaDocente.AUXILIAR, departamento: 'Lengua Nacional y Literatura' },
-    { email: 'segundo.guibar@unitru.edu.pe', nombre: 'Segundo', apellidos: 'Guíbar Obeso', codigo: 'DOC007', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Matemáticas' },
+    { email: 'jose.ponte@unitru.edu.pe', nombre: 'Jose Luis', apellidos: 'Ponte Bejarano', codigo: 'DOC005', categoria: CategoriaDocente.ASOCIADO, departamento: 'Matemáticas' },
+    { email: 'jorge.rios@unitru.edu.pe', nombre: 'Jorge Luis', apellidos: 'Rios Gonzales', codigo: 'DOC006', categoria: CategoriaDocente.AUXILIAR, departamento: 'Lengua Nacional y Literatura' },
+    { email: 'segundo.guibar@unitru.edu.pe', nombre: 'Segundo', apellidos: 'Guibar Obeso', codigo: 'DOC007', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Matemáticas' },
     { email: 'miguel.ipanaque@unitru.edu.pe', nombre: 'Miguel', apellidos: 'Ipanaque Zapata', codigo: 'DOC008', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Estadística' },
     { email: 'martha.cardoso@unitru.edu.pe', nombre: 'Martha', apellidos: 'Cardoso', codigo: 'DOC009', categoria: CategoriaDocente.AUXILIAR, departamento: 'Estadística' },
 
     // Ciclo III
     { email: 'zoraida.vidal@unitru.edu.pe', nombre: 'Zoraida', apellidos: 'Vidal Melgarejo', codigo: 'DOC010', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
     { email: 'everson.agreda@unitru.edu.pe', nombre: 'Everson David', apellidos: 'Agreda Gamboa', codigo: 'DOC011', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
-    { email: 'juan.obando@unitru.edu.pe', nombre: 'Juan Carlos', apellidos: 'Obando Roldán', codigo: 'DOC012', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'juan.obando@unitru.edu.pe', nombre: 'Juan Carlos', apellidos: 'Obando Roldan', codigo: 'DOC012', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
     { email: 'marcos.ferrer@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Ferrer Reyna', codigo: 'DOC013', categoria: CategoriaDocente.ASOCIADO, departamento: 'Matemáticas' },
-    { email: 'teresita.rojas@unitru.edu.pe', nombre: 'Teresita', apellidos: 'Rojas García', codigo: 'DOC014', categoria: CategoriaDocente.AUXILIAR, departamento: 'Estadística' },
+    { email: 'teresita.rojas@unitru.edu.pe', nombre: 'Teresita', apellidos: 'Rojas Garcia', codigo: 'DOC014', categoria: CategoriaDocente.AUXILIAR, departamento: 'Estadística' },
     { email: 'juan.carrascal@unitru.edu.pe', nombre: 'Juan', apellidos: 'Carrascal Cabanillas', codigo: 'DOC015', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Administración' },
-    { email: 'vilma.mendez@unitru.edu.pe', nombre: 'Vilma', apellidos: 'Méndez Gil', codigo: 'DOC016', categoria: CategoriaDocente.ASOCIADO, departamento: 'Física' },
-    { email: 'sheyla.laura@unitru.edu.pe', nombre: 'Sheyla', apellidos: 'Laura Escobedo Rodríguez', codigo: 'DOC017', categoria: CategoriaDocente.AUXILIAR, departamento: 'CC. Psicológicas' },
+    { email: 'vilma.mendez@unitru.edu.pe', nombre: 'Vilma', apellidos: 'Mendez Gil', codigo: 'DOC016', categoria: CategoriaDocente.ASOCIADO, departamento: 'Física' },
+    { email: 'sheyla.laura@unitru.edu.pe', nombre: 'Sheyla', apellidos: 'Laura Escobedo Rodriguez', codigo: 'DOC017', categoria: CategoriaDocente.AUXILIAR, departamento: 'CC. Psicológicas' },
 
     // Ciclo V
     { email: 'luis.boy@unitru.edu.pe', nombre: 'Luis', apellidos: 'Boy Chavil', codigo: 'DOC018', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
-    { email: 'robert.sanchez@unitru.edu.pe', nombre: 'Robert Jerry', apellidos: 'Sánchez Ticona', codigo: 'DOC019', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
-    { email: 'cesar.arellano@unitru.edu.pe', nombre: 'César', apellidos: 'Arellano Salazar', codigo: 'DOC020', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
-    { email: 'camilo.suarez@unitru.edu.pe', nombre: 'Camilo', apellidos: 'Suárez Rebaza', codigo: 'DOC021', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
-    { email: 'marcos.baca@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Baca López', codigo: 'DOC022', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ingeniería Industrial' },
-    { email: 'ana.cuadra@unitru.edu.pe', nombre: 'Ana', apellidos: 'Cuadra Mitzuquray', codigo: 'DOC023', categoria: CategoriaDocente.AUXILIAR, departamento: 'Contabilidad y Finanzas' },
+    { email: 'juan.obando.v@unitru.edu.pe', nombre: 'Juan Carlos', apellidos: 'Obando Roldan', codigo: 'DOC029', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'robert.sanchez@unitru.edu.pe', nombre: 'Robert Jerry', apellidos: 'Sanchez Ticona', codigo: 'DOC019', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
+    { email: 'cesar.arellano@unitru.edu.pe', nombre: 'Cesar', apellidos: 'Arellano Salazar', codigo: 'DOC020', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'camilo.suarez@unitru.edu.pe', nombre: 'Camilo', apellidos: 'Suarez Rebaza', codigo: 'DOC021', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'marcos.baca@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Baca Lopez', codigo: 'DOC022', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ingeniería Industrial' },
+    { email: 'ana.cuadra@unitru.edu.pe', nombre: 'Ana', apellidos: 'Cuadra Mitzugaray', codigo: 'DOC023', categoria: CategoriaDocente.AUXILIAR, departamento: 'Contabilidad y Finanzas' },
 
     // Ciclo VII
-    { email: 'juan.santos@unitru.edu.pe', nombre: 'Juan Pedro', apellidos: 'Santos Fernández', codigo: 'DOC024', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
+    { email: 'juan.santos@unitru.edu.pe', nombre: 'Juan Pedro', apellidos: 'Santos Fernandez', codigo: 'DOC024', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
     { email: 'ricardo.mendoza@unitru.edu.pe', nombre: 'Ricardo', apellidos: 'Mendoza Rivera', codigo: 'DOC025', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
-    { email: 'oscar.alcantara@unitru.edu.pe', nombre: 'Óscar Romel', apellidos: 'Alcántara Moreno', codigo: 'DOC026', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
+    { email: 'oscar.alcantara@unitru.edu.pe', nombre: 'Oscar Romel', apellidos: 'Alcantara Moreno', codigo: 'DOC026', categoria: CategoriaDocente.AUXILIAR, departamento: 'Ing. de Sistemas' },
     { email: 'jhoe.gonzalez@unitru.edu.pe', nombre: 'Jhoe', apellidos: 'Gonzalez Vasquez', codigo: 'DOC027', categoria: CategoriaDocente.CONTRATADO, departamento: 'Ing. Industrial' },
 
     // Ciclo IX
-    { email: 'jose.gomez@unitru.edu.pe', nombre: 'José', apellidos: 'Gómez Ávila', codigo: 'DOC028', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
+    { email: 'jose.gomez@unitru.edu.pe', nombre: 'Jose', apellidos: 'Gomez Avila', codigo: 'DOC028', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
   ];
 
   const fechasIngreso: Record<string, string> = {
@@ -409,7 +464,7 @@ async function main() {
   console.log(`✅ ${ambientes.length} ambientes dinámicos creados`);
 
   // ==================== CURSOS Y GRUPOS DINÁMICOS ====================
-  const cursosMap = new Map<string, { codigo: string; nombre: string; ciclo: number }>();
+  const cursosMap = new Map<string, { codigo: string; nombre: string; ciclo: number; horasT: number; horasP: number; horasL: number }>();
   const uniqueGroupsMap = new Map<string, Set<string>>();
 
   for (const item of parsedSchedules) {
@@ -417,7 +472,10 @@ async function main() {
       cursosMap.set(item.codigoCurso, {
         codigo: item.codigoCurso,
         nombre: item.curso,
-        ciclo: mapCiclo(item.ciclo)
+        ciclo: mapCiclo(item.ciclo),
+        horasT: item.horasT,
+        horasP: item.horasP,
+        horasL: item.horasL,
       });
     }
     if (!uniqueGroupsMap.has(item.codigoCurso)) {
@@ -430,17 +488,16 @@ async function main() {
   for (const [codigo, cursoInfo] of cursosMap) {
     const uniqueGroups = Array.from(uniqueGroupsMap.get(codigo) || new Set(['A']));
     const gruposData = uniqueGroups.map(g => ({ nombre: g, capacidad: 40 }));
-    const metadatos = obtenerMetadatosCurso(cursoInfo.nombre);
     
     const curso = await prisma.curso.create({
       data: {
         codigo: cursoInfo.codigo,
         nombre: cursoInfo.nombre,
         ciclo: cursoInfo.ciclo,
-        creditos: metadatos.creditos,
-        horasTeoria: metadatos.horasTeoria,
-        horasPractica: metadatos.horasPractica,
-        horasLaboratorio: metadatos.horasLaboratorio,
+        creditos: cursoInfo.horasT + cursoInfo.horasP + cursoInfo.horasL,
+        horasTeoria: cursoInfo.horasT,
+        horasPractica: cursoInfo.horasP,
+        horasLaboratorio: cursoInfo.horasL,
         grupos: {
           create: gruposData
         }
@@ -538,6 +595,14 @@ async function main() {
     }
 
     try {
+      const mapTipo = (t: string): TipoComponente => {
+        if (t === 'PRACTICA') return TipoComponente.PRACTICA;
+        if (t === 'LABORATORIO') return TipoComponente.LABORATORIO;
+        return TipoComponente.TEORIA;
+      };
+      
+      const tipoComponente: TipoComponente = mapTipo(item.tipoComponente);
+
       await prisma.horario.create({
         data: {
           periodoId: periodo.id,
@@ -548,6 +613,7 @@ async function main() {
           diaSemana: mapDia(item.dia),
           horaInicio: mapHora(item.inicio),
           horaFin: mapHora(item.fin),
+          tipoComponente,
           estado: EstadoHorario.CONFIRMADO,
           publicado: true,
           creadoPor: adminUser.id,
