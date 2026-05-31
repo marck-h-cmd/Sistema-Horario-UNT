@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         horaInicio: true,
         horaFin: true,
         curso: { select: { codigo: true, nombre: true, ciclo: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
-        docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: true } },
+        docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: { select: { nombre: true } } } },
         ambiente: { select: { codigo: true, nombre: true } },
         grupo: { select: { nombre: true } }
       },

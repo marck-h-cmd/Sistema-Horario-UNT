@@ -130,15 +130,16 @@ export class ReporteCatalogoService {
 
   private async contenidoDocentes(registroId?: string, fechaDesde?: Date, fechaHasta?: Date, categoria?: string, departamento?: string) {
     const createdAt = this.rangoFechas(fechaDesde, fechaHasta);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, any> = {};
     if (registroId) where.id = registroId;
     if (createdAt) where.createdAt = createdAt;
     if (categoria) where.categoria = categoria;
-    if (departamento) where.departamento = { contains: departamento, mode: 'insensitive' };
+    if (departamento) where.departamento = { nombre: { contains: departamento, mode: 'insensitive' } };
     const docentes = await prisma.docente.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
       include: {
         usuario: { select: { nombre: true, apellidos: true, email: true, activo: true } },
+        departamento: { select: { nombre: true } },
         _count: { select: { cursos: true, horarios: true } },
       },
       orderBy: { codigo: 'asc' },
@@ -164,7 +165,7 @@ export class ReporteCatalogoService {
       Formateadores.nombreUsuario(d.usuario),
       d.usuario.email,
       Formateadores.categoriaDocente(d.categoria),
-      d.departamento ?? '—',
+      d.departamento?.nombre ?? '—',
       d._count.cursos.toString(),
       d.usuario.activo ? 'Sí' : 'No',
     ]);

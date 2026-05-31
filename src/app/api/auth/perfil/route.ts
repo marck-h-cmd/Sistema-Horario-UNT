@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
     const usuario = await prisma.usuario.findUnique({
       where: { id: tokenUser.userId },
       include: {
-        docente: true,
+        docente: {
+          include: {
+            departamento: {
+              select: { nombre: true }
+            }
+          }
+        },
       },
     });
 
@@ -93,7 +99,13 @@ export async function PUT(request: NextRequest) {
     const usuarioActualizado = await prisma.usuario.findUnique({
       where: { id: tokenUser.userId },
       include: {
-        docente: true,
+        docente: {
+          include: {
+            departamento: {
+              select: { nombre: true }
+            }
+          }
+        },
       },
     });
 

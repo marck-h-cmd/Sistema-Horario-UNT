@@ -232,6 +232,39 @@ model Sesion {
 }
 
 // ============================================
+// FACULTADES Y DEPARTAMENTOS
+// ============================================
+
+model Facultad {
+  id            Int      @id @default(autoincrement()) @map("id_facultad")
+  nombre        String   @unique @db.VarChar(150)
+  decano        String   @db.VarChar(100)
+  fechaCreacion DateTime @default(now()) @map("fecha_creacion") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  departamentos DepartamentoAcademico[]
+
+  @@index([nombre])
+  @@map("facultades")
+}
+
+model DepartamentoAcademico {
+  id               Int      @id @default(autoincrement()) @map("id_departamento")
+  nombre           String   @db.VarChar(150)
+  facultadId       Int      @map("id_facultad")
+  jefeDepartamento String?  @map("jefe_departamento") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  facultad         Facultad @relation(fields: [facultadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  docentes         Docente[]
+
+  @@unique([nombre, facultadId])
+  @@map("departamentos_academicos")
+}
+
+// ============================================
 // DOCENTES Y DATOS PERSONALES
 // ============================================
 
@@ -241,7 +274,8 @@ model Docente {
   codigo          String    @unique
   categoria       CategoriaDocente
   dedicacion      DedicacionDocente @default(TIEMPO_COMPLETO_40H)
-  departamento    String?
+  dni             String    @unique @db.Char(8)
+  departamentoId  Int       @map("id_departamento")
   telefono        String?
   whatsapp        String?
   telegramId      String?
@@ -251,6 +285,7 @@ model Docente {
   
   // Relaciones
   usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  departamento    DepartamentoAcademico @relation(fields: [departamentoId], references: [id], onDelete: Restrict)
   preferenciasNotificacion PreferenciasNotificacion?
   horarios        Horario[]
   cursos          CursoDocente[]
@@ -270,7 +305,7 @@ model Docente {
   @@index([codigo])
   @@index([categoria])
   @@index([dedicacion])
-  @@index([departamento])
+  @@index([departamentoId])
   @@map("docentes")
 }
 
