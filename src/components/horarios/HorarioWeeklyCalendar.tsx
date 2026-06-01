@@ -179,8 +179,19 @@ export function HorarioWeeklyCalendar({
       }
     }
     if (esCicloI) {
-      ['08:00', '09:00', '10:00', '11:00', '12:00', '15:00', '16:00', '17:00']
-        .forEach(h => map.add(`MIERCOLES-${h}-ESTUDIOS`));
+      [
+        '08:00',
+        '09:00',
+        '10:00',
+        '11:00',
+        '12:00',
+        '14:00',
+        '15:00',
+        '16:00',
+        '17:00',
+        '18:00',
+        '19:00'
+      ].forEach(h => map.add(`MIERCOLES-${h}-ESTUDIOS`));
     }
     return map;
   }, [horarios, esCicloI]);
@@ -388,11 +399,11 @@ export function HorarioWeeklyCalendar({
                         </td>
                       );
                     }
-                    if (ini === '14:00') {
+                    if (ini === '13:00') {
                       return (
                         <td
                           key={dia}
-                          rowSpan={4}
+                          rowSpan={7}
                           style={{
                             ...celda,
                             background: '#bdd7ee',

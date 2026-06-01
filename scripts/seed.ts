@@ -134,11 +134,15 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   if (n.includes('Posgrado A-307')) return { codigo: 'A-307', nombre: 'Posgrado A-307', tipo: TipoAmbiente.AULA };
   if (n.includes('Posgrado A-303')) return { codigo: 'A-303', nombre: 'Posgrado A-303', tipo: TipoAmbiente.AULA };
   if (n.includes('Posgrado A-311')) return { codigo: 'A-311', nombre: 'Posgrado A-311', tipo: TipoAmbiente.AULA };
+  if (n.includes('Posgrado B-104')) return { codigo: 'B-104', nombre: 'Posgrado B-104', tipo: TipoAmbiente.AULA };
+  if (n.includes('Posgrado B-105')) return { codigo: 'B-105', nombre: 'Posgrado B-105', tipo: TipoAmbiente.AULA };
+  if (n.includes('Posgrado B-304')) return { codigo: 'B-304', nombre: 'Posgrado B-304', tipo: TipoAmbiente.AULA };
   if (n.includes('Lab. 1')) return { codigo: 'Lab-1', nombre: 'Laboratorio 1', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. 2')) return { codigo: 'Lab-2', nombre: 'Laboratorio 2', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. 3')) return { codigo: 'Lab-3', nombre: 'Laboratorio 3', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. 4')) return { codigo: 'Lab-4', nombre: 'Laboratorio 4', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. Fisica')) return { codigo: 'Lab-Fisica', nombre: 'Laboratorio de Física', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab') && n.length <= 4) return { codigo: 'Lab-Gen', nombre: 'Laboratorio General', tipo: TipoAmbiente.LABORATORIO };
 
   // Unificador potente para Taller de Confecciones (Ing. Industrial) y similares
   if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
@@ -146,6 +150,7 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   }
 
   if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
+  if (n.includes('I-5')) return { codigo: 'I-5', nombre: 'Aula I-5', tipo: TipoAmbiente.AULA };
 
   // Unificador para aulas II-2
   if (
@@ -278,6 +283,8 @@ async function main() {
   const lines = rawSchedulesText.trim().split('\n');
   const parsedSchedules = lines.map(line => {
     const cols = line.split(/\t/);
+    const metadatos = obtenerMetadatosCurso(cols[1].trim());
+    const esLaboratorio = cols[4].trim().toLowerCase().includes('lab');
     return {
       codigoCurso: cols[0].trim(),
       curso: cols[1].trim(),
@@ -289,10 +296,10 @@ async function main() {
       fin: cols[7].trim(),
       grupo: cols[8].trim(),
       estado: cols[9].trim(),
-      tipoComponente: cols[10]?.trim() ?? 'TEORIA',
-      horasT: parseInt(cols[11] ?? '0'),
-      horasP: parseInt(cols[12] ?? '0'),
-      horasL: parseInt(cols[13] ?? '0'),
+      tipoComponente: cols[10]?.trim() ?? (esLaboratorio ? 'LABORATORIO' : 'TEORIA'),
+      horasT: metadatos.horasTeoria,
+      horasP: metadatos.horasPractica,
+      horasL: metadatos.horasLaboratorio,
     };
   });
 
@@ -397,7 +404,11 @@ async function main() {
   
   const facultadesMap: Record<string, any> = {};
   for (const fac of facultadesDef) {
-    const f = await prisma.facultad.create({ data: fac });
+    const f = await prisma.facultad.upsert({
+      where: { nombre: fac.nombre },
+      update: fac,
+      create: fac
+    });
     facultadesMap[fac.nombre] = f;
   }
 
@@ -417,13 +428,29 @@ async function main() {
   const deptsMap: Record<string, any> = {};
   for (const dept of departamentosDef) {
     const f = facultadesMap[dept.facultadNombre];
-    const d = await prisma.departamentoAcademico.create({
-      data: {
+    const existingDept = await prisma.departamentoAcademico.findFirst({
+      where: {
         nombre: dept.nombre,
-        facultadId: f.id,
-        jefeDepartamento: dept.jefe,
+        facultadId: f.id
       }
     });
+    let d;
+    if (existingDept) {
+      d = await prisma.departamentoAcademico.update({
+        where: { id: existingDept.id },
+        data: {
+          jefeDepartamento: dept.jefe
+        }
+      });
+    } else {
+      d = await prisma.departamentoAcademico.create({
+        data: {
+          nombre: dept.nombre,
+          facultadId: f.id,
+          jefeDepartamento: dept.jefe
+        }
+      });
+    }
     deptsMap[dept.nombre] = d;
   }
 
