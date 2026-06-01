@@ -238,6 +238,32 @@ export class GestorVentanasAtencion {
       throw new AppError('La ventana no está activa', 400, 'VENTANA_NO_ACTIVA');
     }
 
+    // Calcular el slot de 15 minutos actual desde el inicio de la ventana (updatedAt)
+    const elapsedSeconds = Math.floor((Date.now() - new Date(ventana.updatedAt).getTime()) / 1000);
+    const currentSlotIndex = Math.floor(elapsedSeconds / 900);
+    const slotStartTime = new Date(new Date(ventana.updatedAt).getTime() + currentSlotIndex * 900 * 1000);
+
+    // Verificar si ya se llamó a algún docente en este mismo slot de 15 minutos
+    const alreadyCalledInSlot = await prisma.atencionVentana.findFirst({
+      where: {
+        ventanaId,
+        horaInicio: { gte: slotStartTime },
+      },
+    });
+
+    if (alreadyCalledInSlot) {
+      const slotEndTime = new Date(slotStartTime.getTime() + 900 * 1000);
+      const remainingMs = slotEndTime.getTime() - Date.now();
+      const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+      const remainingMins = Math.floor(remainingSeconds / 60);
+      const remainingSecs = remainingSeconds % 60;
+      throw new AppError(
+        `Debe respetar la ventana de atención actual. Espere ${remainingMins}m y ${remainingSecs}s para llamar al siguiente docente.`,
+        400,
+        'VENTANA_TIME_RESTRICTION'
+      );
+    }
+
     // Buscar el siguiente docente en espera
     const siguiente = await prisma.atencionVentana.findFirst({
       where: {
@@ -409,6 +435,35 @@ export class GestorVentanasAtencion {
     });
 
     return atencionActualizada;
+  }
+
+  async saltarTurno(ventanaId: string, deltaSeconds: number) {
+    const ventana = await this.obtenerVentana(ventanaId);
+
+    if (!['ABIERTA', 'EN_CURSO'].includes(ventana.estado)) {
+      throw new AppError('La ventana no está activa', 400, 'VENTANA_NO_ACTIVA');
+    }
+
+    const newUpdatedAt = new Date(new Date(ventana.updatedAt).getTime() - deltaSeconds * 1000);
+
+    const ventanaActualizada = await prisma.ventanaAtencion.update({
+      where: { id: ventanaId },
+      data: {
+        updatedAt: newUpdatedAt,
+      },
+    });
+
+    // Publicar evento en Redis/WebSocket
+    await redis.publish('ws:ventanas', JSON.stringify({
+      type: 'VENTANA_SHIFTED',
+      channel: `ventana:${ventanaId}`,
+      data: {
+        updatedAt: newUpdatedAt.toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    }));
+
+    return ventanaActualizada;
   }
 
   async obtenerCola(ventanaId: string) {

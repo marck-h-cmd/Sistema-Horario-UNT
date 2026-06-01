@@ -436,4 +436,43 @@ describe('GestorVentanasAtencion', () => {
       expect(cola.ausentes).toBe(1);
     });
   });
+
+  describe('saltarTurno', () => {
+    it('debe saltar el turno correctamente restando deltaSeconds a updatedAt', async () => {
+      (prisma.ventanaAtencion.findUnique as any).mockResolvedValueOnce({
+        ...ventanaAbiertaMock,
+        updatedAt: new Date('2026-06-01T12:00:00Z'),
+      });
+
+      (prisma.ventanaAtencion.update as any).mockResolvedValueOnce({
+        ...ventanaAbiertaMock,
+        updatedAt: new Date('2026-06-01T11:45:00Z'),
+      });
+
+      const resultado = await gestor.saltarTurno('ventana-1', 900);
+
+      expect(resultado).toBeDefined();
+      expect(prisma.ventanaAtencion.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ventana-1' },
+          data: expect.objectContaining({
+            updatedAt: expect.any(Date),
+          }),
+        })
+      );
+      expect(redis.publish).toHaveBeenCalledWith(
+        'ws:ventanas',
+        expect.stringContaining('VENTANA_SHIFTED')
+      );
+    });
+
+    it('debe rechazar si la ventana no está activa', async () => {
+      (prisma.ventanaAtencion.findUnique as any).mockResolvedValueOnce({
+        ...ventanaCompletaMock,
+        estado: 'PROGRAMADA',
+      });
+
+      await expect(gestor.saltarTurno('ventana-1', 900)).rejects.toThrow('La ventana no está activa');
+    });
+  });
 });

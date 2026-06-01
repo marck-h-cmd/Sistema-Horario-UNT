@@ -368,6 +368,8 @@ async function main() {
   await prisma.grupo.deleteMany();
   await prisma.curso.deleteMany();
   await prisma.docente.deleteMany();
+  await prisma.departamentoAcademico.deleteMany();
+  await prisma.facultad.deleteMany();
   await prisma.sesion.deleteMany();
   await prisma.usuario.deleteMany();
   await prisma.configuracionPeriodo.deleteMany();
@@ -517,7 +519,8 @@ async function main() {
         usuarioId: user.id,
         codigo: docenteData.codigo,
         categoria: docenteData.categoria,
-        departamento: docenteData.departamento,
+        departamentoId: getDeptId(docenteData.departamento),
+        dni: getDni(docenteData.codigo),
         telefono: '999123456',
         fechaIngreso: new Date(fechasIngreso[docenteData.codigo] ?? '2015-01-01'),
         preferenciasNotificacion: {
