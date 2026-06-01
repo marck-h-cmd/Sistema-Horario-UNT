@@ -437,6 +437,58 @@ async function main() {
     { email: 'jose.gomez@unitru.edu.pe', nombre: 'José', apellidos: 'Gómez Ávila', codigo: 'DOC028', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
   ];
 
+  console.log('🏛️ Creando facultades...');
+  const facultadesDef = [
+    { nombre: 'Facultad de Ingeniería', decano: 'Dr. Donato Cárdenas Alayo' },
+    { nombre: 'Facultad de Ciencias Físicas y Matemáticas', decano: 'Dr. Edwin L. Arroyo Cruz' },
+    { nombre: 'Facultad de Ciencias Sociales', decano: 'Dra. Elena Gonzales Medina' },
+    { nombre: 'Facultad de Educación y CC. de la Comunicación', decano: 'Dr. Jorge Flores Ruiz' },
+    { nombre: 'Facultad de Ciencias Económicas', decano: 'Dr. Manuel Ramos Quiroz' },
+  ];
+  
+  const facultadesMap: Record<string, any> = {};
+  for (const fac of facultadesDef) {
+    const f = await prisma.facultad.create({ data: fac });
+    facultadesMap[fac.nombre] = f;
+  }
+
+  console.log('🏢 Creando departamentos académicos...');
+  const departamentosDef = [
+    { nombre: 'Ing. de Sistemas', facultadNombre: 'Facultad de Ingeniería', jefe: 'Dr. Marcelino Torres Villanueva' },
+    { nombre: 'Ing. Industrial', facultadNombre: 'Facultad de Ingeniería', jefe: 'Dra. Vilma Mendez Gil' },
+    { nombre: 'CC. Psicológicas', facultadNombre: 'Facultad de Ciencias Sociales', jefe: 'Dra. Bertha Urtecho Zavaleta' },
+    { nombre: 'Matemáticas', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Jose Luis Ponte Bejarano' },
+    { nombre: 'Física', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Segundo Guibar Obeso' },
+    { nombre: 'Estadística', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Miguel Ipanaque Zapata' },
+    { nombre: 'Lengua Nacional y Literatura', facultadNombre: 'Facultad de Educación y CC. de la Comunicación', jefe: 'Dr. Jorge Luis Rios Gonzales' },
+    { nombre: 'Administración', facultadNombre: 'Facultad de Ciencias Económicas', jefe: 'Dr. Juan Carrascal Cabanillas' },
+    { nombre: 'Contabilidad y Finanzas', facultadNombre: 'Facultad de Ciencias Económicas', jefe: 'Dra. Ana Cuadra Mitzugaray' },
+  ];
+
+  const deptsMap: Record<string, any> = {};
+  for (const dept of departamentosDef) {
+    const f = facultadesMap[dept.facultadNombre];
+    const d = await prisma.departamentoAcademico.create({
+      data: {
+        nombre: dept.nombre,
+        facultadId: f.id,
+        jefeDepartamento: dept.jefe,
+      }
+    });
+    deptsMap[dept.nombre] = d;
+  }
+
+  const getDeptId = (name: string): number => {
+    let normalized = name;
+    if (name === 'Ingeniería Industrial') normalized = 'Ing. Industrial';
+    return deptsMap[normalized]?.id || deptsMap['Ing. de Sistemas'].id;
+  };
+
+  const getDni = (codigo: string): string => {
+    const numStr = codigo.replace('DOC', '');
+    return `70000${numStr.padStart(3, '0')}`;
+  };
+
   const fechasIngreso: Record<string, string> = {
     'DOC001': '1998-03-15', 'DOC005': '2001-08-20', 'DOC007': '1995-11-05', 'DOC008': '2003-04-10',
     'DOC011': '1999-07-01', 'DOC015': '2000-02-28', 'DOC018': '2004-09-12', 'DOC020': '1997-06-18',

@@ -32,7 +32,10 @@ interface PerfilUsuario {
     id: string;
     codigo: string;
     categoria: string;
-    departamento: string | null;
+    dni: string;
+    departamento?: {
+      nombre: string;
+    } | null;
     telefono: string | null;
     whatsapp: string | null;
     telegramId: string | null;
@@ -245,7 +248,7 @@ export default function PerfilPage() {
               )}
               {perfil.docente.departamento && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  {perfil.docente.departamento}
+                  {perfil.docente.departamento.nombre}
                 </span>
               )}
             </div>
@@ -321,12 +324,21 @@ export default function PerfilPage() {
               <div className="border-t border-slate-100 pt-4 dark:border-slate-700 space-y-4">
                 <h4 className="text-sm font-semibold text-slate-950 dark:text-white">Datos de Docente</h4>
                 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-4">
                   <div>
                     <Label htmlFor="codigo">Código</Label>
                     <Input
                       id="codigo"
                       value={perfil.docente.codigo}
+                      disabled
+                      className="bg-slate-50 text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dni">DNI</Label>
+                    <Input
+                      id="dni"
+                      value={perfil.docente.dni || ''}
                       disabled
                       className="bg-slate-50 text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
                     />
@@ -344,7 +356,7 @@ export default function PerfilPage() {
                     <Label htmlFor="departamento">Departamento</Label>
                     <Input
                       id="departamento"
-                      value={perfil.docente.departamento || 'No especificado'}
+                      value={perfil.docente.departamento?.nombre || 'No especificado'}
                       disabled
                       className="bg-slate-50 text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
                     />
