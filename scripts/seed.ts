@@ -139,24 +139,24 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   if (n.includes('Lab. 3')) return { codigo: 'Lab-3', nombre: 'Laboratorio 3', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. 4')) return { codigo: 'Lab-4', nombre: 'Laboratorio 4', tipo: TipoAmbiente.LABORATORIO };
   if (n.includes('Lab. Fisica')) return { codigo: 'Lab-Fisica', nombre: 'Laboratorio de Física', tipo: TipoAmbiente.LABORATORIO };
-  
+
   // Unificador potente para Taller de Confecciones (Ing. Industrial) y similares
   if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
     return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones - Ing. Industrial', tipo: TipoAmbiente.LABORATORIO };
   }
-  
+
   if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
-  
+
   // Unificador para aulas II-2
   if (
-    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') || 
+    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') ||
     n.includes('I I-2') || n.includes('I I 2') || n.includes('II 2')
   ) {
     return { codigo: 'II-2', nombre: 'Aula II-2 (Pabellón Ing. Industrial)', tipo: TipoAmbiente.AULA };
   }
-  
+
   if (n.includes('Audiovisuales')) return { codigo: 'AUD', nombre: 'Audiovisuales', tipo: TipoAmbiente.AUDITORIO };
-  
+
   const cleanCode = n.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 10);
   return { codigo: cleanCode, nombre: n, tipo: TipoAmbiente.AULA };
 };
@@ -195,7 +195,7 @@ const calcularHoras = (inicio: string, fin: string): number => {
 
 const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria: number; horasPractica: number; horasLaboratorio: number } => {
   const n = cleanStringForMatch(nombre);
-  
+
   if (n.includes('introduccionaprogramacion')) {
     return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
   }
@@ -265,7 +265,7 @@ const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria:
   if (n.includes('cadenadesuministros')) {
     return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
   }
-  
+
   return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
 };
 
@@ -541,7 +541,7 @@ async function main() {
   for (const [codigo, cursoInfo] of cursosMap) {
     const uniqueGroups = Array.from(uniqueGroupsMap.get(codigo) || new Set(['A']));
     const gruposData = uniqueGroups.map(g => ({ nombre: g, capacidad: 40 }));
-    
+
     const curso = await prisma.curso.create({
       data: {
         codigo: cursoInfo.codigo,
@@ -653,7 +653,7 @@ async function main() {
         if (t === 'LABORATORIO') return TipoComponente.LABORATORIO;
         return TipoComponente.TEORIA;
       };
-      
+
       const tipoComponente: TipoComponente = mapTipo(item.tipoComponente);
 
       await prisma.horario.create({
