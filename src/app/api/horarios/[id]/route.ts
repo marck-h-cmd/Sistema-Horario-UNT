@@ -40,7 +40,8 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const horario = await servicioHorario.actualizar(params.id, body);
+    const user = request.user;
+    const horario = await servicioHorario.actualizar(params.id, body, user);
     return createSuccessResponse(horario);
   } catch (error: any) {
     if (error.statusCode) {
@@ -63,7 +64,8 @@ export async function DELETE(
   if (authResult) return authResult;
 
   try {
-    const resultado = await servicioHorario.eliminar(params.id);
+    const user = request.user;
+    const resultado = await servicioHorario.eliminar(params.id, user);
     return createSuccessResponse(resultado);
   } catch (error: any) {
     if (error.statusCode) {

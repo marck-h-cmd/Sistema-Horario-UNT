@@ -306,39 +306,47 @@ export class ServicioHorario {
     return horarioConfirmado;
   }
 
-  async actualizar(id: string, datos: Partial<CrearHorarioDTO>) {
+  async actualizar(id: string, datos: Partial<CrearHorarioDTO>, usuario?: any) {
     const horario = await this.obtenerPorId(id);
 
-    if (horario.estado === 'PUBLICADO') {
+    const esAdmin = usuario?.rol === 'SUPER_ADMIN' || usuario?.rol === 'ADMINISTRADOR';
+
+    if (horario.estado === 'PUBLICADO' && !esAdmin) {
       throw new AppError('No se puede modificar un horario publicado', 400, 'HORARIO_PUBLICADO');
     }
+
+    const nuevoEstado = (horario.estado === 'CONFIRMADO' || horario.estado === 'PUBLICADO') && esAdmin
+      ? horario.estado
+      : 'BORRADOR';
 
     const horarioActualizado = await prisma.horario.update({
       where: { id },
       data: {
         ...datos,
-        estado: 'BORRADOR', // Resetear estado al editar
+        estado: nuevoEstado,
       },
       include: {
-        curso: true,
+        curso: { select: { id: true, codigo: true, nombre: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
         docente: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } }
+            usuario: { select: { id: true, nombre: true, apellidos: true } }
           }
         },
-        grupo: true,
-        ambiente: true,
-        periodo: true,
+        grupo: { select: { id: true, nombre: true } },
+        ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
+        periodo: { select: { id: true, nombre: true } },
       },
     });
 
     return horarioActualizado;
   }
 
-  async eliminar(id: string) {
+  async eliminar(id: string, usuario?: any) {
     const horario = await this.obtenerPorId(id);
 
-    if (horario.estado === 'PUBLICADO') {
+    const esAdmin = usuario?.rol === 'SUPER_ADMIN' || usuario?.rol === 'ADMINISTRADOR';
+
+    if (horario.estado === 'PUBLICADO' && !esAdmin) {
       throw new AppError('No se puede eliminar un horario publicado', 400, 'HORARIO_PUBLICADO');
     }
 

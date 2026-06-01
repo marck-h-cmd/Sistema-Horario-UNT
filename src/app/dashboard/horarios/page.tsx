@@ -1069,6 +1069,7 @@ export default function HorariosPage() {
                                       const col = getColorForCurso(h.curso.codigo);
                                       const esLab = h.ambiente.codigo.toUpperCase().includes('LAB') || (h.ambiente as any).tipo === 'LABORATORIO';
                                       const isBorrador = h.estado === 'BORRADOR';
+                                      const esAdmin = user?.rol === Rol.SUPER_ADMIN || user?.rol === Rol.ADMINISTRADOR;
 
                                       const laneCount = lanes.length;
                                       const isCompact = laneCount > 1;
@@ -1100,20 +1101,22 @@ export default function HorariosPage() {
                                                     {esLab ? 'LAB' : 'TEO'}
                                                   </span>
                                                   
-                                                  {isBorrador && (
+                                                  {(isBorrador || esAdmin) && (
                                                     <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleConfirmHorario(h.id, h);
-                                                        }}
-                                                        title="Confirmar"
-                                                        className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                      </button>
+                                                      {isBorrador && (
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleConfirmHorario(h.id, h);
+                                                          }}
+                                                          title="Confirmar"
+                                                          className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                          </svg>
+                                                        </button>
+                                                      )}
                                                       <button
                                                         onClick={(e) => {
                                                           e.stopPropagation();
@@ -1173,9 +1176,10 @@ export default function HorariosPage() {
                                                     {h.horaInicio} - {h.horaFin}
                                                   </span>
                                                   
-                                                  {isBorrador && (
+                                                  {(isBorrador || esAdmin) && (
                                                     <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
+                                                        {isBorrador && (
+<button
                                                         onClick={(e) => {
                                                           e.stopPropagation();
                                                           handleConfirmHorario(h.id, h);
@@ -1187,6 +1191,7 @@ export default function HorariosPage() {
                                                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                         </svg>
                                                       </button>
+  )}
                                                       <button
                                                         onClick={(e) => {
                                                           e.stopPropagation();
