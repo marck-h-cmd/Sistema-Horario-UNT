@@ -22,6 +22,11 @@ const FRANJAS = [
   { ini: '19:00', label: '7-8' },
 ];
 
+const normalizeTime = (time: string): string => {
+  const [h, m] = time.split(':').map(Number);
+  return `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+};
+
 const calcSpan = (ini: string, fin: string) => {
   const h1 = parseInt(ini);
   const h2 = parseInt(fin);
@@ -37,6 +42,7 @@ const formatAmbiente = (name: string): string => {
 const getComponentLabel = (h: any): string => {
   if (h.tipoComponente === 'PRACTICA') return ' Práctica';
   if (h.tipoComponente === 'TEORIA' && h.curso?.codigo === 'EG-106B') return ' Teoría';
+  if (h.tipoComponente === 'LABORATORIO') return ' Lab.';
   return '';
 };
 
@@ -46,12 +52,18 @@ export async function exportarHorarioPDF(
   subtitulo: string
 ): Promise<void> {
 
+  const normalizedHorarios = horarios.map(h => ({
+    ...h,
+    horaInicio: normalizeTime(h.horaInicio),
+    horaFin: normalizeTime(h.horaFin)
+  }));
+
   // ── 1. Deduplicar docentes ──
   const seenDocs = new Map<string, any>();
-  for (const h of horarios) {
+  for (const h of normalizedHorarios) {
     const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
     if (!seenDocs.has(docId)) {
-      const totalHoras = horarios
+      const totalHoras = normalizedHorarios
         .filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId)
         .reduce((sum, x) => {
           if (!x.horaInicio || !x.horaFin) return sum;
@@ -65,7 +77,7 @@ export async function exportarHorarioPDF(
         horasT: h.curso.horasTeoria ?? 0,
         horasP: h.curso.horasPractica ?? 0,
         horasL: h.curso.horasLaboratorio ?? 0,
-        grupos: horarios.filter(x =>
+        grupos: normalizedHorarios.filter(x =>
           (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId
         ).length,
         totalHoras,
@@ -89,7 +101,7 @@ export async function exportarHorarioPDF(
 
   // ── 2. Mapa consumed ──
   const consumed = new Set<string>();
-  for (const h of horarios) {
+  for (const h of normalizedHorarios) {
     if (!h.horaInicio || !h.horaFin) continue;
     const span = calcSpan(h.horaInicio, h.horaFin);
     const startH = parseInt(h.horaInicio);
@@ -235,7 +247,7 @@ export async function exportarHorarioPDF(
       }
 
       // ── Verificar rowspan ──
-      const cubiertoPorRowspan = horarios.some(x => {
+      const cubiertoPorRowspan = normalizedHorarios.some(x => {
         if (x.diaSemana !== dia || x.horaInicio === ini) return false;
         const startH = parseInt(x.horaInicio);
         const endH = parseInt(x.horaFin ?? x.horaInicio);
@@ -245,7 +257,7 @@ export async function exportarHorarioPDF(
       if (cubiertoPorRowspan) return '';
 
       // ── Buscar bloques ──
-      const bloques = horarios.filter(x =>
+      const bloques = normalizedHorarios.filter(x =>
         x.diaSemana === dia &&
         x.horaInicio === ini &&
         !consumed.has(`${dia}-${ini}-${x.id}`)

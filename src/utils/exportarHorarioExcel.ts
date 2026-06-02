@@ -90,6 +90,11 @@ const whiteFill: ExcelJS.Fill = {
   fgColor: { argb: 'FFFFFFFF' },
 };
 
+const normalizeTime = (time: string): string => {
+  const [h, m] = time.split(':').map(Number);
+  return `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+};
+
 const calcSpanH = (ini: string, fin?: string | null): number => {
   if (!ini || !fin) return 1;
   const h1 = parseInt(ini, 10);
@@ -339,6 +344,11 @@ export async function exportarHorarioExcel(
   subtitulo = '',
   opciones: { mostrarEstudiosGeneralesMiercoles?: boolean } = {}
 ): Promise<void> {
+  const normalizedHorarios = horarios.map(h => ({
+    ...h,
+    horaInicio: normalizeTime(h.horaInicio),
+    horaFin: normalizeTime(h.horaFin)
+  }));
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Sistema de Horarios UNT';
   workbook.created = new Date();
@@ -368,11 +378,11 @@ export async function exportarHorarioExcel(
   // ─────────────────────────────────────────────
   const seenDocs = new Map<string, any>();
 
-  for (const h of horarios) {
+  for (const h of normalizedHorarios) {
     const docId = docenteKey(h);
 
     if (!seenDocs.has(docId)) {
-      const clasesDocente = horarios.filter(x => docenteKey(x) === docId);
+      const clasesDocente = normalizedHorarios.filter(x => docenteKey(x) === docId);
       const totalHoras = clasesDocente.reduce((sum, x) => {
         if (!x.horaInicio || !x.horaFin) return sum;
         return sum + Math.max(parseInt(x.horaFin, 10) - parseInt(x.horaInicio, 10), 0);
@@ -410,9 +420,9 @@ export async function exportarHorarioExcel(
     seenDocs.set(doc.docId, doc);
   });
 
-  const ciclo = extraerCiclo(horarios, titulo, subtitulo);
+  const ciclo = extraerCiclo(normalizedHorarios, titulo, subtitulo);
   const mostrarEstudiosGeneralesMiercoles = debeMostrarEstudiosGeneralesMiercoles(
-    horarios,
+    normalizedHorarios,
     ciclo,
     opciones.mostrarEstudiosGeneralesMiercoles
   );
@@ -619,7 +629,7 @@ export async function exportarHorarioExcel(
       const libres = getAvailableRanges(excelRow, c1, c2, ocupado);
       if (libres.length === 0) return;
 
-      const bloques = horarios.filter(x =>
+      const bloques = normalizedHorarios.filter(x =>
         normalizarDia(x.diaSemana) === dia &&
         x.horaInicio === ini
       );
@@ -746,7 +756,7 @@ export async function exportarHorarioExcel(
   wsListado.getRow(1).height = 20;
   wsListado.getRow(1).eachCell(cell => applyStyle(cell, headerStyle));
 
-  const horariosOrdenados = [...horarios].sort((a, b) => {
+  const horariosOrdenados = [...normalizedHorarios].sort((a, b) => {
     const diaA = DIAS_GRILLA.indexOf(normalizarDia(a.diaSemana));
     const diaB = DIAS_GRILLA.indexOf(normalizarDia(b.diaSemana));
     if (diaA !== diaB) return diaA - diaB;

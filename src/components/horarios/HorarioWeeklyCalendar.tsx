@@ -66,6 +66,11 @@ const FRANJAS = [
   { ini: '19:00', label: '7-8' },
 ];
 
+const normalizeTime = (time: string): string => {
+  const [h, m] = time.split(':').map(Number);
+  return `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+};
+
 const calcRowspan = (ini: string, fin: string) => {
   const h1 = parseInt(ini.split(':')[0]);
   const h2 = parseInt(fin.split(':')[0]);
@@ -115,12 +120,20 @@ export function HorarioWeeklyCalendar({
   fechaFin = '',
 }: HorarioWeeklyCalendarProps) {
 
+  const normalizedHorarios = useMemo(() => {
+    return horarios.map(h => ({
+      ...h,
+      horaInicio: normalizeTime(h.horaInicio),
+      horaFin: normalizeTime(h.horaFin)
+    }));
+  }, [horarios]);
+
   const docentesUnicos = useMemo(() => {
     const seen = new Map<string, any>();
-    for (const h of horarios) {
+    for (const h of normalizedHorarios) {
       const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
       if (!seen.has(docId)) {
-        const totalHoras = horarios
+        const totalHoras = normalizedHorarios
           .filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId)
           .reduce((sum, x) => {
             if (!x.horaInicio || !x.horaFin) return sum;
@@ -135,7 +148,7 @@ export function HorarioWeeklyCalendar({
           horasT: h.curso.horasTeoria ?? 0,
           horasP: h.curso.horasPractica ?? 0,
           horasL: h.curso.horasLaboratorio ?? 0,
-          grupos: horarios.filter(x =>
+          grupos: normalizedHorarios.filter(x =>
             (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId
           ).length,
           totalHoras,
@@ -155,7 +168,7 @@ export function HorarioWeeklyCalendar({
       doc.color = COLORES[idx % COLORES.length];
     });
     return list;
-  }, [horarios]);
+  }, [normalizedHorarios]);
 
   const getDocente = (h: HorarioCalendarItem) => {
     const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
@@ -169,8 +182,8 @@ export function HorarioWeeklyCalendar({
 
   const consumed = useMemo(() => {
     const map = new Set<string>();
-    for (const h of horarios) {
-      if (!h.horaInicio || !h.horaFin || !h.diaSemana) continue;
+    for (const h of normalizedHorarios) {
+      if (!h.horaInicio || !h.horaFin) continue;
       const span = calcRowspan(h.horaInicio, h.horaFin);
       const startH = parseInt(h.horaInicio);
       for (let o = 1; o < span; o++) {
@@ -194,7 +207,7 @@ export function HorarioWeeklyCalendar({
       ].forEach(h => map.add(`MIERCOLES-${h}-ESTUDIOS`));
     }
     return map;
-  }, [horarios, esCicloI]);
+  }, [normalizedHorarios, esCicloI]);
 
   const formatAmbiente = (name: string) => {
     if (!name) return '';
@@ -205,6 +218,7 @@ export function HorarioWeeklyCalendar({
   const getComponentLabel = (h: HorarioCalendarItem) => {
     if (h.tipoComponente === 'PRACTICA') return ' Práctica';
     if (h.tipoComponente === 'TEORIA' && h.curso.codigo === 'EG-106B') return ' Teoría';
+    if (h.tipoComponente === 'LABORATORIO') return ' Lab.';
     return '';
   };
 
@@ -218,7 +232,7 @@ export function HorarioWeeklyCalendar({
     );
   }
 
-  if (horarios.length === 0) {
+  if (normalizedHorarios.length === 0) {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', padding: 16, textAlign: 'center', color: '#888' }}>
         No hay bloques en el calendario para este período.
@@ -395,7 +409,8 @@ export function HorarioWeeklyCalendar({
                             textAlign: 'center',
                           }}
                         >
-                          ESTUDIOS<br />GENERALES
+                          ESTUDIOS<br />
+                          GENERALES
                         </td>
                       );
                     }
@@ -413,14 +428,15 @@ export function HorarioWeeklyCalendar({
                             textAlign: 'center',
                           }}
                         >
-                          ESTUDIOS<br />GENERALES
+                          ESTUDIOS<br />
+                          GENERALES
                         </td>
                       );
                     }
                   }
 
                   // ── Verificar rowspan ──
-                  const cubiertoPorRowspan = horarios.some(x => {
+                  const cubiertoPorRowspan = normalizedHorarios.some(x => {
                     if (x.diaSemana !== dia || x.horaInicio === ini) return false;
                     const startH = parseInt(x.horaInicio);
                     const endH = parseInt(x.horaFin ?? x.horaInicio);
@@ -430,7 +446,7 @@ export function HorarioWeeklyCalendar({
                   if (cubiertoPorRowspan) return null;
 
                   // ── Buscar bloques ──
-                  const bloques = horarios.filter(x =>
+                  const bloques = normalizedHorarios.filter(x =>
                     x.diaSemana === dia &&
                     x.horaInicio === ini &&
                     !consumed.has(`${dia}-${ini}-${x.id}`)

@@ -31,6 +31,7 @@ IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	JUEVES	16:00	18:00	C	CO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Posgrado A-303	MIÉRCOLES	7:00	9:00	A	CONFIRMADO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	7:00	10:00	A	CONFIRMADO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	10:00	13:00	B	CONFIRMADO
+
 MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	posgrado B-104	MIÉRCOLES	18:00	21:00	A	CONFIRMADO
 MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Indust. 	JUEVES	14:00	16:00	A	CONFIRMADO
 EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	posgrado B-105	MARTES	16:00	18:00	A	CONFIRMADO
@@ -41,7 +42,7 @@ ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confeccione
 ADM-301	Administración General	III	Juan Carrascal Cabanillas	I I 2 (Pabellon Ing. Industrial)	MARTES	07:00	9:00	A	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	posgrado B-105	LUNES	15:00	20:00	A	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	7:00	9:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	A	CONFIRMADO
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	B	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	14:00	16:00	B	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
 PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO
@@ -336,6 +337,17 @@ async function main() {
     const cols = line.split(/\t/);
     const metadatos = obtenerMetadatosCurso(cols[1].trim());
     const esLaboratorio = cols[4].trim().toLowerCase().includes('lab');
+    // Determine tipoComponente
+    let tipoComponente: 'TEORIA' | 'PRACTICA' | 'LABORATORIO' = 'TEORIA';
+    if (esLaboratorio) {
+      tipoComponente = 'LABORATORIO';
+    } else {
+      // Check if the course name or code suggests práctica
+      const lowerCourse = cols[1].toLowerCase();
+      if (lowerCourse.includes('práctica') || lowerCourse.includes('practica')) {
+        tipoComponente = 'PRACTICA';
+      }
+    }
     return {
       codigoCurso: cols[0].trim(),
       curso: cols[1].trim(),
@@ -346,7 +358,8 @@ async function main() {
       inicio: cols[6].trim(),
       fin: cols[7].trim(),
       grupo: cols[8].trim(),
-      estado: cols[9].trim()
+      estado: cols[9].trim(),
+      tipoComponente,
     };
   });
 
@@ -730,7 +743,8 @@ async function main() {
           diaSemana: mapDia(item.dia),
           horaInicio: mapHora(item.inicio),
           horaFin: mapHora(item.fin),
-          estado: EstadoHorario.CONFIRMADO,
+          tipoComponente: item.tipoComponente,
+          estado: EstadoHorario.PUBLICADO,
           publicado: true,
           creadoPor: adminUser.id,
           fechaConfirmacion: new Date(),
