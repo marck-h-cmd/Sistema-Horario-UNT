@@ -149,19 +149,19 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
     return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones', tipo: TipoAmbiente.LABORATORIO };
   }
-  
+
   if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
   if (n.includes('I-5')) return { codigo: 'I-5', nombre: 'Aula I-5', tipo: TipoAmbiente.AULA };
   if (n === 'LAB') return { codigo: 'Lab-Gral', nombre: 'Laboratorio General', tipo: TipoAmbiente.LABORATORIO };
   
   // Unificador para aulas II-2
   if (
-    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') || 
+    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') ||
     n.includes('I I-2') || n.includes('I I 2') || n.includes('II 2')
   ) {
     return { codigo: 'II-2', nombre: 'Aula II-2 (Pabellón Ing. Industrial)', tipo: TipoAmbiente.AULA };
   }
-  
+
   if (n.includes('Audiovisuales')) return { codigo: 'AUD', nombre: 'Audiovisuales', tipo: TipoAmbiente.AUDITORIO };
   
   if (n.toLowerCase().includes('posgrado b-104')) return { codigo: 'B-104', nombre: 'Posgrado B-104', tipo: TipoAmbiente.AULA };
@@ -206,7 +206,7 @@ const calcularHoras = (inicio: string, fin: string): number => {
 
 const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria: number; horasPractica: number; horasLaboratorio: number } => {
   const n = cleanStringForMatch(nombre);
-  
+
   if (n.includes('introduccionaprogramacion')) {
     return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
   }
@@ -334,6 +334,8 @@ async function main() {
   const lines = rawSchedulesText.trim().split('\n');
   const parsedSchedules = lines.map(line => {
     const cols = line.split(/\t/);
+    const metadatos = obtenerMetadatosCurso(cols[1].trim());
+    const esLaboratorio = cols[4].trim().toLowerCase().includes('lab');
     return {
       codigoCurso: cols[0].trim(),
       curso: cols[1].trim(),
@@ -450,7 +452,11 @@ async function main() {
   
   const facultadesMap: Record<string, any> = {};
   for (const fac of facultadesDef) {
-    const f = await prisma.facultad.create({ data: fac });
+    const f = await prisma.facultad.upsert({
+      where: { nombre: fac.nombre },
+      update: fac,
+      create: fac
+    });
     facultadesMap[fac.nombre] = f;
   }
 
@@ -470,13 +476,29 @@ async function main() {
   const deptsMap: Record<string, any> = {};
   for (const dept of departamentosDef) {
     const f = facultadesMap[dept.facultadNombre];
-    const d = await prisma.departamentoAcademico.create({
-      data: {
+    const existingDept = await prisma.departamentoAcademico.findFirst({
+      where: {
         nombre: dept.nombre,
-        facultadId: f.id,
-        jefeDepartamento: dept.jefe,
+        facultadId: f.id
       }
     });
+    let d;
+    if (existingDept) {
+      d = await prisma.departamentoAcademico.update({
+        where: { id: existingDept.id },
+        data: {
+          jefeDepartamento: dept.jefe
+        }
+      });
+    } else {
+      d = await prisma.departamentoAcademico.create({
+        data: {
+          nombre: dept.nombre,
+          facultadId: f.id,
+          jefeDepartamento: dept.jefe
+        }
+      });
+    }
     deptsMap[dept.nombre] = d;
   }
 
