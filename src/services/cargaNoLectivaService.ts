@@ -201,45 +201,49 @@ export class CargaNoLectivaService {
   obtenerReglasValidacion() {
     return {
       PREPARACION_Y_EVALUACION: {
-        descripcion: 'Preparación de clases y evaluación de estudiantes (máximo 50% de la carga lectiva asignada)',
+        descripcion: 'Preparación de clases y evaluación de estudiantes (Exactamente 50% de la carga lectiva asignada)',
         maxPercentageOfLectiva: 0.5,
         minHours: 0,
         requiredFields: [],
       },
       CONSEJERIA: {
-        description: 'Tutoría y consejería a estudiantes (mínimo 1 hora semanal)',
-        minHours: 1,
+        description: 'Tutoría y consejería a estudiantes (máximo 3 horas semanales)',
+        maxHours: 3,
         requiredFields: ['numAlumnos', 'ciclo'],
       },
       INVESTIGACION: {
-        description: 'Actividades de investigación científica (mínimo 4 horas semanales)',
-        minHours: 4,
+        description: 'Actividades de investigación científica (máximo 6 horas semanales)',
+        maxHours: 6,
         requiredFields: ['codigoProyecto'],
       },
       CAPACITACION: {
-        description: 'Capacitación o perfeccionamiento docente (máximo 5 horas semanales)',
-        maxHours: 5,
-        requiredFields: [],
-      },
-      ACTIVIDADES_DE_GOBIERNO: {
-        description: 'Desempeño de cargos de gobierno universitario',
-        requiredFields: ['cargo'],
-      },
-      ACTIVIDADES_DE_ADMINISTRACION: {
-        description: 'Desempeño de cargos de administración académica',
-        requiredFields: ['cargo'],
-      },
-      ASESORIA_DE_TESIS: {
-        description: 'Asesoría de proyectos de tesis (requiere número de resolución decanal)',
-        requiredFields: ['resolucion'],
-      },
-      RESPONSABILIDAD_SOCIAL_UNIVERSITARIA: {
-        description: 'Proyectos de RSU o proyección social (máximo 2 horas semanales)',
+        description: 'Capacitación o perfeccionamiento docente (máximo 2 horas semanales)',
         maxHours: 2,
         requiredFields: [],
       },
+      ACTIVIDADES_DE_GOBIERNO: {
+        description: 'Desempeño de cargos de gobierno universitario (máximo 2 horas semanales)',
+        maxHours: 2,
+        requiredFields: ['cargo'],
+      },
+      ACTIVIDADES_DE_ADMINISTRACION: {
+        description: 'Desempeño de cargos de administración académica (máximo 2 horas semanales)',
+        maxHours: 2,
+        requiredFields: ['cargo'],
+      },
+      ASESORIA_DE_TESIS: {
+        description: 'Asesoría de proyectos de tesis (máximo 2 horas semanales)',
+        maxHours: 2,
+        requiredFields: ['resolucion'],
+      },
+      RESPONSABILIDAD_SOCIAL_UNIVERSITARIA: {
+        description: 'Proyectos de RSU o proyección social (máximo 3 horas semanales)',
+        maxHours: 3,
+        requiredFields: [],
+      },
       COMITES_TECNICOS_Y_COMISIONES: {
-        description: 'Trabajo en comités técnicos o comisiones oficiales (requiere resolución)',
+        description: 'Trabajo en comités técnicos o comisiones oficiales (máximo 2 horas semanales)',
+        maxHours: 2,
         requiredFields: ['resolucion'],
       },
     };
@@ -257,10 +261,10 @@ export class CargaNoLectivaService {
 
     switch (tipoActividad) {
       case TipoActividadNoLectiva.PREPARACION_Y_EVALUACION: {
-        const maxPermitido = Math.round((horasLectivas * 0.5) * 10) / 10;
+        const maxPermitido = Math.floor(horasLectivas * 0.5);
         if (horasSemanales > maxPermitido) {
           throw new AppError(
-            `Las horas de Preparación y Evaluación (${horasSemanales}h) exceden el límite reglamentario del 50% de su carga lectiva (${maxPermitido}h para una carga lectiva de ${horasLectivas}h).`,
+            `Las horas de Preparación y Evaluación (${horasSemanales}h) exceden el límite del 50% de su carga lectiva (${maxPermitido}h para una carga lectiva de ${horasLectivas}h).`,
             400,
             'PREPARACION_EXCEDE_LIMITE'
           );
@@ -268,44 +272,50 @@ export class CargaNoLectivaService {
         break;
       }
       case TipoActividadNoLectiva.CONSEJERIA: {
-        if (horasSemanales < 1) {
-          throw new AppError('La actividad de Consejería requiere un mínimo de 1 hora semanal.', 400, 'CONSEJERIA_MIN_HORAS');
-        }
-        if (!metadata?.numAlumnos || !metadata?.ciclo) {
-          throw new AppError('La actividad de Consejería requiere especificar el Número de Alumnos y el Ciclo en los metadatos.', 400, 'CONSEJERIA_METADATA_MISSING');
+        if (horasSemanales > 3) {
+          throw new AppError('La actividad de Consejería permite un máximo de 3 horas semanales.', 400, 'CONSEJERIA_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.INVESTIGACION: {
-        if (horasSemanales < 4) {
-          throw new AppError('La actividad de Investigación requiere un mínimo de 4 horas semanales.', 400, 'INVESTIGACION_MIN_HORAS');
-        }
-        if (!metadata?.codigoProyecto) {
-          throw new AppError('La actividad de Investigación requiere especificar el Código del Proyecto de investigación.', 400, 'INVESTIGACION_METADATA_MISSING');
+        if (horasSemanales > 6) {
+          throw new AppError('La actividad de Investigación permite un máximo de 6 horas semanales.', 400, 'INVESTIGACION_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.CAPACITACION: {
-        if (horasSemanales > 5) {
-          throw new AppError('La actividad de Capacitación permite un máximo de 5 horas semanales.', 400, 'CAPACITACION_MAX_HORAS');
+        if (horasSemanales > 2) {
+          throw new AppError('La actividad de Capacitación permite un máximo de 2 horas semanales.', 400, 'CAPACITACION_MAX_HORAS');
+        }
+        break;
+      }
+      case TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO: {
+        if (horasSemanales > 2) {
+          throw new AppError('La actividad de Gobierno permite un máximo de 2 horas semanales.', 400, 'GOBIERNO_MAX_HORAS');
+        }
+        break;
+      }
+      case TipoActividadNoLectiva.ACTIVIDADES_DE_ADMINISTRACION: {
+        if (horasSemanales > 2) {
+          throw new AppError('La actividad de Administración permite un máximo de 2 horas semanales.', 400, 'ADMINISTRACION_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.ASESORIA_DE_TESIS: {
-        if (!metadata?.resolucion) {
-          throw new AppError('La actividad de Asesoría de Tesis requiere el Número de Resolución Decanal de aprobación.', 400, 'ASESORIA_METADATA_MISSING');
+        if (horasSemanales > 2) {
+          throw new AppError('La actividad de Asesoría de Tesis permite un máximo de 2 horas semanales.', 400, 'ASESORIA_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.RESPONSABILIDAD_SOCIAL_UNIVERSITARIA: {
-        if (horasSemanales > 2) {
-          throw new AppError('La actividad de Responsabilidad Social Universitaria permite un máximo de 2 horas semanales.', 400, 'RSU_MAX_HORAS');
+        if (horasSemanales > 3) {
+          throw new AppError('La actividad de Responsabilidad Social Universitaria permite un máximo de 3 horas semanales.', 400, 'RSU_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.COMITES_TECNICOS_Y_COMISIONES: {
-        if (!metadata?.resolucion) {
-          throw new AppError('La actividad en Comités o Comisiones requiere especificar el Número de Resolución de designación.', 400, 'COMITES_METADATA_MISSING');
+        if (horasSemanales > 2) {
+          throw new AppError('La actividad en Comités o Comisiones permite un máximo de 2 horas semanales.', 400, 'COMITES_MAX_HORAS');
         }
         break;
       }

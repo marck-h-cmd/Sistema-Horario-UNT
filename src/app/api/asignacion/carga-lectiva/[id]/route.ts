@@ -47,15 +47,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await withAuth(request, ['ADMINISTRADOR', 'SUPER_ADMIN', 'OPERADOR']);
+  const authResult = await withAuth(request, ['ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
+  const { id } = await params;
 
   try {
-    const resultado = await service.eliminarCargaLectiva(params.id, user.userId);
+    const resultado = await service.eliminarCargaLectiva(id, user.userId);
     return createSuccessResponse(resultado, 'Asignación removida exitosamente');
   } catch (error: any) {
     if (error.statusCode) {

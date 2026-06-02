@@ -31,6 +31,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const visibleSections = MENU_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
+      // Reglas específicas para módulos docentes
+      if (item.nombre === 'Formatos de Carga' && user?.rol !== 'DOCENTE' && user?.rol !== 'ADMINISTRADOR' && user?.rol !== 'SUPER_ADMIN') return false;
+      if (item.nombre === 'Declarar Carga' && user?.rol !== 'DOCENTE') return false;
+      
       if (!item.permission) return true;
       try {
         return can(item.permission);

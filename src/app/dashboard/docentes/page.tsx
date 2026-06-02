@@ -58,6 +58,7 @@ export default function DocentesPage() {
   const [qInput, setQInput] = useState('');
   const [search, setSearch] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<'' | CategoriaDocente>('');
+  const [departamentoFiltro, setDepartamentoFiltro] = useState<'' | number>('');
   const [ordenarAntiguedad, setOrdenarAntiguedad] = useState<'none' | 'asc' | 'desc'>('none');
   const [departamentos, setDepartamentos] = useState<DepartamentoRow[]>([]);
   const [loadingDepts, setLoadingDepts] = useState(false);
@@ -84,10 +85,11 @@ export default function DocentesPage() {
     () => ({
       search: search || undefined,
       categoria: categoriaFiltro || undefined,
+      departamentoId: departamentoFiltro || undefined,
       sortBy: ordenarAntiguedad !== 'none' ? 'fechaIngreso' : undefined,
       sortOrder: ordenarAntiguedad !== 'none' ? ordenarAntiguedad : undefined,
     }),
-    [search, categoriaFiltro, ordenarAntiguedad]
+    [search, categoriaFiltro, departamentoFiltro, ordenarAntiguedad]
   );
   const { data, meta, loading, error, page, setPage, refresh } = usePaginatedQuery<DocenteRow>(
     '/api/docentes',
@@ -245,7 +247,7 @@ export default function DocentesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoriaFiltro, ordenarAntiguedad, setPage]);
+  }, [search, categoriaFiltro, departamentoFiltro, ordenarAntiguedad, setPage]);
 
   const columns: Column<DocenteRow>[] = [
     { key: 'codigo', header: 'Código', cell: (r) => <span className="font-mono text-sm">{r.codigo}</span> },
@@ -360,6 +362,24 @@ export default function DocentesPage() {
             </select>
           </div>
           <div className="flex items-center gap-2">
+            <Label htmlFor="filtro-departamento" className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Dpto.
+            </Label>
+            <select
+              id="filtro-departamento"
+              value={departamentoFiltro}
+              onChange={(e) => setDepartamentoFiltro(e.target.value ? Number(e.target.value) : '')}
+              className="h-10 min-w-[150px] max-w-[200px] truncate rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-unt-blue/20"
+            >
+              <option value="">Todos</option>
+              {departamentos.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <Label htmlFor="ordenar-antiguedad" className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Orden
             </Label>
@@ -379,7 +399,7 @@ export default function DocentesPage() {
           <Button type="button" variant="outline" onClick={() => setSearch(qInput.trim())}>
             Buscar
           </Button>
-          {(search || categoriaFiltro || ordenarAntiguedad !== 'none') && (
+          {(search || categoriaFiltro || departamentoFiltro || ordenarAntiguedad !== 'none') && (
             <Button
               type="button"
               variant="ghost"
@@ -387,6 +407,7 @@ export default function DocentesPage() {
                 setQInput('');
                 setSearch('');
                 setCategoriaFiltro('');
+                setDepartamentoFiltro('');
                 setOrdenarAntiguedad('none');
               }}
               className="text-xs text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"

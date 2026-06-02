@@ -1,18 +1,50 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { Loader2, Search, Trash2, GraduationCap, Clock, BookOpen, Layers, CheckCircle2, AlertTriangle, User } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useConfirm } from '@/hooks/useConfirm';
 import { apiGet, apiPost, apiRequest, ApiClientError } from '@/lib/api-client';
 import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
-import { Rol, TipoComponente } from '@prisma/client';
+import { Rol, TipoActividadNoLectiva, TipoComponente } from '@prisma/client';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
-interface Curso {
+const ACTIVIDADES_ORDENADAS = [
+  { id: 'PREPARACION_Y_EVALUACION', num: 2, name: 'PREPARACIÓN Y EVALUACIÓN', desc: 'Exactamente el 50% (sin redondear) del Trabajo Lectivo', reqMeta: [] as string[], getMax: (lectivas: number) => Math.floor(lectivas * 0.5), isExact: true },
+  { id: 'CONSEJERIA', num: 3, name: 'CONSEJERÍA Y TUTORÍA', desc: 'Señalar número de alumnos y el ciclo académico con los que se desarrolla. (Máx. 3 horas)', reqMeta: ['numAlumnos', 'ciclo'], getMax: () => 3 },
+  { id: 'INVESTIGACION', num: 4, name: 'INVESTIGACIÓN', desc: 'Consignar el nro de inscripción, código, nombre y duración del proyecto. (Máx. 6 horas)', reqMeta: ['codigoProyecto'], getMax: () => 6 },
+  { id: 'CAPACITACION', num: 5, name: 'CAPACITACIÓN', desc: 'Señale lo referente a este rubro en el marco de los planes de cada Facultad (Máx. 2 horas)', reqMeta: [] as string[], getMax: () => 2 },
+  { id: 'ACTIVIDADES_DE_GOBIERNO', num: 6, name: 'ACTIVIDADES DE GOBIERNO', desc: 'Se desempeña cargo indique (Máx. 2 horas)', reqMeta: ['cargo'], getMax: () => 2 },
+  { id: 'ACTIVIDADES_DE_ADMINISTRACION', num: 7, name: 'ACTIVIDADES DE ADMINISTRACIÓN', desc: 'Si desempeña cargo indique (Máx. 2 horas)', reqMeta: ['cargo'], getMax: () => 2 },
+  { id: 'ASESORIA_DE_TESIS', num: 8, name: 'ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL', desc: 'Indicar el número de Resolución Decanal. (Máx. 2 horas)', reqMeta: ['resolucion'], getMax: () => 2 },
+  { id: 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA', num: 9, name: 'RESPONSABILIDAD SOCIAL UNIVERSITARIA', desc: 'Señalar actividad, proyecto o programa a ejecutarse. (Máx. 3 horas)', reqMeta: [] as string[], getMax: () => 3 },
+  { id: 'COMITES_TECNICOS_Y_COMISIONES', num: 10, name: 'COMITÉS TÉCNICOS Y COMISIONES', desc: 'Consignar el número de Resolución autoritativa. (Máx. 2 horas)', reqMeta: ['resolucion'], getMax: () => 2 },
+];
+
+interface Periodo {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
+interface Docente {
+  id: string;
+  codigo: string;
+  nombreCompleto: string;
+  categoria: string;
+  departamento?: string;
+  horasLectivasAsignadas: number;
+}
+
+interface CursoDisponible {
   id: string;
   codigo: string;
   nombre: string;
@@ -23,61 +55,32 @@ interface Curso {
   grupos: {
     id: string;
     nombre: string;
-    capacidad: number;
-    asignaciones: {
-      horarioId: string;
-      docenteId: string;
-      docenteNombre: string;
-      componente: TipoComponente;
-      horas: number;
-      diaSemana: string | null;
-      horaInicio: string | null;
-      horaFin: string | null;
-      ambienteId: string | null;
-      estado: string;
-    }[];
+    asignaciones: any[];
   }[];
 }
 
-interface Docente {
-  id: string;
-  codigo: string;
-  nombreCompleto: string;
-  email: string;
-  categoria: string;
-  dedicacion: string;
-  horasDedicacion: number;
-  horasLectivasAsignadas: number;
-  departamento: string | null;
-}
-
-interface Periodo {
-  id: string;
-  nombre: string;
-  activo: boolean;
-  estado: string;
-}
-
-export default function CargaAcademicaPage() {
+export default function CargaAcademicaAdminPage() {
   const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.OPERADOR]);
-  const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodoId, setSelectedPeriodoId] = useState<string>('');
   
-  const [cursos, setCursos] = useState<Curso[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
+  const [searchDocente, setSearchDocente] = useState('');
+  const [selectedDocenteId, setSelectedDocenteId] = useState<string>('');
   
-  const [loadingCursos, setLoadingCursos] = useState(false);
-  const [loadingDocentes, setLoadingDocentes] = useState(false);
+  const [dataLectiva, setDataLectiva] = useState<any | null>(null);
+  const [loadingDocenteData, setLoadingDocenteData] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+
+  const [formData, setFormData] = useState<Record<string, { horas: number; descripcion: string; metadata: any }>>({});
   
-  const [cursoSearch, setCursoSearch] = useState('');
-  const [docenteSearch, setDocenteSearch] = useState('');
-  const [selectedCiclo, setSelectedCiclo] = useState<string>('TODOS');
-  
-  const [expandedCursos, setExpandedCursos] = useState<Record<string, boolean>>({});
-  const [activeDragDocenteId, setActiveDragDocenteId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  // Estado para Modal de Asignar Curso
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cursosDisponibles, setCursosDisponibles] = useState<CursoDisponible[]>([]);
+  const [selectedCursoId, setSelectedCursoId] = useState<string>('');
+  const [selectedGrupoId, setSelectedGrupoId] = useState<string>('');
+  const [selectedComponentes, setSelectedComponentes] = useState<TipoComponente[]>([]);
 
   // 1. Cargar Períodos
   useEffect(() => {
@@ -86,542 +89,586 @@ export default function CargaAcademicaPage() {
         const res = await apiGet<any>('/api/periodos', { limit: 100 });
         const list = Array.isArray(res.data) ? res.data : [];
         setPeriodos(list);
-        
-        // Seleccionar el período activo por defecto, o el primero
-        const active = list.find((p: Periodo) => p.activo);
-        if (active) {
-          setSelectedPeriodoId(active.id);
-        } else if (list[0]) {
-          setSelectedPeriodoId(list[0].id);
-        }
+        const active = list.find((p: Periodo) => p.activo) || list[0];
+        if (active) setSelectedPeriodoId(active.id);
       } catch (error) {
-        console.error('Error cargando períodos:', error);
-        toast.error('No se pudieron cargar los períodos académicos');
+        toast.error('Error al cargar períodos');
       }
     }
     loadPeriodos();
   }, []);
 
-  // 2. Cargar Cursos y Docentes
-  const loadData = async (periodoId: string) => {
-    if (!periodoId) return;
-    
-    setLoadingCursos(true);
-    setLoadingDocentes(true);
-    
-    try {
-      const [resCursos, resDocentes] = await Promise.all([
-        apiGet<Curso[]>('/api/asignacion/cursos-disponibles', { periodoId }),
-        apiGet<Docente[]>('/api/asignacion/docentes', { periodoId }),
-      ]);
-      
-      setCursos(Array.isArray(resCursos.data) ? resCursos.data : []);
-      setDocentes(Array.isArray(resDocentes.data) ? resDocentes.data : []);
-      
-      // Auto expandir los primeros 3 cursos para mejorar visualización inicial
-      if (Array.isArray(resCursos.data) && resCursos.data.length > 0) {
-        const initialExpanded: Record<string, boolean> = {};
-        resCursos.data.slice(0, 3).forEach((c) => {
-          initialExpanded[c.id] = true;
-        });
-        setExpandedCursos(initialExpanded);
+  // 2. Cargar Docentes cuando cambie el período
+  useEffect(() => {
+    if (!selectedPeriodoId) return;
+    async function loadDocentes() {
+      try {
+        const res = await apiGet<Docente[]>('/api/asignacion/docentes', { periodoId: selectedPeriodoId });
+        setDocentes(res.data || []);
+      } catch (error) {
+        toast.error('Error al cargar docentes');
       }
+    }
+    loadDocentes();
+  }, [selectedPeriodoId]);
+
+  // 3. Cargar datos de Declaración cuando se selecciona un docente
+  useEffect(() => {
+    if (!selectedPeriodoId || !selectedDocenteId) {
+      setDataLectiva(null);
+      return;
+    }
+    
+    async function loadData() {
+      setLoadingDocenteData(true);
+      try {
+        // Inicializar form vacío
+        const initial: any = {};
+        ACTIVIDADES_ORDENADAS.forEach(act => {
+          initial[act.id] = { horas: 0, descripcion: '', metadata: {} };
+        });
+        setFormData(initial);
+
+        // Traer Lectiva
+        const resL = await apiGet<any>('/api/declaracion/lectiva', { 
+          periodoId: selectedPeriodoId, 
+          docenteId: selectedDocenteId 
+        });
+        setDataLectiva(resL.data);
+
+        // Traer No Lectiva
+        const resNL = await apiGet<any>('/api/declaracion/no-lectiva', { 
+          periodoId: selectedPeriodoId,
+          docenteId: selectedDocenteId
+        });
+        if (resNL.data?.declaracion) {
+          const dec = resNL.data.declaracion;
+          setFormData(prev => {
+            const next = { ...prev };
+            dec.items.forEach((item: any) => {
+              if (next[item.tipoActividad]) {
+                next[item.tipoActividad] = {
+                  horas: item.horasSemanales || 0,
+                  descripcion: item.descripcion || '',
+                  metadata: item.metadata || {}
+                };
+              }
+            });
+            return next;
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error('Error al cargar la declaración del docente');
+      } finally {
+        setLoadingDocenteData(false);
+      }
+    }
+    loadData();
+  }, [selectedPeriodoId, selectedDocenteId]);
+
+  // Manejo de Modal de Cursos
+  const abrirModalAsignacion = async () => {
+    setIsModalOpen(true);
+    setSelectedCursoId('');
+    setSelectedGrupoId('');
+    setSelectedComponentes([]);
+    try {
+      const res = await apiGet<CursoDisponible[]>('/api/asignacion/cursos-disponibles', { periodoId: selectedPeriodoId });
+      setCursosDisponibles(res.data || []);
     } catch (error) {
-      console.error('Error cargando datos de asignación:', error);
-      toast.error('Error al actualizar listados del período');
-    } finally {
-      setLoadingCursos(false);
-      setLoadingDocentes(false);
+      toast.error('Error al cargar cursos disponibles');
     }
   };
 
-  useEffect(() => {
-    if (selectedPeriodoId) {
-      loadData(selectedPeriodoId);
+  const asignarCurso = async () => {
+    if (!selectedCursoId || !selectedGrupoId || selectedComponentes.length === 0) {
+      toast.error('Complete todos los campos de asignación');
+      return;
     }
-  }, [selectedPeriodoId]);
+    try {
+      await apiPost('/api/asignacion/carga-lectiva', {
+        periodoId: selectedPeriodoId,
+        docenteId: selectedDocenteId,
+        cursoId: selectedCursoId,
+        grupoId: selectedGrupoId,
+        componentes: selectedComponentes
+      });
+      toast.success('Curso asignado exitosamente');
+      setIsModalOpen(false);
+      // Recargar datos para ver la nueva asignación
+      const resL = await apiGet<any>('/api/declaracion/lectiva', { 
+        periodoId: selectedPeriodoId, 
+        docenteId: selectedDocenteId 
+      });
+      setDataLectiva(resL.data);
+    } catch (error: any) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Error al asignar curso');
+    }
+  };
 
-  // Manejo de expandir/colapsar curso
-  const toggleCursoExpand = (cursoId: string) => {
-    setExpandedCursos((prev) => ({
+  const eliminarAsignacion = async (horarioId: string) => {
+    if (!confirm('¿Está seguro de eliminar esta asignación?')) return;
+    try {
+      await apiRequest(`/api/asignacion/carga-lectiva/${horarioId}`, { method: 'DELETE' });
+      toast.success('Asignación eliminada');
+      // Recargar
+      const resL = await apiGet<any>('/api/declaracion/lectiva', { 
+        periodoId: selectedPeriodoId, 
+        docenteId: selectedDocenteId 
+      });
+      setDataLectiva(resL.data);
+    } catch (error: any) {
+      toast.error('Error al eliminar asignación');
+    }
+  };
+
+  const handleFieldChange = (actId: string, field: string, value: any) => {
+    if (field === 'horas') {
+      const numValue = parseInt(value) || 0;
+      const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
+      if (actDef && actDef.getMax) {
+        const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
+        if (numValue > max) {
+          toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
+          setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: max } }));
+          return;
+        }
+      }
+    }
+    setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: value } }));
+  };
+
+  const handleMetadataChange = (actId: string, metaField: string, value: any) => {
+    setFormData(prev => ({
       ...prev,
-      [cursoId]: !prev[cursoId],
+      [actId]: { ...prev[actId], metadata: { ...prev[actId].metadata, [metaField]: value } }
     }));
   };
 
-  // Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent, docenteId: string) => {
-    e.dataTransfer.setData('text/plain', docenteId);
-    setActiveDragDocenteId(docenteId);
+  const calcularTotalHoras = () => {
+    return Object.values(formData).reduce((sum, item) => sum + (Number(item.horas) || 0), 0);
   };
 
-  const handleDragEnd = () => {
-    setActiveDragDocenteId(null);
-  };
+  const handleGuardarNoLectiva = async () => {
+    if (!dataLectiva) return;
+    const itemsParaGuardar = Object.entries(formData)
+      .filter(([_, data]) => data.horas > 0)
+      .map(([id, data]) => ({
+        tipoActividad: id as TipoActividadNoLectiva,
+        horasSemanales: Number(data.horas),
+        descripcion: data.descripcion,
+        metadata: data.metadata
+      }));
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (
-    e: React.DragEvent,
-    cursoId: string,
-    grupoId: string,
-    componente: TipoComponente
-  ) => {
-    e.preventDefault();
-    const docenteId = e.dataTransfer.getData('text/plain');
-    if (!docenteId || !selectedPeriodoId) return;
-
-    await realizarAsignacion(docenteId, cursoId, grupoId, componente);
-  };
-
-  const realizarAsignacion = async (
-    docenteId: string,
-    cursoId: string,
-    grupoId: string,
-    componente: TipoComponente
-  ) => {
-    const loadingToastId = toast.loading('Asignando carga lectiva...');
+    setGuardando(true);
     try {
-      const res = (await apiPost('/api/asignacion/carga-lectiva', {
+      await apiPost(`/api/declaracion/no-lectiva?docenteId=${selectedDocenteId}`, {
         periodoId: selectedPeriodoId,
-        docenteId,
-        cursoId,
-        grupoId,
-        componentes: [componente],
-      })) as any;
-      
-      toast.success('Docente asignado exitosamente', { id: loadingToastId });
-      
-      // Mostrar advertencias del servicio si las hubiera
-      if (res.data?.advertencias && res.data.advertencias.length > 0) {
-        res.data.advertencias.forEach((adv: string) => {
-          toast.warning(adv, { duration: 6000 });
-        });
-      }
-      
-      // Recargar datos
-      loadData(selectedPeriodoId);
-    } catch (error: any) {
-      console.error(error);
-      const msg = error instanceof ApiClientError ? error.message : 'Error al realizar asignación';
-      toast.error(msg, { id: loadingToastId, duration: 6000 });
-    }
-  };
-
-  const handleRemove = async (horarioId: string, docenteNombre: string, cursoCodigo: string) => {
-    const ok = await confirm({
-      title: 'Quitar asignación',
-      message: `¿Remover al docente ${docenteNombre} del curso ${cursoCodigo}?`,
-      variant: 'destructive',
-      confirmLabel: 'Quitar',
-    });
-    
-    if (!ok) return;
-    
-    const loadingToastId = toast.loading('Eliminando asignación...');
-    try {
-      await apiRequest(`/api/asignacion/carga-lectiva/${horarioId}`, {
-        method: 'DELETE',
+        items: itemsParaGuardar,
+        observaciones: 'Guardado por el Administrador.',
       });
-      toast.success('Asignación eliminada exitosamente', { id: loadingToastId });
-      loadData(selectedPeriodoId);
+      toast.success('Declaración guardada exitosamente.');
     } catch (error: any) {
-      const msg = error instanceof ApiClientError ? error.message : 'Error al remover asignación';
-      toast.error(msg, { id: loadingToastId });
+      toast.error(error instanceof ApiClientError ? error.message : 'Error al guardar');
+    } finally {
+      setGuardando(false);
     }
   };
 
-  // Filtrado de Cursos
-  const filteredCursos = cursos.filter((c) => {
-    const matchesSearch =
-      c.nombre.toLowerCase().includes(cursoSearch.toLowerCase()) ||
-      c.codigo.toLowerCase().includes(cursoSearch.toLowerCase());
-    
-    const matchesCiclo = selectedCiclo === 'TODOS' || c.ciclo.toString() === selectedCiclo;
-    
-    return matchesSearch && matchesCiclo;
-  });
-
-  // Filtrado de Docentes
-  const filteredDocentes = docentes.filter((d) => {
-    const matchesSearch =
-      d.nombreCompleto.toLowerCase().includes(docenteSearch.toLowerCase()) ||
-      d.codigo.toLowerCase().includes(docenteSearch.toLowerCase()) ||
-      (d.departamento && d.departamento.toLowerCase().includes(docenteSearch.toLowerCase()));
-    
-    return matchesSearch;
-  });
-
-  // Helper para obtener color de la barra de horas asignadas
-  const getProgressBarColor = (actual: number, limite: number) => {
-    const pct = (actual / limite) * 100;
-    if (pct > 100) return 'bg-red-500';
-    if (pct === 100) return 'bg-emerald-500';
-    if (pct >= 80) return 'bg-amber-500';
-    return 'bg-blue-500';
-  };
-
-  if (authLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
+  const docentesFiltrados = useMemo(() => {
+    return docentes.filter(d => 
+      d.nombreCompleto.toLowerCase().includes(searchDocente.toLowerCase()) || 
+      d.codigo.toLowerCase().includes(searchDocente.toLowerCase())
     );
-  }
+  }, [docentes, searchDocente]);
+
+  if (authLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
+
+  const docenteInfo = dataLectiva?.docente;
+  const asignaciones = dataLectiva?.asignaciones || [];
+  const totalNoLectivas = calcularTotalHoras();
+
+  const cursosAgrupados = asignaciones.reduce((acc: any, asig: any) => {
+    const key = `${asig.cursoCodigo}-${asig.grupoNombre}`;
+    if (!acc[key]) {
+      acc[key] = {
+        ids: [],
+        codigo: asig.cursoCodigo,
+        nombre: asig.cursoNombre,
+        ciclo: asig.ciclo,
+        seccion: asig.grupoNombre,
+        teo: 0,
+        pra: 0,
+        lab: 0,
+        alumnos: asig.alumnosAprox || 50
+      };
+    }
+    acc[key].ids.push(asig.id);
+    if (asig.tipoComponente === 'TEORIA') acc[key].teo += asig.horas;
+    if (asig.tipoComponente === 'PRACTICA') acc[key].pra += asig.horas;
+    if (asig.tipoComponente === 'LABORATORIO') acc[key].lab += asig.horas;
+    return acc;
+  }, {} as Record<string, any>);
+  const lineasCursos = Object.values(cursosAgrupados);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 pb-12">
-      <PageHeader
-        title="Asignación de Carga Lectiva"
-        description="Gestione y asigne las horas lectivas (Teoría, Práctica y Laboratorio) del departamento académico."
-        actions={
-          <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <Layers className="h-4 w-4 text-slate-400" />
-            <select
-              className="bg-transparent text-sm font-medium focus:outline-none dark:text-slate-100 cursor-pointer"
-              value={selectedPeriodoId}
-              onChange={(e) => setSelectedPeriodoId(e.target.value)}
-            >
-              {periodos.map((p) => (
-                <option key={p.id} value={p.id} className="dark:bg-slate-800">
-                  Período {p.nombre} {p.activo ? '(Activo)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        }
-      />
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex items-center justify-between">
+        <PageHeader 
+          title="Carga Académica" 
+          description="Gestione y asigne la carga lectiva y no lectiva de los docentes."
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Período:</label>
+          <select
+            value={selectedPeriodoId}
+            onChange={(e) => setSelectedPeriodoId(e.target.value)}
+            className="h-10 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm"
+          >
+            {periodos.map(p => <option key={p.id} value={p.id}>{p.nombre} {p.activo ? '(Activo)' : ''}</option>)}
+          </select>
+        </div>
+      </div>
 
-      {/* Workspace de dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* COLUMNA IZQUIERDA: CURSOS Y GRUPOS (7/12) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-blue-500" />
-              Catálogo de Cursos
-            </h2>
-            
-            {/* Buscador e Indicadores */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar curso por nombre o código..."
-                  value={cursoSearch}
-                  onChange={(e) => setCursoSearch(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl border-0 py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
-                />
+      <div className="flex flex-1 overflow-hidden mt-6 gap-6">
+        {/* Sidebar: Lista de Docentes */}
+        <div className="w-80 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-blue-600" /> Docentes
+            </h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar docente..."
+                value={searchDocente}
+                onChange={e => setSearchDocente(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900"
+              />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {docentesFiltrados.map(d => (
+              <button
+                key={d.id}
+                onClick={() => setSelectedDocenteId(d.id)}
+                className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-colors ${
+                  selectedDocenteId === d.id 
+                    ? 'bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' 
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                }`}
+              >
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{d.nombreCompleto}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex justify-between">
+                  <span>{d.codigo}</span>
+                  <span className={d.horasLectivasAsignadas > 0 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>
+                    {d.horasLectivasAsignadas}h asignadas
+                  </span>
+                </div>
+              </button>
+            ))}
+            {docentesFiltrados.length === 0 && (
+              <div className="text-center text-slate-500 text-sm p-4">No hay docentes.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Contenido Principal: Declaración de Carga */}
+        <div className="flex-1 overflow-y-auto pr-2 pb-16">
+          {!selectedDocenteId ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+              <BookOpen className="h-12 w-12 mb-4 opacity-50" />
+              <p>Seleccione un docente para gestionar su carga horaria.</p>
+            </div>
+          ) : loadingDocenteData ? (
+            <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>
+          ) : dataLectiva ? (
+            <div className="space-y-6">
+              
+              {/* Encabezado PDF-like */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-blue-600 dark:bg-blue-900 p-4 sm:px-6">
+                  <h1 className="text-xl font-bold text-white uppercase tracking-wide">
+                    CARGA HORARIA - DECLARACIÓN DE CARGA HORARIA ASIGNADA
+                  </h1>
+                  <p className="text-blue-100 text-sm mt-1">Período Académico {dataLectiva.periodo.nombre}</p>
+                </div>
+                
+                <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase">I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR:</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm mb-6">
+                    <div className="flex border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
+                      <span className="font-semibold text-slate-600 dark:text-slate-300 w-40">FACULTAD:</span>
+                      <span className="text-slate-800 dark:text-slate-100 font-medium">Ingeniería</span>
+                    </div>
+                    <div className="flex border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
+                      <span className="font-semibold text-slate-600 dark:text-slate-300 w-40">DPTO. ACADÉMICO:</span>
+                      <span className="text-slate-800 dark:text-slate-100 font-medium">{docenteInfo.departamento?.nombre || 'Dpto. de Ingeniería de Sistemas'}</span>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border border-slate-200 dark:border-slate-700">
+                      <thead className="bg-blue-50 dark:bg-slate-800 text-blue-900 dark:text-slate-200 font-bold text-xs uppercase">
+                        <tr>
+                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-left">NOMBRE COMPLETO</th>
+                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">CONDICIÓN</th>
+                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">CATEGORÍA</th>
+                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">MODALIDAD</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-slate-800 dark:text-slate-100">
+                        <tr>
+                          <td className="border border-slate-200 dark:border-slate-700 p-3">{docenteInfo.nombreCompleto}</td>
+                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">NOMBRADO</td>
+                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">{Formateadores.categoriaDocente(docenteInfo.categoria)}</td>
+                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">{Formateadores.dedicacionDocente(docenteInfo.dedicacion)} {docenteInfo.horasDedicacion} H</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 1. TRABAJO LECTIVO */}
+                <div className="p-4 sm:px-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase">1. TRABAJO LECTIVO.- Datos completos y con claridad</h2>
+                    <Button size="sm" onClick={abrirModalAsignacion} className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs">
+                      <Plus className="h-4 w-4 mr-1" /> Asignar Curso
+                    </Button>
+                  </div>
+                  
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-sm">
+                      <thead className="bg-blue-600 dark:bg-blue-900 text-white font-bold text-xs">
+                        <tr>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">CÓDIGO</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-left">NOMBRE DEL CURSO</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">SECCIÓN</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">CURSO</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Escuela Prof.</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Ciclo</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Nro Tot. Alumnos</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsTeo</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsPra</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsLab</th>
+                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Total Hrs.</th>
+                          <th className="p-3 text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-slate-700 dark:text-slate-200">
+                        {lineasCursos.map((c: any, i: number) => {
+                          const totalHrs = c.teo + c.pra + c.lab;
+                          return (
+                            <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 group">
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center font-mono text-xs">{c.codigo}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 font-medium">{c.nombre}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">{c.seccion || '-'}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">OB</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Ingeniería de Sistemas</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">{c.ciclo}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Aprox. {c.alumnos}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-sky-50/50 dark:bg-sky-900/20">{c.teo}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-purple-50/50 dark:bg-purple-900/20">{c.pra}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-indigo-50/50 dark:bg-indigo-900/20">{c.lab}</td>
+                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center font-bold text-blue-600 dark:text-blue-400">{totalHrs}</td>
+                              <td className="p-2 text-center">
+                                <button 
+                                  onClick={() => {
+                                    // Simplificación: eliminar el primer horario de este grupo (lo ideal es un dropdown de componentes)
+                                    if (c.ids[0]) eliminarAsignacion(c.ids[0]);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Eliminar asignación"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {lineasCursos.length === 0 && (
+                          <tr>
+                            <td colSpan={12} className="p-6 text-center text-slate-500">No tiene carga lectiva asignada.</td>
+                          </tr>
+                        )}
+                        <tr className="bg-slate-50 dark:bg-slate-800 font-bold border-t-2 border-slate-300 dark:border-slate-600">
+                          <td colSpan={10} className="p-3 text-right text-slate-700 dark:text-slate-300">TOTAL HORAS LECTIVAS:</td>
+                          <td className="p-3 text-center text-blue-700 dark:text-blue-400">{dataLectiva.totalHorasLectivas}</td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Ciclo:</span>
-                <select
-                  value={selectedCiclo}
-                  onChange={(e) => setSelectedCiclo(e.target.value)}
-                  className="bg-slate-50 dark:bg-slate-800 text-sm font-medium py-2 px-3 rounded-xl border-0 focus:ring-2 focus:ring-blue-500 dark:text-slate-100 cursor-pointer"
+
+              {/* SECCIONES 2-10: ACTIVIDADES NO LECTIVAS */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-sm space-y-8">
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4 flex items-start gap-3">
+                  <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800 dark:text-amber-400">
+                    <p className="font-semibold mb-1">Información sobre la declaración No Lectiva:</p>
+                    <ul className="list-disc list-inside ml-2 space-y-0.5 opacity-90">
+                      <li>El docente debe declarar exactamente <strong>{dataLectiva.horasNoLectivasDisponibles} horas</strong> no lectivas.</li>
+                      <li>Como administrador, usted puede visualizar o modificar esta información si es necesario.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {ACTIVIDADES_ORDENADAS.map((act) => {
+                    const data = formData[act.id];
+                    if (!data) return null;
+                    return (
+                      <div key={act.id} className="border-b border-slate-100 dark:border-slate-800 pb-6 last:border-0 last:pb-0">
+                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                          <div className="flex-1 space-y-1">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase">{act.num}. {act.name}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{act.desc}</p>
+                            {data.horas > 0 && act.reqMeta.length > 0 && (
+                              <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-150 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {act.reqMeta.includes('numAlumnos') && (
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">N° Alumnos</label>
+                                    <input type="number" min={1} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.numAlumnos || ''} onChange={(e) => handleMetadataChange(act.id, 'numAlumnos', parseInt(e.target.value) || 0)} />
+                                  </div>
+                                )}
+                                {act.reqMeta.includes('ciclo') && (
+                                  <div>
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Ciclo</label>
+                                    <input type="number" min={1} max={10} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.ciclo || ''} onChange={(e) => handleMetadataChange(act.id, 'ciclo', parseInt(e.target.value) || 0)} />
+                                  </div>
+                                )}
+                                {act.reqMeta.includes('codigoProyecto') && (
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Código del Proyecto</label>
+                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.codigoProyecto || ''} onChange={(e) => handleMetadataChange(act.id, 'codigoProyecto', e.target.value)} />
+                                  </div>
+                                )}
+                                {act.reqMeta.includes('resolucion') && (
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">N° de Resolución</label>
+                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.resolucion || ''} onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)} />
+                                  </div>
+                                )}
+                                {act.reqMeta.includes('cargo') && (
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Cargo</label>
+                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.cargo || ''} onChange={(e) => handleMetadataChange(act.id, 'cargo', e.target.value)} />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 flex gap-3 items-start justify-end">
+                            {act.id !== 'PREPARACION_Y_EVALUACION' && (
+                              <div className="flex-1 relative">
+                                <textarea className="w-full min-h-[60px] resize-y bg-yellow-50/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Detalle de las actividades..." value={data.descripcion} onChange={(e) => handleFieldChange(act.id, 'descripcion', e.target.value)} />
+                              </div>
+                            )}
+                            <div className="w-24 flex-shrink-0 flex items-center gap-2">
+                              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Horas:</label>
+                              <input type="number" min="0" className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-center font-bold text-slate-800 dark:text-slate-100" value={data.horas || ''} onChange={(e) => handleFieldChange(act.id, 'horas', parseInt(e.target.value) || 0)} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-6 border-t-2 border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="text-lg font-bold text-slate-700 dark:text-slate-300">Total Horas No Lectivas:</span>
+                    <div className={`px-4 py-1.5 rounded-lg border-2 font-bold text-xl ${totalNoLectivas === dataLectiva.horasNoLectivasDisponibles ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-amber-500 bg-amber-50 text-amber-700'}`}>
+                      {totalNoLectivas}
+                    </div>
+                  </div>
+                  <Button onClick={handleGuardarNoLectiva} disabled={guardando} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                    {guardando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Guardar Declaración
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Modal para Asignar Curso */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Asignar Curso a {docenteInfo?.nombreCompleto}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Curso</label>
+              <select 
+                value={selectedCursoId}
+                onChange={(e) => { setSelectedCursoId(e.target.value); setSelectedGrupoId(''); }}
+                className="w-full h-10 rounded-md border border-slate-300 px-3 text-sm"
+              >
+                <option value="">Seleccione un curso...</option>
+                {cursosDisponibles.map(c => (
+                  <option key={c.id} value={c.id}>{c.codigo} - {c.nombre} (Ciclo {c.ciclo})</option>
+                ))}
+              </select>
+            </div>
+            
+            {selectedCursoId && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Sección / Grupo</label>
+                <select 
+                  value={selectedGrupoId}
+                  onChange={(e) => setSelectedGrupoId(e.target.value)}
+                  className="w-full h-10 rounded-md border border-slate-300 px-3 text-sm"
                 >
-                  <option value="TODOS">Todos</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(c => (
-                    <option key={c} value={c.toString()}>{c}° Ciclo</option>
+                  <option value="">Seleccione una sección...</option>
+                  {cursosDisponibles.find(c => c.id === selectedCursoId)?.grupos.map(g => (
+                    <option key={g.id} value={g.id}>Grupo {g.nombre}</option>
                   ))}
                 </select>
               </div>
-            </div>
+            )}
 
-            {loadingCursos ? (
-              <div className="flex flex-col items-center justify-center py-16 space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <span className="text-sm text-slate-400">Cargando cursos y grupos...</span>
-              </div>
-            ) : filteredCursos.length === 0 ? (
-              <div className="text-center py-16 bg-slate-50 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                <AlertTriangle className="h-8 w-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-                <span className="text-sm text-slate-500">No se encontraron cursos con los filtros aplicados.</span>
-              </div>
-            ) : (
-              <div className="space-y-3 overflow-y-auto max-h-[70vh] pr-1">
-                {filteredCursos.map((curso) => {
-                  const isExpanded = !!expandedCursos[curso.id];
-                  return (
-                    <div
-                      key={curso.id}
-                      className="group border border-slate-100 dark:border-slate-800 rounded-xl hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-200 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm"
-                    >
-                      {/* Cabecera del Curso (Clickable para expandir) */}
-                      <div
-                        onClick={() => toggleCursoExpand(curso.id)}
-                        className="p-4 flex items-center justify-between cursor-pointer select-none"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-semibold px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded">
-                              {curso.codigo}
-                            </span>
-                            <span className="text-xs font-semibold px-2 py-0.5 bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded">
-                              {curso.ciclo}° Ciclo
-                            </span>
-                          </div>
-                          <h3 className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-500 transition-colors">
-                            {curso.nombre}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          {/* Horas del plan */}
-                          <div className="hidden sm:flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                            <span title="Horas de Teoría">T: {curso.horasTeoria}h</span>
-                            <span title="Horas de Práctica">P: {curso.horasPractica}h</span>
-                            {curso.horasLaboratorio > 0 && <span title="Horas de Laboratorio">L: {curso.horasLaboratorio}h</span>}
-                          </div>
-                          
-                          {/* Flecha indicadora */}
-                          <svg
-                            className={`h-5 w-5 text-slate-400 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      {/* Grupos y Asignaciones Expandidos */}
-                      {isExpanded && (
-                        <div className="border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-b-xl p-4 space-y-4">
-                          {curso.grupos.map((grupo) => (
-                            <div key={grupo.id} className="border border-slate-100 dark:border-slate-800/80 rounded-xl p-3 space-y-3 bg-slate-50/20 dark:bg-slate-900/10">
-                              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                                <span className="font-bold text-sm text-slate-700 dark:text-slate-300">
-                                  Grupo {grupo.nombre}
-                                </span>
-                                <span className="text-xs text-slate-400">
-                                  Capacidad: {grupo.capacidad} estudiantes
-                                </span>
-                              </div>
-
-                              {/* Componentes a asignar */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                {/* Componente Teoría */}
-                                {curso.horasTeoria > 0 && renderComponentSlot(
-                                  curso,
-                                  grupo,
-                                  TipoComponente.TEORIA,
-                                  curso.horasTeoria
-                                )}
-
-                                {/* Componente Práctica */}
-                                {curso.horasPractica > 0 && renderComponentSlot(
-                                  curso,
-                                  grupo,
-                                  TipoComponente.PRACTICA,
-                                  curso.horasPractica
-                                )}
-
-                                {/* Componente Laboratorio */}
-                                {curso.horasLaboratorio > 0 && renderComponentSlot(
-                                  curso,
-                                  grupo,
-                                  TipoComponente.LABORATORIO,
-                                  curso.horasLaboratorio
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {selectedGrupoId && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">Componentes a Asignar</label>
+                <div className="flex gap-4">
+                  {(['TEORIA', 'PRACTICA', 'LABORATORIO'] as TipoComponente[]).map(comp => {
+                    const curso = cursosDisponibles.find(c => c.id === selectedCursoId);
+                    const hasHoras = comp === 'TEORIA' ? curso?.horasTeoria : comp === 'PRACTICA' ? curso?.horasPractica : curso?.horasLaboratorio;
+                    if (!hasHoras) return null;
+                    
+                    return (
+                      <label key={comp} className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={selectedComponentes.includes(comp)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedComponentes([...selectedComponentes, comp]);
+                            else setSelectedComponentes(selectedComponentes.filter(c => c !== comp));
+                          }}
+                          className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                        />
+                        <span className="text-sm">{comp.charAt(0) + comp.slice(1).toLowerCase()}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
-        </div>
-
-        {/* COLUMNA DERECHA: DOCENTES (5/12) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-blue-500" />
-                Docentes Disponibles
-              </h2>
-              <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-md font-semibold">
-                {filteredDocentes.length} total
-              </span>
-            </div>
-
-            {/* Instrucción drag and drop */}
-            <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 p-3 rounded-xl flex items-start gap-2.5">
-              <span className="text-blue-500 dark:text-blue-400 mt-0.5">💡</span>
-              <p className="text-xs text-blue-700/90 dark:text-blue-300 leading-relaxed">
-                <strong>Instrucciones:</strong> Arrastre un docente desde esta lista y suéltelo sobre los recuadros de componentes del curso (Teoría, Práctica, Laboratorio) para asignarlo.
-              </p>
-            </div>
-
-            {/* Buscador de Docentes */}
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar docente por nombre o código..."
-                value={docenteSearch}
-                onChange={(e) => setDocenteSearch(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl border-0 py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500 dark:text-slate-100"
-              />
-            </div>
-
-            {loadingDocentes ? (
-              <div className="flex flex-col items-center justify-center py-16 space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <span className="text-sm text-slate-400">Cargando docentes...</span>
-              </div>
-            ) : filteredDocentes.length === 0 ? (
-              <div className="text-center py-16 bg-slate-50 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                <User className="h-8 w-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-                <span className="text-sm text-slate-500">No se encontraron docentes.</span>
-              </div>
-            ) : (
-              <div className="space-y-3 overflow-y-auto max-h-[70vh] pr-1">
-                {filteredDocentes.map((docente) => {
-                  const percent = Math.min(
-                    100,
-                    (docente.horasLectivasAsignadas / docente.horasDedicacion) * 100
-                  );
-                  const isDragActive = activeDragDocenteId === docente.id;
-
-                  return (
-                    <div
-                      key={docente.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, docente.id)}
-                      onDragEnd={handleDragEnd}
-                      className={`p-4 rounded-xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md transition-all cursor-grab active:cursor-grabbing relative overflow-hidden select-none group ${isDragActive ? 'opacity-40 border-blue-500 bg-blue-50/10' : ''}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-0.5">
-                          <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 group-hover:text-blue-500 transition-colors">
-                            {docente.nombreCompleto}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                            <span>Código: {docente.codigo}</span>
-                            <span>•</span>
-                            <span className="font-medium">{Formateadores.categoriaDocente(docente.categoria)}</span>
-                          </div>
-                          {docente.departamento && (
-                            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
-                              DEPT. {docente.departamento}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Indicador de dedicación */}
-                        <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                          {docente.dedicacion === 'TIEMPO_COMPLETO_40H' || docente.dedicacion === 'DEDICACION_EXCLUSIVA' ? '40h' : '20h'}
-                        </span>
-                      </div>
-
-                      {/* Barra de progreso de horas asignadas */}
-                      <div className="mt-4 space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Lectivas asignadas:
-                          </span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {docente.horasLectivasAsignadas} / {docente.horasDedicacion} h
-                          </span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${getProgressBarColor(docente.horasLectivasAsignadas, docente.horasDedicacion)}`}
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      <ConfirmDialog
-        open={confirmState.open}
-        title={confirmState.title}
-        message={confirmState.message}
-        confirmLabel={confirmState.confirmLabel}
-        cancelLabel={confirmState.cancelLabel}
-        variant={confirmState.variant}
-        onConfirm={() => handleConfirmClose(true)}
-        onCancel={() => handleConfirmClose(false)}
-      />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button onClick={asignarCurso} className="bg-blue-600 text-white hover:bg-blue-700">Asignar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-
-  // Renderizador para las celdas de componentes a asignar (Teoría, Práctica, Laboratorio)
-  function renderComponentSlot(
-    curso: Curso,
-    grupo: any,
-    componente: TipoComponente,
-    horas: number
-  ) {
-    // Buscar si ya tiene docente asignado
-    const asignacion = grupo.asignaciones.find(
-      (a: any) => a.componente === componente
-    );
-
-    const label = componente === TipoComponente.TEORIA ? 'Teoría' : componente === TipoComponente.PRACTICA ? 'Práctica' : 'Laboratorio';
-    const bgCol = componente === TipoComponente.TEORIA ? 'border-sky-200 bg-sky-50/10 text-sky-700 dark:text-sky-400 dark:border-sky-950' : componente === TipoComponente.PRACTICA ? 'border-purple-200 bg-purple-50/10 text-purple-700 dark:text-purple-400 dark:border-purple-950' : 'border-indigo-200 bg-indigo-50/10 text-indigo-700 dark:text-indigo-400 dark:border-indigo-950';
-    
-    if (asignacion) {
-      return (
-        <div className={`p-2.5 rounded-lg border flex flex-col justify-between h-24 ${bgCol}`}>
-          <div className="flex items-start justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider">
-              {label} ({horas}h)
-            </span>
-            <button
-              onClick={() => handleRemove(asignacion.horarioId, asignacion.docenteNombre, curso.codigo)}
-              className="text-slate-400 hover:text-red-500 transition-colors p-0.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded"
-              title="Quitar asignación"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-xs font-semibold line-clamp-1 text-slate-800 dark:text-slate-200">
-              {asignacion.docenteNombre}
-            </p>
-            <p className="text-[10px] text-slate-500 flex items-center gap-1">
-              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-              {asignacion.estado}
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    // Dropzone vacío
-    return (
-      <div
-        onDragOver={handleDragOver}
-        onDrop={(e) => handleDrop(e, curso.id, grupo.id, componente)}
-        className="p-2.5 rounded-lg border border-dashed border-slate-250 dark:border-slate-800 bg-slate-50/30 hover:border-blue-500 hover:bg-blue-50/10 dark:hover:bg-blue-950/10 hover:text-blue-600 dark:hover:text-blue-400 flex flex-col items-center justify-center text-center text-slate-400 cursor-default transition-all duration-200 h-24 group/drop"
-      >
-        <span className="text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-slate-400 group-hover/drop:text-blue-500">
-          {label} ({horas}h)
-        </span>
-        <span className="text-[10px] leading-tight px-2 group-hover/drop:scale-105 transition-transform">
-          Arrastre docente aquí
-        </span>
-      </div>
-    );
-  }
 }
