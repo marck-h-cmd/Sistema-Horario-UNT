@@ -96,6 +96,7 @@ const saveTimerData = (ventanaId: string, data: TimerData) => {
 const clearTimerData = (ventanaId: string) => {
   try {
     localStorage.removeItem(getTimerKey(ventanaId));
+    localStorage.removeItem(`last-llamado-slot:${ventanaId}`);
   } catch {
     console.error('Error clearing timer data');
   }
@@ -112,6 +113,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const [tiempoVentana, setTiempoVentana] = React.useState(0);
   const [timerData, setTimerData] = React.useState<TimerData | null>(null);
   const [todosLosHorarios, setTodosLosHorarios] = React.useState<any[]>([]);
+  const [lastLlamadoSlot, setLastLlamadoSlot] = React.useState<number | null>(null);
 
   // Docente en atención y su carga/horarios
   const [docenteActual, setDocenteActual] = React.useState<any>(null);
@@ -350,6 +352,15 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     cargarDatosVentana();
   }, [cargarDatosVentana]);
 
+  React.useEffect(() => {
+    const saved = localStorage.getItem(`last-llamado-slot:${ventanaId}`);
+    if (saved !== null) {
+      setLastLlamadoSlot(parseInt(saved, 10));
+    } else {
+      setLastLlamadoSlot(null);
+    }
+  }, [ventanaId]);
+
   // Temporizadores
   React.useEffect(() => {
     if (!docenteActual || estadoVentana !== 'activa') return;
@@ -449,6 +460,37 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     }
   };
 
+  const handleSaltarTurno = async () => {
+    if (!timerData) return;
+    const currentSlot = Math.floor(tiempoVentana / 900);
+    const nextSlotStart = (currentSlot + 1) * 900;
+    const deltaSeconds = nextSlotStart - tiempoVentana;
+
+    try {
+      const res = await fetch(`/api/ventanas-atencion/${ventanaId}/saltar-turno`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deltaSeconds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Error al saltar el turno en el servidor');
+      }
+
+      const newTimerData = {
+        ...timerData,
+        startTime: timerData.startTime - (deltaSeconds * 1000),
+      };
+      setTimerData(newTimerData);
+      saveTimerData(ventanaId, newTimerData);
+      setTiempoVentana(nextSlotStart);
+      NotificacionToast.exito(`Turno saltado al siguiente bloque de 15 minutos.`);
+      cargarDatosVentana();
+    } catch (err: any) {
+      NotificacionToast.error(err.message || 'No se pudo saltar el turno en el servidor');
+    }
+  };
+
   const handleLlamarDocente = async () => {
     try {
       const res = await fetch(`/api/ventanas-atencion/${ventanaId}/llamar-siguiente`, {
@@ -461,6 +503,10 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           setEstadoVentana('finalizada');
         } else {
           NotificacionToast.exito(`Docente llamado: ${data.data.atencion.docente.usuario.nombre}`);
+          // Registrar el slot en el que se llamó a este docente (sin reiniciar el temporizador general)
+          const currentSlot = Math.floor(tiempoVentana / 900);
+          setLastLlamadoSlot(currentSlot);
+          localStorage.setItem(`last-llamado-slot:${ventanaId}`, currentSlot.toString());
         }
         cargarDatosVentana();
       } else {
@@ -471,19 +517,22 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     }
   };
 
-  const handleCancelarAtencion = async () => {
-    if (!atencionActualId) return;
+  const handleCancelarAtencion = React.useCallback(async (atencionIdToCancel?: any) => {
+    const idToCancel = typeof atencionIdToCancel === 'string' ? atencionIdToCancel : atencionActualId;
+    if (!idToCancel) return;
     try {
       const res = await fetch(`/api/ventanas-atencion/${ventanaId}/marcar-ausente`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ atencionId: atencionActualId }),
+        body: JSON.stringify({ atencionId: idToCancel }),
       });
       if (res.ok) {
         NotificacionToast.advertencia('Atención marcada como AUSENTE');
-        setDocenteActual(null);
-        setAtencionActualId(null);
-        setTiempoAtencion(0);
+        if (idToCancel === atencionActualId) {
+          setDocenteActual(null);
+          setAtencionActualId(null);
+          setTiempoAtencion(0);
+        }
         cargarDatosVentana();
       } else {
         throw new Error('Error al marcar docente como ausente');
@@ -491,7 +540,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     } catch (err: any) {
       NotificacionToast.error(err.message);
     }
-  };
+  }, [atencionActualId, ventanaId, cargarDatosVentana]);
 
   const handleFinalizarAtencion = async () => {
     if (!atencionActualId) return;
@@ -514,6 +563,22 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       NotificacionToast.error(err.message);
     }
   };
+
+  // Cancelar automáticamente la atención si transcurren los 15 minutos de la ranura actual o anteriores
+  React.useEffect(() => {
+    if (estadoVentana !== 'activa') return;
+
+    // Buscar cualquier atencion cuyo slot de 15 minutos haya expirado pero siga en Esperando o En Atención
+    const expiredAtencion = colaDocentes.find((a: any) => 
+      tiempoVentana >= a.posicion * 900 && 
+      (a.estado === 'ESPERANDO' || a.estado === 'EN_ATENCION')
+    );
+
+    if (expiredAtencion) {
+      NotificacionToast.advertencia(`El tiempo de atención para ${expiredAtencion.docente.usuario.nombre} ha finalizado.`);
+      handleCancelarAtencion(expiredAtencion.id);
+    }
+  }, [tiempoVentana, colaDocentes, estadoVentana, handleCancelarAtencion]);
 
   // ── CRUD de bloques horarios ──────────────────────────────────────────────
   const handleGuardarBloque = async (e: React.FormEvent) => {
@@ -832,6 +897,28 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       }
     : null;
 
+  const currentSlot = Math.floor(tiempoVentana / 900);
+  const docenteEnTurnoCola = colaDocentes.find((a: any) => a.posicion === currentSlot + 1);
+
+  let subEstado: 'esperando_llamado' | 'en_atencion' | 'esperando_turno' | 'inactiva' | 'pausada' | 'finalizada' = 'inactiva';
+  if (estadoVentana === 'inactiva') subEstado = 'inactiva';
+  else if (estadoVentana === 'pausada') subEstado = 'pausada';
+  else if (estadoVentana === 'finalizada') subEstado = 'finalizada';
+  else if (docenteActual) {
+    subEstado = 'en_atencion';
+  } else if (lastLlamadoSlot === currentSlot) {
+    subEstado = 'esperando_turno';
+  } else {
+    subEstado = 'esperando_llamado'; // "llamando a docente en cola"
+  }
+
+  const docenteEnTurno = docenteEnTurnoCola
+    ? {
+        nombre: `${docenteEnTurnoCola.docente.usuario.nombre} ${docenteEnTurnoCola.docente.usuario.apellidos}`,
+        posicion: docenteEnTurnoCola.posicion,
+      }
+    : null;
+
   const siguienteDocenteAdaptado = siguienteDocente
     ? {
         id: siguienteDocente.docente.id,
@@ -940,6 +1027,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           onPausar={handlePausarVentana}
           onReanudar={handleReanudarVentana}
           onFinalizar={handleFinalizarVentana}
+          onSaltarTurno={handleSaltarTurno}
+          subEstado={subEstado}
+          docenteEnTurno={docenteEnTurno}
         />
         <div className="space-y-6">
           <PanelDocenteActual
@@ -951,6 +1041,8 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             <PanelLlamarSiguiente
               docenteSiguiente={siguienteDocenteAdaptado}
               onLlamar={handleLlamarDocente}
+              tiempoVentana={tiempoVentana}
+              lastLlamadoSlot={lastLlamadoSlot}
             />
           )}
         </div>
