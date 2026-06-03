@@ -44,6 +44,7 @@ const FRANJAS = [
   { ini: '17:00', label: '5-6' },
   { ini: '18:00', label: '6-7' },
   { ini: '19:00', label: '7-8' },
+  { ini: '20:00', label: '8-9' },
 ];
 
 const HORA_COL_IZQ = 1;      // A
@@ -183,11 +184,242 @@ const formatAmbienteExcel = (name: string): string => {
   return name.replace(/\s*-\s*/, '\n');
 };
 
+const getNombreDocente = (h: any): string => {
+  const nombre = h.docente?.usuario?.nombre ?? h.docente?.nombre ?? '';
+  const apellidos = h.docente?.usuario?.apellidos ?? h.docente?.apellidos ?? '';
+  return `${nombre} ${apellidos}`.trim();
+};
+
+const normalizarClave = (texto: string): string =>
+  (texto ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+const DEPARTAMENTOS_DOCENTE: Record<string, string> = {
+  [normalizarClave('Marcelino Torres Villanueva')]: 'Ing. de Sistemas',
+  [normalizarClave('Alberto Mendoza de los Santos')]: 'Ing. de Sistemas',
+  [normalizarClave('Paul Cotrina Castellanos')]: 'Ing. de Sistemas',
+  [normalizarClave('Bertha Urtecho Zavaleta')]: 'CC. Psicológicas',
+  [normalizarClave('José Luis Ponte Bejarano')]: 'Matemáticas',
+  [normalizarClave('Jose Luis Ponte Bejarano')]: 'Matemáticas',
+  [normalizarClave('Jorge Luis Ríos Gonzales')]: 'Lengua Nacional y Literatura',
+  [normalizarClave('Jorge Luis Rios Gonzales')]: 'Lengua Nacional y Literatura',
+  [normalizarClave('Segundo Guíbar Obeso')]: 'Matemáticas',
+  [normalizarClave('Segundo Guibar Obeso')]: 'Matemáticas',
+  [normalizarClave('Miguel Ipanaque Zapata')]: 'Estadística',
+  [normalizarClave('Martha Cardoso')]: 'Estadística',
+
+  [normalizarClave('Zoraida Vidal Melgarejo')]: 'Ing. de Sistemas',
+  [normalizarClave('Everson David Agreda Gamboa')]: 'Ing. de Sistemas',
+  [normalizarClave('Juan Carlos Obando Roldán')]: 'Ing. de Sistemas',
+  [normalizarClave('Juan Carlos Obando Roldan')]: 'Ing. de Sistemas',
+  [normalizarClave('Marcos Ferrer Reyna')]: 'Matemáticas',
+  [normalizarClave('Teresita Rojas García')]: 'Estadística',
+  [normalizarClave('Teresita Rojas Garcia')]: 'Estadística',
+  [normalizarClave('Juan Carrascal Cabanillas')]: 'Administración',
+  [normalizarClave('Vilma Méndez Gil')]: 'Física',
+  [normalizarClave('Vilma Mendez Gil')]: 'Física',
+  [normalizarClave('Sheyla Laura Escobedo Rodríguez')]: 'CC. Psicológicas',
+  [normalizarClave('Sheyla Laura Escobedo Rodriguez')]: 'CC. Psicológicas',
+
+  [normalizarClave('Luis Boy Chavil')]: 'Ing. de Sistemas',
+  [normalizarClave('Robert Jerry Sánchez Ticona')]: 'Ing. de Sistemas',
+  [normalizarClave('Robert Jerry Sanchez Ticona')]: 'Ing. de Sistemas',
+  [normalizarClave('César Arellano Salazar')]: 'Ing. de Sistemas',
+  [normalizarClave('Cesar Arellano Salazar')]: 'Ing. de Sistemas',
+  [normalizarClave('Camilo Suárez Rebaza')]: 'Ing. de Sistemas',
+  [normalizarClave('Camilo Suarez Rebaza')]: 'Ing. de Sistemas',
+  [normalizarClave('Marcos Baca López')]: 'Ing. Industrial',
+  [normalizarClave('Marcos Baca Lopez')]: 'Ing. Industrial',
+  [normalizarClave('Ana Cuadra Mitzugaray')]: 'Contabilidad y Finanzas',
+
+  [normalizarClave('Juan Pedro Santos Fernández')]: 'Ing. de Sistemas',
+  [normalizarClave('Juan Pedro Santos Fernandez')]: 'Ing. de Sistemas',
+  [normalizarClave('Ricardo Mendoza Rivera')]: 'Ing. de Sistemas',
+  [normalizarClave('Óscar Romel Alcántara Moreno')]: 'Ing. de Sistemas',
+  [normalizarClave('Oscar Romel Alcantara Moreno')]: 'Ing. de Sistemas',
+  [normalizarClave('Jhoe Gonzalez Vasquez')]: 'Ing. Industrial',
+  [normalizarClave('José Gómez Ávila')]: 'Ing. de Sistemas',
+  [normalizarClave('Jose Gomez Avila')]: 'Ing. de Sistemas',
+};
+
+const getDepartamentoDocente = (h: any): string => {
+  const desdeObjeto =
+    h.docente?.departamento ??
+    h.docente?.departamentoAcademico?.nombre ??
+    h.docente?.departamentoAcademico?.nombreDepartamento ??
+    h.docente?.departamento?.nombre ??
+    h.departamentoAcademico?.nombre ??
+    h.departamento?.nombre ??
+    '';
+
+  if (desdeObjeto) return desdeObjeto;
+
+  const nombreDocente = getNombreDocente(h);
+  return DEPARTAMENTOS_DOCENTE[normalizarClave(nombreDocente)] ?? '';
+};
+
+const getTipoBloque = (h: any): 'TEORIA' | 'PRACTICA' | 'LABORATORIO' => {
+  const tipo = String(h.tipoComponente ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (tipo.includes('LAB')) return 'LABORATORIO';
+  if (tipo.includes('PRACTICA')) return 'PRACTICA';
+  if (tipo.includes('TEORIA')) return 'TEORIA';
+
+  const ambiente = String(
+    h.ambiente?.nombre ??
+    h.ambiente?.codigo ??
+    h.ambiente ??
+    ''
+  )
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (ambiente.includes('LAB')) return 'LABORATORIO';
+
+  const nombreCurso = String(h.curso?.nombre ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (nombreCurso.includes('PRACTICA')) return 'PRACTICA';
+
+  return 'TEORIA';
+};
+
 const getComponentLabel = (h: any): string => {
-  if (h.tipoComponente === 'PRACTICA') return 'Práctica';
-  if (h.tipoComponente === 'TEORIA' && h.curso?.codigo === 'EG-106B') return 'Teoría';
-  if (h.tipoComponente === 'LABORATORIO') return 'Lab.';
+  const tipo = getTipoBloque(h);
+
+  if (tipo === 'PRACTICA') return 'Práctica';
+  if (tipo === 'LABORATORIO') return 'Lab.';
+
+  if (tipo === 'TEORIA' && h.curso?.codigo === 'EG-106B') {
+    return 'Teoría';
+  }
+
   return '';
+};
+
+const formatearNumero = (valor: number): number | string => {
+  if (Number.isInteger(valor)) return valor;
+  return Number(valor.toFixed(2));
+};
+
+type MetadatosCursoExcel = {
+  horasTeoria: number;
+  horasPractica: number;
+  horasLaboratorio: number;
+};
+
+// Metadatos usados para la tabla superior del Excel.
+// Se trabaja por CÓDIGO de curso porque algunos cursos tienen nombres parecidos,
+// por ejemplo IS-101 y EG-101, pero no tienen la misma distribución T/P/L.
+const METADATOS_CURSO_EXCEL: Record<string, MetadatosCursoExcel> = {
+  // Ciclo I
+  'IS-101': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-102': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-101': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'EG-102': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-103': { horasTeoria: 1, horasPractica: 4, horasLaboratorio: 0 },
+  'EG-104': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-105': { horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 },
+  'EG-106': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-106B': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo III
+  'IS-301': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-302': { horasTeoria: 2, horasPractica: 1, horasLaboratorio: 2 },
+  'IS-303': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 2 },
+  'MAT-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'EST-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'ADM-301': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'FIS-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'PSI-301': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo V
+  'IS-501': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-502': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-503': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-504': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-505': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-506': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IND-501': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'CF-501': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo VII
+  'IS-701': { horasTeoria: 2, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-701B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 3 },
+  'IS-702': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-704': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 0 },
+  'IS-704B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-705': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'IS-706': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-707': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-708': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'EP-701': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo IX
+  'IS-901': { horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 },
+  'IS-901B': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-902B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-904': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-905': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-906': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-907': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-908': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-909': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+};
+
+const getMetadatosCursoExcel = (h: any): MetadatosCursoExcel => {
+  const codigo = String(h.curso?.codigo ?? '').toUpperCase().trim();
+  const override = METADATOS_CURSO_EXCEL[codigo];
+
+  if (override) return override;
+
+  return {
+    horasTeoria: Number(h.curso?.horasTeoria ?? 0),
+    horasPractica: Number(h.curso?.horasPractica ?? 0),
+    horasLaboratorio: Number(h.curso?.horasLaboratorio ?? 0),
+  };
+};
+
+const PRIORIDAD_CARRIL: Record<string, number> = {
+  'FIS-301': 1,
+  'IS-303': 2,
+
+  'IS-902B': 1,
+  'IS-901B': 1,
+  'IS-906': 2,
+};
+
+const ordenarBloquesParaCarriles = (a: any, b: any): number => {
+  const aIni = String(a.horaInicio ?? '');
+  const bIni = String(b.horaInicio ?? '');
+
+  if (aIni !== bIni) return aIni.localeCompare(bIni);
+
+  const aCodigo = String(a.curso?.codigo ?? '').toUpperCase();
+  const bCodigo = String(b.curso?.codigo ?? '').toUpperCase();
+
+  const aPrioridad = PRIORIDAD_CARRIL[aCodigo] ?? 9999;
+  const bPrioridad = PRIORIDAD_CARRIL[bCodigo] ?? 9999;
+
+  if (aPrioridad !== bPrioridad) {
+    return aPrioridad - bPrioridad;
+  }
+
+  const aFin = String(a.horaFin ?? '');
+  const bFin = String(b.horaFin ?? '');
+
+  if (aFin !== bFin) return bFin.localeCompare(aFin);
+
+  return (a.__ordenOriginal ?? 0) - (b.__ordenOriginal ?? 0);
 };
 
 const nombreCursoCorto = (nombre?: string, maxWords = 4): string => {
@@ -196,7 +428,9 @@ const nombreCursoCorto = (nombre?: string, maxWords = 4): string => {
 };
 
 const docenteKey = (h: any): string =>
-  h.docenteId ?? `${h.docente?.usuario?.apellidos ?? ''}-${h.docente?.usuario?.nombre ?? ''}`;
+  h.docenteId ??
+  h.docente?.id ??
+  `${h.docente?.usuario?.apellidos ?? h.docente?.apellidos ?? ''}-${h.docente?.usuario?.nombre ?? h.docente?.nombre ?? ''}`;
 
 const colLetter = (n: number): string => {
   let s = '';
@@ -344,8 +578,10 @@ export async function exportarHorarioExcel(
   subtitulo = '',
   opciones: { mostrarEstudiosGeneralesMiercoles?: boolean } = {}
 ): Promise<void> {
-  const normalizedHorarios = horarios.map(h => ({
+  const normalizedHorarios = horarios.map((h, index) => ({
     ...h,
+    __ordenOriginal: index,
+    diaSemana: normalizarDia(h.diaSemana),
     horaInicio: normalizeTime(h.horaInicio),
     horaFin: normalizeTime(h.horaFin)
   }));
@@ -380,25 +616,51 @@ export async function exportarHorarioExcel(
 
   for (const h of normalizedHorarios) {
     const docId = docenteKey(h);
+    const key = `${docId}||${h.curso?.codigo ?? ''}`;
 
-    if (!seenDocs.has(docId)) {
-      const clasesDocente = normalizedHorarios.filter(x => docenteKey(x) === docId);
-      const totalHoras = clasesDocente.reduce((sum, x) => {
-        if (!x.horaInicio || !x.horaFin) return sum;
-        return sum + Math.max(parseInt(x.horaFin, 10) - parseInt(x.horaInicio, 10), 0);
-      }, 0);
+    if (!seenDocs.has(key)) {
+      const bloquesDocenteCurso = normalizedHorarios.filter(x => {
+        const xDocId = docenteKey(x);
+        return xDocId === docId && x.curso?.codigo === h.curso?.codigo;
+      });
 
-      seenDocs.set(docId, {
-        nombre: `${h.docente?.usuario?.nombre ?? ''} ${h.docente?.usuario?.apellidos ?? ''}`.trim(),
+      const metadatosExcel = getMetadatosCursoExcel(h);
+      const horasT = Number(metadatosExcel.horasTeoria ?? 0);
+      const horasP = Number(metadatosExcel.horasPractica ?? 0);
+      const horasL = Number(metadatosExcel.horasLaboratorio ?? 0);
+
+      // Cuenta todos los grupos reales del curso: A, B, C, etc.
+      const gruposTodos = new Set(
+        bloquesDocenteCurso
+          .map(bloque => String(bloque.grupo?.nombre ?? 'A').trim())
+          .filter(Boolean)
+      );
+
+      const cantidadGruposGeneral = Math.max(gruposTodos.size, 1);
+
+      // Solo los grupos de laboratorio multiplican las horas L.
+      const gruposLaboratorio = new Set(
+        bloquesDocenteCurso
+          .filter(bloque => getTipoBloque(bloque) === 'LABORATORIO')
+          .map(bloque => String(bloque.grupo?.nombre ?? 'A').trim())
+          .filter(Boolean)
+      );
+
+      const cantidadGruposLab = horasL > 0 ? Math.max(gruposLaboratorio.size, 1) : 0;
+      const totalHoras = horasT + horasP + (horasL > 0 ? horasL * cantidadGruposLab : 0);
+
+      seenDocs.set(key, {
+        nombre: getNombreDocente(h),
         asignatura: h.curso?.nombre ?? '',
         cursoCodigo: h.curso?.codigo ?? '',
-        horasT: h.curso?.horasTeoria ?? 0,
-        horasP: h.curso?.horasPractica ?? 0,
-        horasL: h.curso?.horasLaboratorio ?? 0,
-        grupos: clasesDocente.length,
-        totalHoras,
-        departamento: h.docente?.departamento ?? '',
+        horasT: formatearNumero(horasT),
+        horasP: formatearNumero(horasP),
+        horasL: formatearNumero(horasL),
+        grupos: cantidadGruposGeneral,
+        totalHoras: formatearNumero(totalHoras),
+        departamento: getDepartamentoDocente(h),
         docId,
+        key,
       });
     }
   }
@@ -417,7 +679,7 @@ export async function exportarHorarioExcel(
   docentesUnicos.forEach((doc, idx) => {
     doc.numero = idx + 1;
     doc.colorArgb = COLORES_UNT[idx % COLORES_UNT.length].argb;
-    seenDocs.set(doc.docId, doc);
+    seenDocs.set(doc.key, doc);
   });
 
   const ciclo = extraerCiclo(normalizedHorarios, titulo, subtitulo);
@@ -629,10 +891,12 @@ export async function exportarHorarioExcel(
       const libres = getAvailableRanges(excelRow, c1, c2, ocupado);
       if (libres.length === 0) return;
 
-      const bloques = normalizedHorarios.filter(x =>
-        normalizarDia(x.diaSemana) === dia &&
-        x.horaInicio === ini
-      );
+      const bloques = normalizedHorarios
+        .filter(x =>
+          normalizarDia(x.diaSemana) === dia &&
+          x.horaInicio === ini
+        )
+        .sort(ordenarBloquesParaCarriles);
 
       if (bloques.length === 0) {
         crearVacios(excelRow, c1, c2, thickTop);
@@ -646,7 +910,9 @@ export async function exportarHorarioExcel(
 
       if (bloques.length > columnasDisponibles.length) {
         const contenido = bloques.map(h => {
-          const doc = seenDocs.get(docenteKey(h));
+          const docId = docenteKey(h);
+          const key = `${docId}||${h.curso?.codigo ?? ''}`;
+          const doc = seenDocs.get(key);
           const labelComp = getComponentLabel(h);
           const ambiente = formatAmbienteExcel(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
           const curso = nombreCursoCorto(doc?.asignatura, 3);
@@ -682,7 +948,9 @@ export async function exportarHorarioExcel(
         : dividirColumnas(columnasDisponibles[0], columnasDisponibles[columnasDisponibles.length - 1], bloques.length);
 
       bloques.forEach((h, idx) => {
-        const doc = seenDocs.get(docenteKey(h));
+        const docId = docenteKey(h);
+        const key = `${docId}||${h.curso?.codigo ?? ''}`;
+        const doc = seenDocs.get(key);
         const span = calcSpanH(h.horaInicio, h.horaFin);
         const [bc1, bc2] = rangosBloques[idx];
         const labelComp = getComponentLabel(h);
@@ -760,17 +1028,21 @@ export async function exportarHorarioExcel(
     const diaA = DIAS_GRILLA.indexOf(normalizarDia(a.diaSemana));
     const diaB = DIAS_GRILLA.indexOf(normalizarDia(b.diaSemana));
     if (diaA !== diaB) return diaA - diaB;
-    return String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? ''));
+    const horaCompare = String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? ''));
+    if (horaCompare !== 0) return horaCompare;
+    return ordenarBloquesParaCarriles(a, b);
   });
 
   horariosOrdenados.forEach((h, idx) => {
-    const doc = seenDocs.get(docenteKey(h));
+    const docId = docenteKey(h);
+    const key = `${docId}||${h.curso?.codigo ?? ''}`;
+    const doc = seenDocs.get(key);
     const row = wsListado.addRow({
       numero: doc?.numero ?? idx + 1,
       codigo: h.curso?.codigo ?? '',
       curso: h.curso?.nombre ?? '',
       ciclo: h.curso?.ciclo ?? ciclo,
-      docente: `${h.docente?.usuario?.nombre ?? ''} ${h.docente?.usuario?.apellidos ?? ''}`.trim(),
+      docente: getNombreDocente(h),
       ambiente: h.ambiente?.nombre ?? h.ambiente?.codigo ?? '',
       dia: DIA_LABELS[normalizarDia(h.diaSemana)] ?? h.diaSemana,
       inicio: h.horaInicio ?? '',

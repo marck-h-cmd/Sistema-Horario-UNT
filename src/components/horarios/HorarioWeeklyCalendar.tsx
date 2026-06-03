@@ -132,15 +132,9 @@ export function HorarioWeeklyCalendar({
     const seen = new Map<string, any>();
     for (const h of normalizedHorarios) {
       const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-      if (!seen.has(docId)) {
-        const totalHoras = normalizedHorarios
-          .filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId)
-          .reduce((sum, x) => {
-            if (!x.horaInicio || !x.horaFin) return sum;
-            return sum + Math.max(parseInt(x.horaFin) - parseInt(x.horaInicio), 0);
-          }, 0);
-
-        seen.set(docId, {
+      const key = `${docId}||${h.curso.codigo}`;
+      if (!seen.has(key)) {
+        seen.set(key, {
           docenteId: docId,
           nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
           asignatura: h.curso.nombre,
@@ -148,10 +142,13 @@ export function HorarioWeeklyCalendar({
           horasT: h.curso.horasTeoria ?? 0,
           horasP: h.curso.horasPractica ?? 0,
           horasL: h.curso.horasLaboratorio ?? 0,
-          grupos: normalizedHorarios.filter(x =>
-            (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId
-          ).length,
-          totalHoras,
+          grupos: new Set(
+            normalizedHorarios.filter(x => {
+              const xDocId = x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`;
+              return xDocId === docId && x.curso.codigo === h.curso.codigo;
+            }).map(x => x.grupo?.nombre ?? 'A')
+          ).size,
+          totalHoras: (h.curso.horasTeoria ?? 0) + (h.curso.horasPractica ?? 0) + (h.curso.horasLaboratorio ?? 0),
           departamento: h.docente.departamento ?? '',
         });
       }
@@ -172,7 +169,8 @@ export function HorarioWeeklyCalendar({
 
   const getDocente = (h: HorarioCalendarItem) => {
     const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-    return docentesUnicos.find(d => d.docenteId === docId);
+    const key = `${docId}||${h.curso.codigo}`;
+    return docentesUnicos.find(d => (d.docenteId + '||' + d.cursoCodigo) === key);
   };
 
   const esCicloI = useMemo(() => {

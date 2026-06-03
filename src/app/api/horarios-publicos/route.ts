@@ -33,9 +33,11 @@ export async function GET(request: NextRequest) {
       where,
       select: {
         id: true,
+        docenteId: true,
         diaSemana: true,
         horaInicio: true,
         horaFin: true,
+        tipoComponente: true,
         curso: { select: { codigo: true, nombre: true, ciclo: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
         docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: { select: { nombre: true } } } },
         ambiente: { select: { codigo: true, nombre: true } },
@@ -43,7 +45,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return createSuccessResponse(horarios);
+    const horariosFormateados = horarios.map(h => ({
+      ...h,
+      docente: {
+        ...h.docente,
+        departamento: h.docente.departamento?.nombre ?? ''
+      }
+    }));
+
+    return createSuccessResponse(horariosFormateados);
   } catch (error: any) {
     console.error('Error listando horarios publicos:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Error al listar horarios', 500);

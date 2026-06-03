@@ -20,10 +20,11 @@ EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-
 EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller de Confecciones - Ing. Industrial	JUEVES	7:00	09:00	A	CONFIRMADO
 EG-106B	Estadística General	I	Martha Cardoso	posgrado B-104	VIERNES	14:00	16:00	A	CONFIRMADO
 EG-106B	Estadística General	I	Martha Cardoso	Taller Confecciones Ing. Industrial	VIERNES	16:00	18:00	A	CONFIRMADO
+
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	LUNES	9:00	13:00	A	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	9:00	13:00	B	CONFIRMADO
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	MARTES	9:00	13:00	C	CONFIRMADO
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	I-4	MARTES	14:00	16:00	A	CONFIRMADO
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	9:00	13:00	B	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Posgrado A-307	MIÉRCOLES	9:00	12:00	A	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	14:00	16:00	A	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
@@ -47,6 +48,8 @@ FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	14:00	1
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
 PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO
 PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	VIERNES	18:00	20:00	A	CONFIRMADO
+
+
 IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	posgrado B-104	LUNES	7:00	10:00	A	CONFIRMADO
 IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	LAB	LUNES	10:00	13:00	A	CONFIRMADO
 IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	LAB	MARTES	7:00	10:00	B	CONFIRMADO
@@ -73,8 +76,10 @@ IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	posgrado B-105	JUEVES	
 IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	JUEVES	7:00	9:00	A	CONFIRMADO
 IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	JUEVES	9:00	11:00	B	CONFIRMADO
 IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	VIERNES	7:00	9:00	C	CONFIRMADO
-CF-501	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	posgrado B-105	VIERNES	14:00	16:00	A	CONFIRMADO
+CF-501	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	posgrado B-105	VIERNES	14:00	17:00	A	CONFIRMADO
 CF-501	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	posgrado B-105	JUEVES	18:00	20:00	A	CONFIRMADO
+
+
 IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Lab. 1	MARTES	7:00	10:00	C	CONFIRMADO
 IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Posgrado A-303	MARTES	10:00	13:00	A	CONFIRMADO
 IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Lab. 2	LUNES	13:00	16:00	A	CONFIRMADO
@@ -99,10 +104,19 @@ IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Audiovi
 IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	14:00	16:00	A	CONFIRMADO
 IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	16:00	18:00	B	CONFIRMADO
 EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Taller de Confecciones - Ing. Industria	MIÉRCOLES	7:00	11:00	A	CONFIRMADO
+
+
 IS-901	Tesis I	IX	Juan Pedro Santos Fernández	Lab 2	JUEVES	11:00	13:00	A	CONFIRMADO
 IS-901	Tesis I	IX	Juan Pedro Santos Fernández	posgrado B-104	JUEVES	7:00	11:00	A	CONFIRMADO
 IS-901B	Tesis I	IX	Ricardo Mendoza Rivera	posgrado B-304	JUEVES	14:00	18:00	A	CONFIRMADO
+
+IS-902B	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	10:00	13:00	A	CONFIRMADO
+IS-902B	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	14:00	16:00	A	CONFIRMADO
+
+
+
 IS-901B	Tesis I	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	16:00	18:00	A	CONFIRMADO
+
 IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	posgrado B-104	LUNES	10:00	13:00	A	CONFIRMADO
 IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	10:00	12:00	A	CONFIRMADO
 IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	12:00	14:00	B	CONFIRMADO
@@ -322,7 +336,9 @@ const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria:
   if (n.includes('hackeoetico')) {
     return { creditos: 3, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
   }
-  
+  if (n.includes('analiticadenegocios')) {
+  return { creditos: 3, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+}
   return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
 };
 
@@ -332,33 +348,33 @@ async function main() {
   console.log('🌱 Iniciando generación de datos semilla...');
 
   // ==================== PARSEO DE TABLA ====================
-  const lines = rawSchedulesText.trim().split('\n');
+  const lines = rawSchedulesText.trim().split('\n').filter(line => line.trim() !== '');
   const parsedSchedules = lines.map(line => {
     const cols = line.split(/\t/);
-    const metadatos = obtenerMetadatosCurso(cols[1].trim());
-    const esLaboratorio = cols[4].trim().toLowerCase().includes('lab');
+    const metadatos = obtenerMetadatosCurso((cols[1] || '').trim());
+    const esLaboratorio = (cols[4] || '').trim().toLowerCase().includes('lab');
     // Determine tipoComponente
     let tipoComponente: 'TEORIA' | 'PRACTICA' | 'LABORATORIO' = 'TEORIA';
     if (esLaboratorio) {
       tipoComponente = 'LABORATORIO';
     } else {
       // Check if the course name or code suggests práctica
-      const lowerCourse = cols[1].toLowerCase();
+      const lowerCourse = (cols[1] || '').toLowerCase();
       if (lowerCourse.includes('práctica') || lowerCourse.includes('practica')) {
         tipoComponente = 'PRACTICA';
       }
     }
     return {
-      codigoCurso: cols[0].trim(),
-      curso: cols[1].trim(),
-      ciclo: cols[2].trim(),
-      docente: cols[3].trim(),
-      ambiente: cols[4].trim(),
-      dia: cols[5].trim(),
-      inicio: cols[6].trim(),
-      fin: cols[7].trim(),
-      grupo: cols[8].trim(),
-      estado: cols[9].trim(),
+      codigoCurso: (cols[0] || '').trim(),
+      curso: (cols[1] || '').trim(),
+      ciclo: (cols[2] || '').trim(),
+      docente: (cols[3] || '').trim(),
+      ambiente: (cols[4] || '').trim(),
+      dia: (cols[5] || '').trim(),
+      inicio: (cols[6] || '').trim(),
+      fin: (cols[7] || '').trim(),
+      grupo: (cols[8] || '').trim(),
+      estado: (cols[9] || '').trim(),
       tipoComponente,
     };
   });
