@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Printer, FileText, Download, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { apiGet } from '@/lib/api-client';
+import { apiGet, apiPost, downloadFile, ApiClientError } from '@/lib/api-client';
 import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { Rol } from '@prisma/client';
@@ -36,6 +36,7 @@ export default function CargaHorariaPage() {
   const [periodo, setPeriodo] = useState<Periodo | null>(null);
   const [docentes, setDocentes] = useState<any[]>([]);
   const [selectedDocenteId, setSelectedDocenteId] = useState<string>('');
+  const [loadingReporte, setLoadingReporte] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     async function loadData() {
@@ -91,11 +92,58 @@ export default function CargaHorariaPage() {
     }
   }, [selectedDocenteId, periodo, user]);
 
-  const handleImprimir = (formato: string) => {
-    // Simulación de la acción de imprimir/descargar, ya que los compañeros lo implementarán
-    toast.success(`Generando PDF para ${formato}...`, {
-      description: 'Esta funcionalidad será implementada por el equipo de backend.'
-    });
+  const handleImprimir = async (num: number, nombre: string) => {
+    if (!docenteInfo || !periodo) {
+      toast.error('No se ha cargado la información del docente o del período.');
+      return;
+    }
+
+    setLoadingReporte((prev) => ({ ...prev, [num]: true }));
+    const loadingToastId = toast.loading(`Generando PDF para ${nombre}...`);
+
+    try {
+      const filename = `${nombre.replace(/[()#]/g, '').trim().replace(/\s+/g, '_')}.pdf`;
+
+      if (num === 5) {
+        // Horario Semanal (GET request)
+        await downloadFile(
+          '/api/reportes/docente',
+          { docenteId: docenteInfo.id, periodoId: periodo.id },
+          filename
+        );
+      } else {
+        // Formatos 1, 2 Central y 2 Desconcentrada (POST request)
+        let tipo: 'carga' | 'dj-central' | 'dj-desconcentrada' = 'carga';
+        if (num === 2) tipo = 'dj-central';
+        else if (num === 4) tipo = 'dj-desconcentrada';
+
+        const res = await apiPost<Blob>('/api/docente/generate-pdf', {
+          tipo,
+          docenteId: docenteInfo.id,
+          periodoId: periodo.id,
+        });
+
+        if (res.success && res.data) {
+          const blobUrl = window.URL.createObjectURL(res.data);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(blobUrl);
+        } else {
+          throw new Error('No se recibió el archivo PDF del servidor');
+        }
+      }
+      toast.success(`PDF de ${nombre} descargado con éxito`, { id: loadingToastId });
+    } catch (error: any) {
+      console.error('Error al imprimir/descargar PDF:', error);
+      const msg = error instanceof ApiClientError ? error.message : error.message || 'Error al descargar';
+      toast.error(msg, { id: loadingToastId });
+    } finally {
+      setLoadingReporte((prev) => ({ ...prev, [num]: false }));
+    }
   };
 
   if (authLoading || (loading && !docentes.length)) {
@@ -239,11 +287,18 @@ export default function CargaHorariaPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleImprimir(f.nombre)}
+                        disabled={loadingReporte[f.num]}
+                        onClick={() => handleImprimir(f.num, f.nombre)}
                         className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 h-8 gap-1.5"
                       >
-                        <Printer className="h-4 w-4" />
-                        <span className="text-xs">Imprimir</span>
+                        {loadingReporte[f.num] ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        ) : (
+                          <Printer className="h-4 w-4" />
+                        )}
+                        <span className="text-xs">
+                          {loadingReporte[f.num] ? 'Generando...' : 'Imprimir'}
+                        </span>
                       </Button>
                     </td>
                   </tr>
