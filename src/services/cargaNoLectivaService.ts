@@ -28,14 +28,24 @@ export class CargaNoLectivaService {
     // 1. Calcular horas de dedicación
     const horasDedicacion = this.obtenerHorasDedicacion(docente.dedicacion);
 
-    // 2. Calcular horas lectivas (desde CursoDocente activo)
-    const asignacionesLectivas = await prisma.cursoDocente.findMany({
+    // 2. Calcular horas lectivas (desde Horarios del periodo)
+    const horarios = await prisma.horario.findMany({
       where: {
         docenteId,
-        activo: true,
+        periodoId,
+        estado: { not: 'CANCELADO' },
       },
+      include: { curso: true }
     });
-    const horasLectivas = asignacionesLectivas.reduce((sum, cd) => sum + cd.horasAsignadas, 0);
+    
+    let horasLectivas = 0;
+    for (const h of horarios) {
+      switch (h.tipoComponente) {
+        case 'TEORIA': horasLectivas += h.curso.horasTeoria; break;
+        case 'PRACTICA': horasLectivas += h.curso.horasPractica; break;
+        case 'LABORATORIO': horasLectivas += h.curso.horasLaboratorio; break;
+      }
+    }
 
     // 3. Calcular horas no lectivas disponibles
     const horasNoLectivasDisponibles = Math.max(0, horasDedicacion - horasLectivas);
@@ -96,10 +106,19 @@ export class CargaNoLectivaService {
 
     // 1. Calcular horas disponibles
     const horasDedicacion = this.obtenerHorasDedicacion(docente.dedicacion);
-    const asignacionesLectivas = await prisma.cursoDocente.findMany({
-      where: { docenteId, activo: true },
+    const horarios = await prisma.horario.findMany({
+      where: { docenteId, periodoId, estado: { not: 'CANCELADO' } },
+      include: { curso: true }
     });
-    const horasLectivas = asignacionesLectivas.reduce((sum, cd) => sum + cd.horasAsignadas, 0);
+    
+    let horasLectivas = 0;
+    for (const h of horarios) {
+      switch (h.tipoComponente) {
+        case 'TEORIA': horasLectivas += h.curso.horasTeoria; break;
+        case 'PRACTICA': horasLectivas += h.curso.horasPractica; break;
+        case 'LABORATORIO': horasLectivas += h.curso.horasLaboratorio; break;
+      }
+    }
     const horasNoLectivasDisponibles = Math.max(0, horasDedicacion - horasLectivas);
 
     // 2. Validar que no se exceda el total

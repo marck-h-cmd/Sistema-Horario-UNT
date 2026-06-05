@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Save, ArrowLeft, Info } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Info, Trash2, Plus, Calendar } from 'lucide-react';
+import PanelDistribucionHoraria from '@/components/horarios/PanelDistribucionHoraria';
 import { Button } from '@/components/ui/button';
 import { apiGet, apiPost, ApiClientError } from '@/lib/api-client';
 import { Formateadores } from '@/lib/formateadores';
@@ -57,10 +58,16 @@ interface LectivaRespuesta {
     horaFin: string | null;
     horas: number;
     estado: string;
-    alumnosAprox?: number; // Agregado si estuviera disponible, o mock
+    alumnosAprox?: number;
+    declaracion?: {
+      items: any[];
+    };
   }[];
   totalHorasLectivas: number;
   horasNoLectivasDisponibles: number;
+  declaracion?: {
+    items: any[];
+  };
 }
 
 export default function DeclaracionCargaPage() {
@@ -90,13 +97,14 @@ export default function DeclaracionCargaPage() {
     setLoading(true);
     try {
       const res = await apiGet<LectivaRespuesta>('/api/declaracion/lectiva');
-      setDataLectiva(res.data || null);
 
       if (res.data) {
+        let fullData = { ...res.data };
         // Cargar declaración no lectiva existente
         const resNoL = await apiGet<any>('/api/declaracion/no-lectiva', { periodoId: res.data.periodo.id });
         if (resNoL.data?.declaracion) {
           const dec = resNoL.data.declaracion;
+          fullData.declaracion = dec;
           
           setFormData(prev => {
             const next = { ...prev };
@@ -112,6 +120,7 @@ export default function DeclaracionCargaPage() {
             return next;
           });
         }
+        setDataLectiva(fullData);
       }
     } catch (error) {
       console.error(error);
@@ -123,18 +132,32 @@ export default function DeclaracionCargaPage() {
 
   const handleFieldChange = (actId: string, field: string, value: any) => {
     if (field === 'horas') {
-      const numValue = parseInt(value) || 0;
+      const raw = typeof value === 'string' ? (value === '' ? 0 : Number(value)) : Number(value);
+      const numValue = Number.isFinite(raw) ? Math.trunc(raw) : 0;
       const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
       if (actDef && actDef.getMax) {
         const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
-        if (numValue > max) {
-          toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
-          setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: max } }));
-          return;
-        }
+        if (numValue > max) toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
       }
+      setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: Math.max(0, numValue) } }));
+      return;
     }
     setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: value } }));
+  };
+
+  const handleHorasBlur = (actId: string) => {
+    const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
+    if (!actDef || !actDef.getMax) return;
+    const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
+    setFormData(prev => {
+      const current = prev[actId]?.horas ?? 0;
+      const nextHoras = actDef.isExact ? max : Math.min(current, max);
+      if (nextHoras !== current) {
+        if (actDef.isExact) toast.error(`${actDef.name} debe ser exactamente ${max} horas.`);
+        else toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
+      }
+      return { ...prev, [actId]: { ...prev[actId], horas: Math.max(0, nextHoras) } };
+    });
   };
 
   const handleMetadataChange = (actId: string, metaField: string, value: any) => {
@@ -189,7 +212,13 @@ export default function DeclaracionCargaPage() {
       });
       
       toast.success('Declaración de carga horaria guardada exitosamente.', { id: loadingToastId });
-      router.push('/dashboard');
+      const resNoL = await apiGet<any>('/api/declaracion/no-lectiva', { periodoId: dataLectiva.periodo.id });
+      if (resNoL.data?.declaracion) {
+        setDataLectiva(prev => prev ? { ...prev, declaracion: resNoL.data.declaracion } : prev);
+      }
+      setTimeout(() => {
+        document.getElementById('horario-personal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
     } catch (error: any) {
       console.error(error);
       const msg = error instanceof ApiClientError ? error.message : 'Error al guardar la declaración';
@@ -454,8 +483,9 @@ export default function DeclaracionCargaPage() {
                         type="number"
                         min="0"
                         className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-center font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 transition-shadow"
-                        value={data.horas || ''}
-                        onChange={(e) => handleFieldChange(act.id, 'horas', parseInt(e.target.value) || 0)}
+                        value={data.horas}
+                        onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)}
+                        onBlur={() => handleHorasBlur(act.id)}
                       />
                     </div>
                   </div>
@@ -466,22 +496,36 @@ export default function DeclaracionCargaPage() {
         </div>
 
         {/* Footer: Totales y Botones */}
-        <div className="pt-6 border-t-2 border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="text-lg font-bold text-slate-700 dark:text-slate-300">Total Horas No Lectivas:</span>
-            <div className={`px-4 py-1.5 rounded-lg border-2 font-bold text-xl ${
-              totalNoLectivas === dataLectiva!.horasNoLectivasDisponibles 
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                : 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-            }`}>
-              {totalNoLectivas}
+        <div className="pt-6 border-t-2 border-slate-200 dark:border-slate-700 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl">
+              <div>
+                <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Horas Lectivas</div>
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{dataLectiva!.totalHorasLectivas} h</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Horas No Lectivas</div>
+                <div className="flex items-center gap-2">
+                  <div className={`px-3 py-0.5 rounded border-2 font-bold text-lg ${
+                    totalNoLectivas === dataLectiva!.horasNoLectivasDisponibles 
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
+                      : 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                  }`}>
+                    {totalNoLectivas}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    / {dataLectiva!.horasNoLectivasDisponibles} h req.
+                  </span>
+                </div>
+              </div>
+              <div className="pl-0 sm:pl-6 border-l-0 sm:border-l border-slate-200 dark:border-slate-700">
+                <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Total General</div>
+                <div className="text-xl font-bold text-slate-800 dark:text-slate-100">{dataLectiva!.totalHorasLectivas + totalNoLectivas} h / {docente.horasDedicacion} h</div>
+              </div>
             </div>
-            <span className="text-sm font-semibold text-slate-500">
-              / {dataLectiva!.horasNoLectivasDisponibles} h req.
-            </span>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex justify-end gap-3 mt-2">
             <Button
               variant="outline"
               onClick={() => router.push('/dashboard')}
@@ -501,6 +545,17 @@ export default function DeclaracionCargaPage() {
           </div>
         </div>
       </div>
+
+       <div id="horario-personal">
+         {dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0 && (
+           <PanelDistribucionHoraria
+             docenteId={docente.id}
+             periodoId={dataLectiva.periodo.id}
+             declaracionItems={dataLectiva.declaracion.items}
+             horariosLectivos={dataLectiva.asignaciones || []}
+           />
+         )}
+       </div>
     </div>
   );
 }
