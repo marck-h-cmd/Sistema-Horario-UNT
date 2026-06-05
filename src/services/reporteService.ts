@@ -6,6 +6,31 @@ import { TipoActividadNoLectiva, DiaSemana } from '@prisma/client';
 import { UtilidadesFecha } from '@/lib/utilidadesFecha';
 import { redis } from '@/lib/redis';
 
+// Actividades no lectivas en orden requerido
+const ACTIVIDADES_NO_LECTIVAS_ORDENADAS = [
+  TipoActividadNoLectiva.PREPARACION_Y_EVALUACION,
+  TipoActividadNoLectiva.CONSEJERIA,
+  TipoActividadNoLectiva.INVESTIGACION,
+  TipoActividadNoLectiva.CAPACITACION,
+  TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO,
+  TipoActividadNoLectiva.ACTIVIDADES_DE_ADMINISTRACION,
+  TipoActividadNoLectiva.ASESORIA_DE_TESIS,
+  TipoActividadNoLectiva.RESPONSABILIDAD_SOCIAL_UNIVERSITARIA,
+  TipoActividadNoLectiva.COMITES_TECNICOS_Y_COMISIONES,
+];
+
+const NOMBRES_ACTIVIDADES: Record<TipoActividadNoLectiva, string> = {
+  [TipoActividadNoLectiva.PREPARACION_Y_EVALUACION]: 'PREPARACIÓN Y EVALUACIÓN (Max 50% de Trabajo Lectivo)',
+  [TipoActividadNoLectiva.CONSEJERIA]: 'CONSEJERÍA',
+  [TipoActividadNoLectiva.INVESTIGACION]: 'INVESTIGACIÓN',
+  [TipoActividadNoLectiva.CAPACITACION]: 'CAPACITACIÓN',
+  [TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO]: 'ACTIVIDADES DE GOBIERNO',
+  [TipoActividadNoLectiva.ACTIVIDADES_DE_ADMINISTRACION]: 'ACTIVIDADES DE ADMINISTRACIÓN',
+  [TipoActividadNoLectiva.ASESORIA_DE_TESIS]: 'ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL',
+  [TipoActividadNoLectiva.RESPONSABILIDAD_SOCIAL_UNIVERSITARIA]: 'RESPONSABILIDAD SOCIAL UNIVERSITARIA',
+  [TipoActividadNoLectiva.COMITES_TECNICOS_Y_COMISIONES]: 'COMITÉS TÉCNICOS Y COMISIONES',
+};
+
 export class ReporteService {
   private generadorPDF = new GeneradorPDF();
 
@@ -170,14 +195,15 @@ export class ReporteService {
         <tr>
           <td>${escapeHtml(c.codigo)}</td>
           <td>${escapeHtml(c.nombre)}</td>
+          <td>OB</td>
           <td>Ingeniería de Sistemas</td>
           <td>${escapeHtml(c.ciclo.toString())}°</td>
           <td>${escapeHtml(gruposNombres)}</td>
           <td>30</td>
-          <td>${c.horasTeoria}h</td>
-          <td>${c.horasPractica}h</td>
-          <td>${c.horasLaboratorio}h</td>
-          <td class="font-bold">${totalHoras}h</td>
+          <td>${c.horasTeoria}</td>
+          <td>${c.horasPractica}</td>
+          <td>${c.horasLaboratorio}</td>
+          <td class="font-bold">${totalHoras}</td>
         </tr>`;
     }).join('');
 
@@ -188,53 +214,27 @@ export class ReporteService {
 
     // Carga No Lectiva
     const itemsNoLectivas = declaracion?.items || [];
-    const totalNoLectivas = declaracion?.totalHoras || 0;
-
-    const filasNoLectivas = Object.values(TipoActividadNoLectiva).map((actividad) => {
+    
+    const filasNoLectivas = ACTIVIDADES_NO_LECTIVAS_ORDENADAS.map((actividad, index) => {
       const declarado = itemsNoLectivas.find((i: any) => i.tipoActividad === actividad);
       const horas = declarado ? declarado.horasSemanales : 0;
-      const descripcion = declarado?.descripcion || '—';
-      const metadataStr = declarado?.metadata ? JSON.stringify(declarado.metadata) : '';
+      const descripcion = declarado?.descripcion || '';
 
       return `
         <tr>
-          <td>${escapeHtml(this.formatearTipoActividad(actividad))}</td>
-          <td>${horas}h</td>
-          <td>${escapeHtml(descripcion)} ${metadataStr ? `<br/><small class="text-gray-500">${escapeHtml(metadataStr)}</small>` : ''}</td>
+          <td class="text-center">${index + 2}</td>
+          <td>
+            <strong>${NOMBRES_ACTIVIDADES[actividad]}</strong>
+            ${descripcion ? `<br/><span style="font-size: 8pt;">${escapeHtml(descripcion)}</span>` : ''}
+          </td>
+          <td class="text-center">${horas}</td>
         </tr>`;
     }).join('');
 
-    // Comisiones Especiales (Solo para Sedes Desconcentradas)
-    let seccionComisiones = '';
-    if (tipoSede === 'SEDE_DESCENTRALIZADA') {
-      const comisiones = docente.comisiones || [];
-      const filasComisiones = comisiones.map((com: any) => {
-        return `
-          <tr>
-            <td>${escapeHtml(com.sedeDestino)}</td>
-            <td>${new Date(com.fechaInicio).toLocaleDateString()}</td>
-            <td>${new Date(com.fechaFin).toLocaleDateString()}</td>
-            <td>${escapeHtml(com.licenciaDocumento)}</td>
-          </tr>`;
-      }).join('');
+    const totalNoLectivas = itemsNoLectivas.reduce((sum: number, item: any) => sum + (item.horasSemanales || 0), 0);
+    const totalGeneral = totalLectivas + totalNoLectivas;
 
-      seccionComisiones = `
-        <h3 class="seccion-titulo">COMISIONES DE SERVICIO VIGENTES</h3>
-        <table class="tabla-oficial">
-          <thead>
-            <tr>
-              <th>Sede Destino</th>
-              <th>Fecha Inicio</th>
-              <th>Fecha Fin</th>
-              <th>N° Resolución / Licencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filasComisiones || '<tr><td colspan="4" class="text-center text-gray-500">Ninguna comisión registrada</td></tr>'}
-          </tbody>
-        </table>
-        <br/>`;
-    }
+    const fechaActual = new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
 
     return `
       <!DOCTYPE html>
@@ -242,112 +242,145 @@ export class ReporteService {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1e293b; margin: 20px; }
-          .header { text-align: center; border-bottom: 2px solid #0f2d55; padding-bottom: 12px; margin-bottom: 20px; }
-          .header h1 { color: #0f2d55; font-size: 16pt; margin: 0 0 4px; font-weight: 800; text-transform: uppercase; }
-          .header h2 { color: #64748b; font-size: 11pt; margin: 0; font-weight: 550; }
-          .info-docente { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          .info-docente td { padding: 4px 8px; vertical-align: top; }
-          .seccion-titulo { color: #0f2d55; font-size: 11pt; font-weight: 700; border-bottom: 1.5px solid #c9a227; padding-bottom: 4px; margin-top: 24px; margin-bottom: 10px; text-transform: uppercase; }
-          .tabla-oficial { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
-          .tabla-oficial th { background: #0f2d55; color: white; border: 1px solid #0f2d55; padding: 6px 8px; text-align: left; text-transform: uppercase; font-size: 8pt; }
-          .tabla-oficial td { border: 1px solid #cbd5e1; padding: 6px 8px; }
-          .tabla-oficial tr:nth-child(even) { background: #f8fafc; }
-          .total-caja { background: #f1f5f9; font-weight: 700; text-align: right; }
+          body { font-family: 'Times New Roman', Times, serif; font-size: 10pt; line-height: 1.2; color: #000000; margin: 25mm; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h1 { font-size: 12pt; margin: 0 0 3px; font-weight: bold; text-transform: uppercase; }
+          .header h2 { font-size: 11pt; margin: 0; font-weight: bold; text-transform: uppercase; }
+          .seccion-titulo { font-size: 10pt; font-weight: bold; margin-top: 18px; margin-bottom: 8px; text-transform: uppercase; }
+          .tabla-oficial { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9pt; }
+          .tabla-oficial th { background: #f0f0f0; border: 1px solid #000; padding: 6px 4px; text-align: center; text-transform: uppercase; font-weight: bold; }
+          .tabla-oficial td { border: 1px solid #000; padding: 6px 4px; vertical-align: middle; }
+          .tabla-oficial tr:nth-child(even) { background: #ffffff; }
+          .total-caja { background: #f0f0f0; font-weight: bold; text-align: right; }
           .firmas { width: 100%; margin-top: 60px; border-collapse: collapse; }
-          .firmas td { width: 50%; text-align: center; vertical-align: bottom; height: 100px; font-size: 9.5pt; }
-          .firmas-linea { border-top: 1.5px solid #1e293b; width: 70%; margin: 0 auto 8px; }
+          .firmas td { width: 33.33%; text-align: center; vertical-align: bottom; height: 80px; font-size: 9.5pt; }
+          .firmas-linea { border-top: 1px solid #000; width: 80%; margin: 0 auto 8px; }
+          .fecha { text-align: right; margin-top: 30px; font-size: 10pt; }
+          .datos-generales { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9pt; }
+          .datos-generales td { border: 1px solid #000; padding: 5px; }
+          .datos-generales .label { font-weight: bold; text-transform: uppercase; }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
-          <h2>FORMATO N° 1: CARGA HORARIA SEMANAS SEMESTRAL (${tipoSede === 'SEDE_CENTRAL' ? 'SEDE CENTRAL' : 'SEDES DESCONCENTRADAS'})</h2>
-          <div>Período Académico: <strong>${escapeHtml(periodo.nombre)}</strong></div>
+          <h2>FORMATO N° 1</h2>
+          <h2>DECLARACIÓN DE CARGA HORARIA ASIGNADA</h2>
         </div>
 
-        <table class="info-docente">
+        <div class="seccion-titulo">I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR:</div>
+        
+        <table class="datos-generales">
           <tr>
-            <td><strong>Docente:</strong></td>
-            <td>${escapeHtml(nombreDocente)}</td>
-            <td><strong>Código IBM/DNI:</strong></td>
-            <td>${escapeHtml(docente.codigo)}</td>
-          </tr>
-          <tr>
-            <td><strong>Categoría:</strong></td>
-            <td>${escapeHtml(Formateadores.categoriaDocente(docente.categoria))}</td>
-            <td><strong>Dedicación:</strong></td>
-            <td>${escapeHtml(docente.dedicacion.replace(/_/g, ' '))}</td>
-          </tr>
-          <tr>
-            <td><strong>Facultad:</strong></td>
+            <td class="label">FACULTAD:</td>
             <td>Facultad de Ingeniería</td>
-            <td><strong>Departamento:</strong></td>
+            <td class="label">DPTO. ACADÉMICO:</td>
             <td>${escapeHtml(docente.departamento || 'Ingeniería de Sistemas')}</td>
           </tr>
         </table>
 
-        <h3 class="seccion-titulo">I. CARGA LECTIVA</h3>
         <table class="tabla-oficial">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Asignatura</th>
-              <th>Escuela</th>
-              <th>Ciclo</th>
-              <th>Sec/Gpo</th>
-              <th>N° Alum.</th>
-              <th>HT</th>
-              <th>HP</th>
-              <th>HL</th>
-              <th>Total</th>
+              <th>NOMBRE COMPLETO</th>
+              <th>CONDICIÓN</th>
+              <th>CATEGORÍA</th>
+              <th>MODALIDAD</th>
             </tr>
           </thead>
           <tbody>
-            ${filasCursos || '<tr><td colspan="10" class="text-center text-gray-500">Ningún curso asignado</td></tr>'}
-            <tr class="total-caja">
-              <td colspan="6">TOTAL HORAS CARGA LECTIVA:</td>
-              <td colspan="4">${totalLectivas} Horas semanales</td>
+            <tr>
+              <td>${escapeHtml(nombreDocente)}</td>
+              <td class="text-center">NOMBRADO</td>
+              <td class="text-center">${escapeHtml(Formateadores.categoriaDocente(docente.categoria))}</td>
+              <td class="text-center">${escapeHtml(docente.dedicacion.replace(/_/g, ' '))}</td>
             </tr>
           </tbody>
         </table>
 
-        <h3 class="seccion-titulo">II. CARGA NO LECTIVA</h3>
+        <table class="datos-generales">
+          <tr>
+            <td class="label">AÑO ACADÉMICO:</td>
+            <td>${new Date().getFullYear()}</td>
+            <td class="label">CICLO(SEM):</td>
+            <td>${escapeHtml(periodo.nombre)}</td>
+            <td class="label">INICIO:</td>
+            <td></td>
+            <td class="label">FINAL:</td>
+            <td></td>
+          </tr>
+        </table>
+
+        <div class="seccion-titulo">1. TRABAJO LECTIVO.- Datos completos y con claridad</div>
+        
         <table class="tabla-oficial">
           <thead>
             <tr>
-              <th style="width: 40%;">Actividad No Lectiva</th>
-              <th style="width: 15%;">Horas</th>
-              <th style="width: 45%;">Descripción / Detalles</th>
+              <th>CÓDIGO</th>
+              <th>NOMBRE DEL CURSO</th>
+              <th>CUR.</th>
+              <th>ESCUELA PROF.</th>
+              <th>CIC.</th>
+              <th>SEC.</th>
+              <th>N° AL.</th>
+              <th>H.T.</th>
+              <th>H.P.</th>
+              <th>H.L.</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasCursos || '<tr><td colspan="11" class="text-center">Ningún curso asignado</td></tr>'}
+            <tr class="total-caja">
+              <td colspan="10">TOTAL HORAS LECTIVAS:</td>
+              <td class="text-center">${totalLectivas}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="tabla-oficial">
+          <thead>
+            <tr>
+              <th>N°</th>
+              <th>ACTIVIDAD NO LECTIVA</th>
+              <th>HORAS</th>
             </tr>
           </thead>
           <tbody>
             ${filasNoLectivas}
             <tr class="total-caja">
-              <td>TOTAL HORAS CARGA NO LECTIVA:</td>
-              <td>${totalNoLectivas}h</td>
-              <td>Horas semanales</td>
+              <td colspan="2">TOTAL HORAS NO LECTIVAS:</td>
+              <td class="text-center">${totalNoLectivas}</td>
             </tr>
           </tbody>
         </table>
 
-        ${seccionComisiones}
+        <table class="tabla-oficial">
+          <tbody>
+            <tr>
+              <td style="width: 75%; text-align: right; font-weight: bold;">TOTAL</td>
+              <td style="width: 25%; text-align: center; font-weight: bold;">${totalGeneral}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div style="background: #0f2d55; color: white; padding: 10px; font-weight: 700; text-align: center; border-radius: 4px; font-size: 11pt; margin-top: 20px;">
-          TOTAL GENERAL (LECTIVA + NO LECTIVA): ${totalLectivas + totalNoLectivas} HORAS SEMANALES
+        <div class="fecha">
+          Trujillo, ${fechaActual}
         </div>
 
         <table class="firmas">
           <tr>
             <td>
               <div class="firmas-linea"></div>
-              <strong>${escapeHtml(nombreDocente)}</strong><br/>
-              Docente Declarante
+              Firma del Profesor
             </td>
             <td>
               <div class="firmas-linea"></div>
-              <strong>Director del Departamento</strong><br/>
-              Ingeniería de Sistemas — UNT
+              Firma del Director de Dpto.
+            </td>
+            <td>
+              <div class="firmas-linea"></div>
+              V° B° DECANO FAC.
             </td>
           </tr>
         </table>
@@ -628,7 +661,7 @@ export class ReporteService {
   }
 
   private formatearTipoActividad(tipo: TipoActividadNoLectiva): string {
-    return tipo.replace(/_/g, ' ');
+    return NOMBRES_ACTIVIDADES[tipo] || tipo.replace(/_/g, ' ');
   }
 
   private obtenerColorActividadNoLectiva(tipo: TipoActividadNoLectiva) {

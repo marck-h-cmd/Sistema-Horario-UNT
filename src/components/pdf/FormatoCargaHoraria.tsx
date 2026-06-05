@@ -10,122 +10,117 @@ Font.register({
   ]
 });
 
+// Actividades no lectivas en el orden requerido
+const ACTIVIDADES_NO_LECTIVAS = [
+  { id: 'PREPARACION_Y_EVALUACION', num: 2, name: 'PREPARACIÓN Y EVALUACIÓN (Max 50% de Trabajo Lectivo)' },
+  { id: 'CONSEJERIA', num: 3, name: 'CONSEJERÍA' },
+  { id: 'INVESTIGACION', num: 4, name: 'INVESTIGACIÓN' },
+  { id: 'CAPACITACION', num: 5, name: 'CAPACITACIÓN' },
+  { id: 'ACTIVIDADES_DE_GOBIERNO', num: 6, name: 'ACTIVIDADES DE GOBIERNO' },
+  { id: 'ACTIVIDADES_DE_ADMINISTRACION', num: 7, name: 'ACTIVIDADES DE ADMINISTRACIÓN' },
+  { id: 'ASESORIA_DE_TESIS', num: 8, name: 'ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL' },
+  { id: 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA', num: 9, name: 'RESPONSABILIDAD SOCIAL UNIVERSITARIA' },
+  { id: 'COMITES_TECNICOS_Y_COMISIONES', num: 10, name: 'COMITÉS TÉCNICOS Y COMISIONES' },
+];
+
 // Estilos del Reporte PDF
 const styles = StyleSheet.create({
   page: {
-    padding: 35,
+    padding: 30,
     fontFamily: 'Helvetica',
-    fontSize: 8.5,
-    lineHeight: 1.3,
-    color: '#1a1a1a',
+    fontSize: 8,
+    lineHeight: 1.2,
+    color: '#000000',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#002B49',
-    paddingBottom: 8,
+    marginBottom: 20,
   },
   university: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#002B49',
     textTransform: 'uppercase',
+    marginBottom: 5,
   },
-  title: {
+  title1: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginBottom: 3,
+  },
+  title2: {
     fontSize: 10,
     fontWeight: 'bold',
-    marginTop: 4,
-    color: '#333333',
-  },
-  subtitle: {
-    fontSize: 8,
-    marginTop: 2,
-    color: '#555555',
+    textTransform: 'uppercase',
   },
   sectionTitle: {
     fontSize: 9,
     fontWeight: 'bold',
-    color: '#002B49',
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: 15,
+    marginBottom: 8,
     textTransform: 'uppercase',
-    borderBottomWidth: 0.8,
-    borderBottomColor: '#002B49',
-    paddingBottom: 2,
   },
-  metaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 10,
+  datosTable: {
+    width: '100%',
     borderWidth: 0.5,
-    borderColor: '#cccccc',
-    borderRadius: 3,
-    padding: 6,
-    backgroundColor: '#f9f9f9',
+    borderColor: '#000',
+    marginBottom: 10,
   },
-  metaItem: {
-    width: '50%',
+  datosRow: {
     flexDirection: 'row',
-    marginBottom: 3,
   },
-  metaLabel: {
-    fontWeight: 'bold',
-    width: '35%',
-    color: '#444444',
-  },
-  metaValue: {
-    width: '65%',
-    color: '#111111',
+  datosCell: {
+    borderWidth: 0.5,
+    borderColor: '#000',
+    padding: 5,
   },
   table: {
     width: '100%',
     borderWidth: 0.5,
-    borderColor: '#000000',
+    borderColor: '#000',
     marginBottom: 10,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#e6edf5',
+    backgroundColor: '#f0f0f0',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#000000',
+    borderBottomColor: '#000',
     alignItems: 'center',
-    height: 20,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#000000',
+    borderBottomColor: '#000',
     alignItems: 'center',
-    minHeight: 18,
+    minHeight: 16,
   },
   tableRowLast: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 18,
-    backgroundColor: '#f5f5f5',
+    minHeight: 16,
+    backgroundColor: '#f0f0f0',
   },
   tableColHeader: {
     fontWeight: 'bold',
     textAlign: 'center',
-    fontSize: 7.5,
-    color: '#002b49',
+    fontSize: 7,
+    padding: 4,
   },
   tableCol: {
     textAlign: 'left',
     paddingLeft: 4,
-    fontSize: 7.5,
+    fontSize: 7,
+    padding: 4,
   },
   tableColCenter: {
     textAlign: 'center',
-    fontSize: 7.5,
+    fontSize: 7,
+    padding: 4,
   },
-  totalContainer: {
+  totalRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 4,
-    marginBottom: 12,
-    paddingRight: 10,
+    marginTop: 5,
+    marginBottom: 10,
   },
   totalLabel: {
     fontWeight: 'bold',
@@ -135,33 +130,15 @@ const styles = StyleSheet.create({
   totalVal: {
     fontWeight: 'bold',
     fontSize: 9,
-    color: '#002B49',
-  },
-  notaWarning: {
-    fontSize: 7.5,
-    color: '#cc3300',
-    backgroundColor: '#fff5f0',
-    borderWidth: 0.5,
-    borderColor: '#ffcccc',
-    padding: 6,
-    borderRadius: 3,
-    marginBottom: 10,
-    fontWeight: 'bold',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 35,
-    right: 35,
   },
   signatureContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 40,
-    paddingHorizontal: 20,
+    marginTop: 60,
+    paddingHorizontal: 10,
   },
   signatureBox: {
-    width: '40%',
+    width: '30%',
     alignItems: 'center',
   },
   signatureLine: {
@@ -172,13 +149,13 @@ const styles = StyleSheet.create({
   },
   signatureTitle: {
     fontSize: 7.5,
-    color: '#555555',
     textAlign: 'center',
   },
-  signatureName: {
-    fontWeight: 'bold',
+  fechaLine: {
+    textAlign: 'right',
+    marginTop: 30,
+    marginBottom: 10,
     fontSize: 8,
-    textAlign: 'center',
   }
 });
 
@@ -204,8 +181,8 @@ interface FormatoCargaHorariaProps {
   docente: {
     nombres: string;
     apellidos: string;
-    dni: string;
-    codigoIBM: string;
+    dni?: string;
+    codigoIBM?: string;
     departamento: string;
     facultad: string;
     condicion: string;
@@ -237,184 +214,206 @@ export function FormatoCargaHoraria({
     0
   );
 
+  // Helper to get horas for a specific activity
+  const getHorasActividad = (tipo: string) => {
+    const item = cargaNoLectiva.find(i => i.tipoActividad === tipo);
+    return item ? item.horasSemanales : 0;
+  };
+  
+  // Helper to get descripcion for a specific activity
+  const getDescripcionActividad = (tipo: string) => {
+    const item = cargaNoLectiva.find(i => i.tipoActividad === tipo);
+    return item ? (item.descripcion || '') : '';
+  };
+
   // Sumar horas no lectivas
-  const totalHorasNoLectivas = cargaNoLectiva.reduce((acc, n) => acc + n.horasSemanales, 0);
+  const totalHorasNoLectivas = ACTIVIDADES_NO_LECTIVAS.reduce((acc, act) => acc + getHorasActividad(act.id), 0);
 
   // Suma total
   const sumaTotalHoras = totalHorasLectivas + totalHorasNoLectivas;
+  
+  // Fecha actual
+  const fechaActual = new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Cabecera Oficial */}
         <View style={styles.header}>
-          <Text style={styles.university}>Universidad Nacional de Trujillo</Text>
-          <Text style={styles.title}>FORMATO N° 1 - DECLARACIÓN DE LA CARGA HORARIA ASIGNADA</Text>
-          <Text style={styles.subtitle}>Semestre Académico: {periodo.anio} - {periodo.ciclo}</Text>
+          <Text style={styles.university}>UNIVERSIDAD NACIONAL DE TRUJILLO</Text>
+          <Text style={styles.title1}>FORMATO N° 1</Text>
+          <Text style={styles.title2}>DECLARACIÓN DE CARGA HORARIA ASIGNADA</Text>
         </View>
 
-        {/* Datos Personales del Docente */}
-        <Text style={styles.sectionTitle}>I. Datos del Docente</Text>
-        <View style={styles.metaGrid}>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Apellidos:</Text>
-            <Text style={styles.metaValue}>{docente.apellidos}</Text>
+        {/* I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR */}
+        <Text style={styles.sectionTitle}>I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR:</Text>
+        
+        <View style={styles.datosTable}>
+          <View style={styles.datosRow}>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>FACULTAD:</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '75%' }]}>
+              <Text>{docente.facultad}</Text>
+            </View>
           </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Nombres:</Text>
-            <Text style={styles.metaValue}>{docente.nombres}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>D.N.I.:</Text>
-            <Text style={styles.metaValue}>{docente.dni}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Código IBM:</Text>
-            <Text style={styles.metaValue}>{docente.codigoIBM || 'No Registrado'}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Departamento:</Text>
-            <Text style={styles.metaValue}>{docente.departamento}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Facultad:</Text>
-            <Text style={styles.metaValue}>{docente.facultad}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Categoría:</Text>
-            <Text style={styles.metaValue}>{docente.categoria}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Dedicación:</Text>
-            <Text style={styles.metaValue}>{docente.modalidad} ({docente.dedicacion_horas} Horas)</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Condición:</Text>
-            <Text style={styles.metaValue}>{docente.condicion}</Text>
+          <View style={styles.datosRow}>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>DPTO. ACADÉMICO:</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '75%' }]}>
+              <Text>{docente.departamento}</Text>
+            </View>
           </View>
         </View>
-
-        {/* Carga Lectiva */}
-        <Text style={styles.sectionTitle}>II. Carga Lectiva Asignada</Text>
+        
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableColHeader, { width: '10%' }]}>Código</Text>
-            <Text style={[styles.tableColHeader, { width: '30%' }]}>Asignatura / Curso</Text>
-            <Text style={[styles.tableColHeader, { width: '22%' }]}>Escuela Profesional</Text>
-            <Text style={[styles.tableColHeader, { width: '6%' }]}>Ciclo</Text>
-            <Text style={[styles.tableColHeader, { width: '6%' }]}>Sec.</Text>
-            <Text style={[styles.tableColHeader, { width: '8%' }]}>N° Alum.</Text>
+            <Text style={[styles.tableColHeader, { width: '40%' }]}>NOMBRE COMPLETO</Text>
+            <Text style={[styles.tableColHeader, { width: '20%' }]}>CONDICIÓN</Text>
+            <Text style={[styles.tableColHeader, { width: '20%' }]}>CATEGORÍA</Text>
+            <Text style={[styles.tableColHeader, { width: '20%' }]}>MODALIDAD</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={[styles.tableColCenter, { width: '40%' }]}>{docente.nombres} {docente.apellidos}</Text>
+            <Text style={[styles.tableColCenter, { width: '20%' }]}>{docente.condicion}</Text>
+            <Text style={[styles.tableColCenter, { width: '20%' }]}>{docente.categoria}</Text>
+            <Text style={[styles.tableColCenter, { width: '20%' }]}>{docente.modalidad}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.datosTable}>
+          <View style={styles.datosRow}>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>AÑO ACADÉMICO:</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text>{periodo.anio}</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>CICLO (SEM.):</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text>{periodo.ciclo}</Text>
+            </View>
+          </View>
+          <View style={styles.datosRow}>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>INICIO:</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text>{periodo.fecha_inicio}</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text style={{ fontWeight: 'bold' }}>FINAL:</Text>
+            </View>
+            <View style={[styles.datosCell, { width: '25%' }]}>
+              <Text>{periodo.fecha_fin}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 1. TRABAJO LECTIVO */}
+        <Text style={styles.sectionTitle}>1. TRABAJO LECTIVO.- Datos completos y con claridad</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableColHeader, { width: '8%' }]}>CÓDIGO</Text>
+            <Text style={[styles.tableColHeader, { width: '22%' }]}>NOMBRE DEL CURSO</Text>
+            <Text style={[styles.tableColHeader, { width: '5%' }]}>CUR.</Text>
+            <Text style={[styles.tableColHeader, { width: '15%' }]}>Escuela Prof.</Text>
+            <Text style={[styles.tableColHeader, { width: '5%' }]}>CIC.</Text>
+            <Text style={[styles.tableColHeader, { width: '5%' }]}>SEC.</Text>
+            <Text style={[styles.tableColHeader, { width: '10%' }]}>N° AL.</Text>
             <Text style={[styles.tableColHeader, { width: '6%' }]}>H.T.</Text>
             <Text style={[styles.tableColHeader, { width: '6%' }]}>H.P.</Text>
             <Text style={[styles.tableColHeader, { width: '6%' }]}>H.L.</Text>
+            <Text style={[styles.tableColHeader, { width: '12%' }]}>Total</Text>
           </View>
           {cargaLectiva.length > 0 ? (
-            cargaLectiva.map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={[styles.tableColCenter, { width: '10%' }]}>{item.codigo}</Text>
-                <Text style={[styles.tableCol, { width: '30%', fontWeight: 'bold' }]}>{item.nombre}</Text>
-                <Text style={[styles.tableCol, { width: '22%' }]}>{item.escuela}</Text>
-                <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.ciclo}</Text>
-                <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.seccion}</Text>
-                <Text style={[styles.tableColCenter, { width: '8%' }]}>{item.n_alumnos}</Text>
-                <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_teoria}</Text>
-                <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_practica}</Text>
-                <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_laboratorio}</Text>
-              </View>
-            ))
+            cargaLectiva.map((item, index) => {
+              const total = item.horas_teoria + item.horas_practica + item.horas_laboratorio;
+              return (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={[styles.tableColCenter, { width: '8%' }]}>{item.codigo}</Text>
+                  <Text style={[styles.tableCol, { width: '22%' }]}>{item.nombre}</Text>
+                  <Text style={[styles.tableColCenter, { width: '5%' }]}>OB</Text>
+                  <Text style={[styles.tableColCenter, { width: '15%' }]}>{item.escuela}</Text>
+                  <Text style={[styles.tableColCenter, { width: '5%' }]}>{item.ciclo}</Text>
+                  <Text style={[styles.tableColCenter, { width: '5%' }]}>{item.seccion}</Text>
+                  <Text style={[styles.tableColCenter, { width: '10%' }]}>{item.n_alumnos}</Text>
+                  <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_teoria}</Text>
+                  <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_practica}</Text>
+                  <Text style={[styles.tableColCenter, { width: '6%' }]}>{item.horas_laboratorio}</Text>
+                  <Text style={[styles.tableColCenter, { width: '12%', fontWeight: 'bold' }]}>{total}</Text>
+                </View>
+              );
+            })
           ) : (
             <View style={styles.tableRow}>
-              <Text style={[styles.tableColCenter, { width: '100%', paddingVertical: 4 }]}>No tiene carga lectiva asignada para este periodo.</Text>
+              <Text style={[styles.tableColCenter, { width: '100%', paddingVertical: 8 }]}>No tiene carga lectiva asignada para este periodo.</Text>
             </View>
           )}
-          {/* Fila de Totales de Carga Lectiva */}
           <View style={styles.tableRowLast}>
-            <Text style={[styles.tableCol, { width: '68%', fontWeight: 'bold', textAlign: 'right', paddingRight: 10 }]}>
-              Subtotal Horas Lectivas:
+            <Text style={[styles.tableCol, { width: '88%', fontWeight: 'bold', textAlign: 'right', paddingRight: 10 }]}>
+              TOTAL HORAS LECTIVAS:
             </Text>
-            <Text style={[styles.tableColCenter, { width: '8%', fontWeight: 'bold' }]}>-</Text>
-            <Text style={[styles.tableColCenter, { width: '8%', fontWeight: 'bold' }]}>
-              {cargaLectiva.reduce((acc, c) => acc + c.horas_teoria, 0)}
-            </Text>
-            <Text style={[styles.tableColCenter, { width: '8%', fontWeight: 'bold' }]}>
-              {cargaLectiva.reduce((acc, c) => acc + c.horas_practica, 0)}
-            </Text>
-            <Text style={[styles.tableColCenter, { width: '8%', fontWeight: 'bold' }]}>
-              {cargaLectiva.reduce((acc, c) => acc + c.horas_laboratorio, 0)}
+            <Text style={[styles.tableColCenter, { width: '12%', fontWeight: 'bold' }]}>
+              {totalHorasLectivas}
             </Text>
           </View>
         </View>
 
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>TOTAL HORAS LECTIVAS:</Text>
-          <Text style={styles.totalVal}>{totalHorasLectivas} Horas Semanales</Text>
-        </View>
-
-        {/* Carga No Lectiva */}
-        <Text style={styles.sectionTitle}>III. Carga No Lectiva Declarada</Text>
+        {/* 2-10. CARGA NO LECTIVA */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableColHeader, { width: '60%' }]}>Rubro / Actividad No Lectiva</Text>
-            <Text style={[styles.tableColHeader, { width: '40%' }]}>Horas Semanales Asignadas</Text>
+            <Text style={[styles.tableColHeader, { width: '10%' }]}>N°</Text>
+            <Text style={[styles.tableColHeader, { width: '65%' }]}>ACTIVIDAD NO LECTIVA</Text>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>HORAS</Text>
           </View>
-          {cargaNoLectiva.length > 0 ? (
-            cargaNoLectiva.map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={[styles.tableCol, { width: '60%', fontWeight: 'bold' }]}>{item.tipoActividad}</Text>
-                <Text style={[styles.tableColCenter, { width: '40%' }]}>{item.horasSemanales} Horas</Text>
+          {ACTIVIDADES_NO_LECTIVAS.map((act) => (
+            <View key={act.id} style={styles.tableRow}>
+              <Text style={[styles.tableColCenter, { width: '10%' }]}>{act.num}</Text>
+              <View style={[styles.tableCol, { width: '65%', flexDirection: 'column' }]}>
+                <Text style={{ fontWeight: 'bold' }}>{act.name}</Text>
+                {getDescripcionActividad(act.id) ? (
+                  <Text style={{ fontSize: 6.5, marginTop: 2 }}>{getDescripcionActividad(act.id)}</Text>
+                ) : null}
               </View>
-            ))
-          ) : (
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableColCenter, { width: '100%', paddingVertical: 4 }]}>No tiene carga no lectiva declarada para este periodo.</Text>
+              <Text style={[styles.tableColCenter, { width: '25%' }]}>{getHorasActividad(act.id)}</Text>
             </View>
-          )}
-        </View>
-
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>TOTAL HORAS NO LECTIVAS:</Text>
-          <Text style={styles.totalVal}>{totalHorasNoLectivas} Horas Semanales</Text>
-        </View>
-
-        {/* Resumen Final de Carga Horaria */}
-        <Text style={styles.sectionTitle}>IV. Resumen de Carga Horaria</Text>
-        <View style={styles.table}>
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCol, { width: '60%', fontWeight: 'bold' }]}>Suma Carga Lectiva Semanal</Text>
-            <Text style={[styles.tableColCenter, { width: '40%', fontWeight: 'bold' }]}>{totalHorasLectivas} h</Text>
-          </View>
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCol, { width: '60%', fontWeight: 'bold' }]}>Suma Carga No Lectiva Semanal</Text>
-            <Text style={[styles.tableColCenter, { width: '40%', fontWeight: 'bold' }]}>{totalHorasNoLectivas} h</Text>
-          </View>
+          ))}
           <View style={styles.tableRowLast}>
-            <Text style={[styles.tableCol, { width: '60%', fontWeight: 'bold', color: '#002B49' }]}>CARGA HORARIA TOTAL SEMANAL</Text>
-            <Text style={[styles.tableColCenter, { width: '40%', fontWeight: 'bold', color: '#002B49', fontSize: 9 }]}>
-              {sumaTotalHoras} h / {docente.dedicacion_horas} h
+            <Text style={[styles.tableCol, { width: '75%', fontWeight: 'bold', textAlign: 'right', paddingRight: 10 }]}>
+              TOTAL HORAS NO LECTIVAS:
+            </Text>
+            <Text style={[styles.tableColCenter, { width: '25%', fontWeight: 'bold' }]}>
+              {totalHorasNoLectivas}
             </Text>
           </View>
         </View>
-
-        {/* Advertencias de Reglas de Negocio en la parte inferior */}
-        {notaValidacion && (
-          <View style={styles.notaWarning}>
-            <Text>● {notaValidacion}</Text>
-          </View>
-        )}
-
-        {/* Firmas Oficiales */}
+        
+        {/* TOTAL GENERAL */}
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>TOTAL:</Text>
+          <Text style={styles.totalVal}>{sumaTotalHoras}</Text>
+        </View>
+        
+        {/* Fecha y firmas */}
+        <Text style={styles.fechaLine}>Trujillo, {fechaActual}</Text>
+        
         <View style={styles.signatureContainer}>
           <View style={styles.signatureBox}>
             <View style={styles.signatureLine} />
-            <Text style={styles.signatureName}>{docente.nombres} {docente.apellidos}</Text>
-            <Text style={styles.signatureTitle}>Docente Declarante</Text>
-            <Text style={styles.signatureTitle}>DNI: {docente.dni}</Text>
+            <Text style={styles.signatureTitle}>Firma del Profesor</Text>
           </View>
           <View style={styles.signatureBox}>
             <View style={styles.signatureLine} />
-            <Text style={styles.signatureName}>Director de Departamento</Text>
-            <Text style={styles.signatureTitle}>Dpto. Académico de {docente.departamento}</Text>
-            <Text style={styles.signatureTitle}>Universidad Nacional de Trujillo</Text>
+            <Text style={styles.signatureTitle}>Firma del Director de Dpto.</Text>
+          </View>
+          <View style={styles.signatureBox}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureTitle}>V° B° DECANO FAC.</Text>
           </View>
         </View>
       </Page>
