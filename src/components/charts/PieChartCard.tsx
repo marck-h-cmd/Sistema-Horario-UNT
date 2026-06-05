@@ -66,6 +66,7 @@ export function PieChartCard({ title, description, data, className, loading }: P
                   </linearGradient>
                 ))}
               </defs>
+
               <Pie
                 data={data}
                 dataKey="value"
@@ -76,21 +77,25 @@ export function PieChartCard({ title, description, data, className, loading }: P
                 outerRadius={110}
                 paddingAngle={4}
                 strokeWidth={0}
-                isAnimationActive={true}
+                isAnimationActive
                 animationBegin={0}
                 animationDuration={1000}
                 animationEasing="ease-out"
               >
                 {data.map((_, i) => (
-                  <Cell key={i} fill={`url(#pieGrad${i})`} />
+                  <Cell key={i} fill={`url(#pieGrad${i % DONUT_COLORS.length})`} />
                 ))}
               </Pie>
+
               <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-                <tspan fontSize="28" fontWeight="800" fill="#0f172a">
+                <tspan fontSize="28" fontWeight="800" fill={isDark ? "#f1f5f9" : "#0f172a"}>
                   {total}
                 </tspan>
-                <tspan x="50%" dy="22" fontSize="11" fill="#64748b">Total</tspan>
+                <tspan x="50%" dy="22" fontSize="11" fill={isDark ? "#94a3b8" : "#64748b"}>
+                  Total
+                </tspan>
               </text>
+
               <Tooltip content={<CustomTooltip />} />
               <Legend
                 iconType="circle"
