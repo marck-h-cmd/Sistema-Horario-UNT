@@ -7,7 +7,7 @@ import { withAuth } from '@/middleware/auth';
 const service = new CargaLectivaService();
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE']);
+  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -15,10 +15,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     let periodoId = searchParams.get('periodoId');
+    const qDocenteId = searchParams.get('docenteId');
 
     // 1. Encontrar docente
     const docente = await prisma.docente.findUnique({
-      where: { usuarioId: user.userId },
+      where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
       include: {
         usuario: { select: { nombre: true, apellidos: true } },
       },

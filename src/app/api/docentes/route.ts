@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || undefined;
     const categoria = searchParams.get('categoria') as CategoriaDocente || undefined;
+    const departamentoId = searchParams.get('departamentoId') ? parseInt(searchParams.get('departamentoId')!) : undefined;
     const activo = searchParams.get('activo') === 'true' ? true : 
                    searchParams.get('activo') === 'false' ? false : undefined;
     const sortBy = searchParams.get('sortBy') || undefined;
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       limit,
       search,
       categoria,
+      departamentoId,
       activo,
       sortBy,
       sortOrder,

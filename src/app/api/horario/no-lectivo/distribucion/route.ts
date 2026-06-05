@@ -4,7 +4,7 @@ import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
 import { withAuth } from '@/middleware/auth';
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE']);
+  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -12,23 +12,34 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const periodoId = searchParams.get('periodoId');
+    const docenteIdParam = searchParams.get('docenteId');
 
     if (!periodoId) {
       return createErrorResponse('MISSING_PERIOD', 'El parámetro periodoId es requerido', 400);
     }
 
-    // Buscar docente
-    const docente = await prisma.docente.findUnique({
-      where: { usuarioId: user.userId },
-    });
+    let docenteId: string | null = null;
 
-    if (!docente) {
-      return createErrorResponse('DOCENTE_NOT_FOUND', 'No se encontró un docente asociado a este usuario', 404);
+    if (user.rol === 'DOCENTE') {
+      const docente = await prisma.docente.findUnique({
+        where: { usuarioId: user.userId },
+      });
+
+      if (!docente) {
+        return createErrorResponse('DOCENTE_NOT_FOUND', 'No se encontró un docente asociado a este usuario', 404);
+      }
+
+      docenteId = docente.id;
+    } else {
+      if (!docenteIdParam) {
+        return createErrorResponse('MISSING_DOCENTE', 'El parámetro docenteId es requerido', 400);
+      }
+      docenteId = docenteIdParam;
     }
 
     const distribuciones = await prisma.distribucionNoLectiva.findMany({
       where: {
-        docenteId: docente.id,
+        docenteId,
         periodoId,
       },
       include: {
