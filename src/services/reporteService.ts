@@ -71,6 +71,8 @@ export class ReporteService {
       titulo: 'Formato 3 - Horario Semanal',
       orientacion: 'landscape',
       formato: 'A4',
+      numeracionPaginas: false,
+      margenes: { top: '6mm', right: '6mm', bottom: '6mm', left: '6mm' },
     });
   }
 
@@ -463,12 +465,14 @@ export class ReporteService {
     const nombreDocente = `${docente.usuario.nombre} ${docente.usuario.apellidos}`;
 
     // Armar la grilla de horas
-    const HORAS = Array.from({ length: 15 }, (_, i) => i + 7); // 7:00 a 21:00
-    const DIAS: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'];
+    const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 a 20:00
+    const DIAS: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
     const DIAS_LABEL: Record<string, string> = {
       LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles',
       JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado', DOMINGO: 'Domingo',
     };
+    const COLOR_LECTIVA = { bg: '#eff6ff', border: '#3b82f6', text: '#1e3a8a' };
+    const COLOR_NO_LECTIVA = { bg: '#fffbeb', border: '#f59e0b', text: '#92400e' };
 
     // Mapear horarios en una matriz para facilitar su renderizado en HTML
     // matriz[dia][hora] = { tipo: 'LECTIVO' | 'NO_LECTIVO', label, rowSpan, color }
@@ -484,17 +488,18 @@ export class ReporteService {
     for (const hl of horariosLectivos) {
       if (!hl.diaSemana || !hl.horaInicio || !hl.horaFin) continue;
       const dia = hl.diaSemana;
+      if (!matriz[dia]) continue;
       const hIni = parseInt(hl.horaInicio.split(':')[0], 10);
       const hFin = parseInt(hl.horaFin.split(':')[0], 10);
       const rowSpan = Math.max(1, hFin - hIni);
 
       matriz[dia][hIni] = {
         tipo: 'LECTIVO',
-        label: `<strong>${escapeHtml(hl.curso.codigo)}</strong><br/>${escapeHtml(hl.curso.nombre)}<br/>Gpo ${escapeHtml(hl.grupo?.nombre || 'A')}<br/>${escapeHtml(hl.ambiente?.codigo || 'AULA')}`,
+        label: `<strong>${escapeHtml(hl.curso.codigo)}</strong><br/>${escapeHtml(hl.curso.nombre)}`,
         rowSpan,
-        bg: '#eff6ff',
-        border: '#3b82f6',
-        text: '#1e3a8a',
+        bg: COLOR_LECTIVA.bg,
+        border: COLOR_LECTIVA.border,
+        text: COLOR_LECTIVA.text,
       };
 
       for (let h = hIni; h < hFin; h++) {
@@ -505,19 +510,18 @@ export class ReporteService {
     // 2. Cargar no lectivos
     for (const dnl of distribucionesNoLectivas) {
       const dia = dnl.diaSemana;
+      if (!matriz[dia]) continue;
       const hIni = parseInt(dnl.horaInicio.split(':')[0], 10);
       const hFin = parseInt(dnl.horaFin.split(':')[0], 10);
       const rowSpan = Math.max(1, hFin - hIni);
 
-      const colorInfo = this.obtenerColorActividadNoLectiva(dnl.declaracionItem.tipoActividad);
-
       matriz[dia][hIni] = {
         tipo: 'NO_LECTIVO',
-        label: `<strong>NO LECTIVA</strong><br/>${escapeHtml(this.formatearTipoActividad(dnl.declaracionItem.tipoActividad))}`,
+        label: `<strong>${escapeHtml(this.formatearTipoActividad(dnl.declaracionItem.tipoActividad))}</strong>`,
         rowSpan,
-        bg: colorInfo.bg,
-        border: colorInfo.border,
-        text: colorInfo.text,
+        bg: COLOR_NO_LECTIVA.bg,
+        border: COLOR_NO_LECTIVA.border,
+        text: COLOR_NO_LECTIVA.text,
       };
 
       for (let h = hIni; h < hFin; h++) {
@@ -531,7 +535,7 @@ export class ReporteService {
         const item = matriz[dia][h];
         if (item) {
           return `
-            <td rowspan="${item.rowSpan}" style="background: ${item.bg}; border-left: 4px solid ${item.border}; color: ${item.text}; padding: 6px; font-size: 8pt; vertical-align: top; text-align: center;">
+            <td rowspan="${item.rowSpan}" style="background: ${item.bg}; border-left: 4px solid ${item.border}; color: ${item.text}; padding: 2px 3px; font-size: 7pt; vertical-align: middle; text-align: center;">
               ${item.label}
             </td>`;
         }
@@ -544,7 +548,7 @@ export class ReporteService {
       return `
         <tr>
           <td style="font-weight: 700; background: #f1f5f9; text-align: center; border: 1px solid #cbd5e1; font-size: 8.5pt;">
-            ${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00
+            ${h}:00-${h + 1}:00
           </td>
           ${celdas}
         </tr>`;
@@ -556,43 +560,41 @@ export class ReporteService {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; line-height: 1.3; color: #1e293b; margin: 15px; }
-          .header { text-align: center; border-bottom: 2px solid #0f2d55; padding-bottom: 10px; margin-bottom: 15px; }
-          .header h1 { color: #0f2d55; font-size: 14pt; margin: 0 0 2px; font-weight: 800; text-transform: uppercase; }
-          .header h2 { color: #64748b; font-size: 10pt; margin: 0; font-weight: 550; text-transform: uppercase; }
-          .info-docente { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 8.5pt; }
-          .info-docente td { padding: 2px 6px; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 7.5pt; line-height: 1.15; color: #1e293b; margin: 0; }
+          .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 0 0 6px; margin: 0 0 6px; border-bottom: 1px solid #cbd5e1; }
+          .topbar .title { font-size: 10pt; font-weight: 800; color: #0f2d55; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+          .topbar .meta { text-align: right; color: #64748b; font-size: 7.5pt; }
+          .topbar .meta strong { color: #0f2d55; }
+          .info { display: flex; justify-content: space-between; gap: 10px; padding: 0 0 6px; margin: 0 0 6px; }
+          .info .left { font-weight: 700; color: #0f2d55; }
+          .info .right { color: #64748b; text-align: right; }
           table.horario-grilla { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; table-layout: fixed; }
-          table.horario-grilla th { background: #0f2d55; color: white; border: 1px solid #0f2d55; padding: 6px; text-transform: uppercase; font-size: 8pt; text-align: center; }
-          table.horario-grilla td { border: 1px solid #cbd5e1; height: 42px; }
-          .leyenda { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; font-size: 8pt; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
-          .leyenda-item { display: flex; items-center: center; gap: 4px; }
+          table.horario-grilla th { background: #0f2d55; color: white; border: 1px solid #0f2d55; padding: 4px 3px; text-transform: uppercase; font-size: 7pt; text-align: center; }
+          table.horario-grilla td { border: 1px solid #cbd5e1; height: 28px; }
+          .leyenda { display: flex; gap: 10px; align-items: center; margin-top: 6px; font-size: 7pt; color: #64748b; }
+          .leyenda strong { color: #0f2d55; }
+          .leyenda-item { display: flex; align-items: center; gap: 4px; }
           .leyenda-color { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
-          <h2>FORMATO N° 3: DISTRIBUCIÓN DE HORAS SEMANALES DEL PERSONAL DOCENTE</h2>
-          <div>Período Académico: <strong>${escapeHtml(periodo.nombre)}</strong></div>
+        <div class="topbar">
+          <p class="title">Horario Personal</p>
+          <div class="meta">
+            <div>Período: <strong>${escapeHtml(periodo.nombre)}</strong></div>
+          </div>
         </div>
 
-        <table class="info-docente">
-          <tr>
-            <td><strong>Docente:</strong></td>
-            <td>${escapeHtml(nombreDocente)}</td>
-            <td><strong>Código/DNI:</strong></td>
-            <td>${escapeHtml(docente.codigo)}</td>
-            <td><strong>Dedicación:</strong></td>
-            <td>${escapeHtml(docente.dedicacion.replace(/_/g, ' '))}</td>
-          </tr>
-        </table>
+        <div class="info">
+          <div class="left">${escapeHtml(nombreDocente)} · ${escapeHtml(docente.codigo)}</div>
+          <div class="right">${escapeHtml(docente.dedicacion.replace(/_/g, ' '))}</div>
+        </div>
 
         <table class="horario-grilla">
           <thead>
             <tr>
               <th style="width: 10%;">Hora</th>
-              ${DIAS.map((d) => `<th style="width: 12.8%;">${DIAS_LABEL[d]}</th>`).join('')}
+              ${DIAS.map((d) => `<th style="width: 15%;">${DIAS_LABEL[d]}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -603,24 +605,12 @@ export class ReporteService {
         <div class="leyenda">
           <strong>Leyenda:</strong>
           <div class="leyenda-item">
-            <span class="leyenda-color" style="background: #eff6ff; border-left: 3px solid #3b82f6;"></span>
-            <span>Clases Lectivas</span>
+            <span class="leyenda-color" style="background: ${COLOR_LECTIVA.bg}; border-left: 3px solid ${COLOR_LECTIVA.border};"></span>
+            <span>Lectiva</span>
           </div>
           <div class="leyenda-item">
-            <span class="leyenda-color" style="background: #f0fdf4; border-left: 3px solid #22c55e;"></span>
-            <span>Prep. y Eval.</span>
-          </div>
-          <div class="leyenda-item">
-            <span class="leyenda-color" style="background: #fffbeb; border-left: 3px solid #eab308;"></span>
-            <span>Consejería</span>
-          </div>
-          <div class="leyenda-item">
-            <span class="leyenda-color" style="background: #faf5ff; border-left: 3px solid #a855f7;"></span>
-            <span>Investigación</span>
-          </div>
-          <div class="leyenda-item">
-            <span class="leyenda-color" style="background: #fff1f2; border-left: 3px solid #f43f5e;"></span>
-            <span>Otros No Lectivos</span>
+            <span class="leyenda-color" style="background: ${COLOR_NO_LECTIVA.bg}; border-left: 3px solid ${COLOR_NO_LECTIVA.border};"></span>
+            <span>No lectiva</span>
           </div>
         </div>
       </body>

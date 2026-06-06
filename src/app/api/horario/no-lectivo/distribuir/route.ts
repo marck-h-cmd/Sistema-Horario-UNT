@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     const { periodoId, distribuciones, docenteId: docenteIdFromBody } = validation.data;
 
-    let docenteId: string | null = null;
+    let docenteId: string;
     if (user.rol === 'DOCENTE') {
       const docente = await prisma.docente.findUnique({
         where: { usuarioId: user.userId },
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       if (!docenteIdFromBody) {
         return createErrorResponse('MISSING_DOCENTE', 'El campo docenteId es requerido', 400);
       }
-      docenteId = docenteIdFromBody;
+      docenteId = docenteIdFromBody as string;
     }
 
     // 2. Obtener declaración e items

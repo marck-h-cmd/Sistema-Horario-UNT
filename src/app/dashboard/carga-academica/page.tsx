@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen } from 'lucide-react';
+import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen, Edit2, UserX, AlertCircle } from 'lucide-react';
 import PanelDistribucionHoraria from '@/components/horarios/PanelDistribucionHoraria';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -75,6 +75,7 @@ export default function CargaAcademicaAdminPage() {
   const [guardando, setGuardando] = useState(false);
 
   const [formData, setFormData] = useState<Record<string, { horas: number; descripcion: string; metadata: any }>>({});
+  const [isEditing, setIsEditing] = useState(true);
   
   // Estado para Modal de Asignar Curso
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,6 +159,13 @@ export default function CargaAcademicaAdminPage() {
             });
             return next;
           });
+          if (dec.items.length > 0) {
+            setIsEditing(false);
+          } else {
+            setIsEditing(true);
+          }
+        } else {
+          setIsEditing(true);
         }
       } catch (error) {
         console.error(error);
@@ -227,8 +235,12 @@ export default function CargaAcademicaAdminPage() {
 
   const handleFieldChange = (actId: string, field: string, value: any) => {
     if (field === 'horas') {
-      const raw = typeof value === 'string' ? (value === '' ? 0 : Number(value)) : Number(value);
-      const numValue = Number.isFinite(raw) ? Math.trunc(raw) : 0;
+      if (value === '') {
+        setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], horas: '' as any } }));
+        return;
+      }
+      const numValue = Number(value);
+      if (!Number.isFinite(numValue)) return;
       const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
       if (actDef && actDef.getMax) {
         const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
@@ -245,13 +257,15 @@ export default function CargaAcademicaAdminPage() {
     if (!actDef || !actDef.getMax) return;
     const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
     setFormData(prev => {
-      const current = prev[actId]?.horas ?? 0;
-      const nextHoras = actDef.isExact ? max : Math.min(current, max);
-      if (nextHoras !== current) {
+      const rawCurrent = prev[actId]?.horas;
+      const current = typeof rawCurrent === 'string' && rawCurrent === '' ? 0 : Number(rawCurrent) || 0;
+      if (current > max) {
         if (actDef.isExact) toast.error(`${actDef.name} debe ser exactamente ${max} horas.`);
         else toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
+      } else if (actDef.isExact && current !== max && current !== 0) {
+        toast.error(`${actDef.name} debe ser exactamente ${max} horas.`);
       }
-      return { ...prev, [actId]: { ...prev[actId], horas: Math.max(0, nextHoras) } };
+      return prev;
     });
   };
 
@@ -268,13 +282,41 @@ export default function CargaAcademicaAdminPage() {
 
   const handleGuardarNoLectiva = async () => {
     if (!dataLectiva) return;
+    
+    // Validación de máximos por actividad
+    for (const [id, data] of Object.entries(formData)) {
+      if (data.horas > 0) {
+        const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === id);
+        if (actDef && actDef.getMax) {
+          const max = actDef.getMax(dataLectiva.totalHorasLectivas);
+          if (data.horas > max) {
+            toast.error(`La actividad "${actDef.name}" excede el máximo permitido de ${max} horas.`);
+            return;
+          }
+          if (actDef.isExact && data.horas !== max) {
+            toast.error(`La actividad "${actDef.name}" debe ser exactamente ${max} horas.`);
+            return;
+          }
+        }
+      }
+    }
+
     const itemsParaGuardar = Object.entries(formData)
       .filter(([_, data]) => data.horas > 0)
       .map(([id, data]) => ({
         tipoActividad: id as TipoActividadNoLectiva,
         horasSemanales: Number(data.horas),
         descripcion: data.descripcion,
-        metadata: data.metadata
+        metadata: (() => {
+          const def = ACTIVIDADES_ORDENADAS.find(a => a.id === id);
+          const meta = { ...(data.metadata || {}) };
+          if (def?.reqMeta?.includes('numAlumnos') && (meta.numAlumnos === undefined || meta.numAlumnos === null || meta.numAlumnos === 0)) meta.numAlumnos = 1;
+          if (def?.reqMeta?.includes('ciclo') && (meta.ciclo === undefined || meta.ciclo === null || meta.ciclo === 0)) meta.ciclo = 1;
+          if (def?.reqMeta?.includes('codigoProyecto') && (!meta.codigoProyecto || String(meta.codigoProyecto).trim() === '')) meta.codigoProyecto = 'N/A';
+          if (def?.reqMeta?.includes('resolucion') && (!meta.resolucion || String(meta.resolucion).trim() === '')) meta.resolucion = 'N/A';
+          if (def?.reqMeta?.includes('cargo') && (!meta.cargo || String(meta.cargo).trim() === '')) meta.cargo = 'N/A';
+          return meta;
+        })()
       }));
 
     setGuardando(true);
@@ -285,6 +327,7 @@ export default function CargaAcademicaAdminPage() {
         observaciones: 'Guardado por el Administrador.',
       });
       toast.success('Declaración guardada exitosamente.');
+      setIsEditing(false);
       const resNL = await apiGet<any>('/api/declaracion/no-lectiva', { periodoId: selectedPeriodoId, docenteId: selectedDocenteId });
       if (resNL.data?.declaracion) {
         setDataLectiva((prev: any) => prev ? { ...prev, declaracion: resNL.data.declaracion } : prev);
@@ -551,50 +594,30 @@ export default function CargaAcademicaAdminPage() {
                           <div className="flex-1 space-y-1">
                             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase">{act.num}. {act.name}</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">{act.desc}</p>
-                            {data.horas > 0 && act.reqMeta.length > 0 && (
-                              <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-150 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {act.reqMeta.includes('numAlumnos') && (
-                                  <div>
-                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">N° Alumnos</label>
-                                    <input type="number" min={1} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.numAlumnos || ''} onChange={(e) => handleMetadataChange(act.id, 'numAlumnos', parseInt(e.target.value) || 0)} />
-                                  </div>
-                                )}
-                                {act.reqMeta.includes('ciclo') && (
-                                  <div>
-                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Ciclo</label>
-                                    <input type="number" min={1} max={10} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.ciclo || ''} onChange={(e) => handleMetadataChange(act.id, 'ciclo', parseInt(e.target.value) || 0)} />
-                                  </div>
-                                )}
-                                {act.reqMeta.includes('codigoProyecto') && (
-                                  <div className="sm:col-span-2">
-                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Código del Proyecto</label>
-                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.codigoProyecto || ''} onChange={(e) => handleMetadataChange(act.id, 'codigoProyecto', e.target.value)} />
-                                  </div>
-                                )}
-                                {act.reqMeta.includes('resolucion') && (
-                                  <div className="sm:col-span-2">
-                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">N° de Resolución</label>
-                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.resolucion || ''} onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)} />
-                                  </div>
-                                )}
-                                {act.reqMeta.includes('cargo') && (
-                                  <div className="sm:col-span-2">
-                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Cargo</label>
-                                    <input type="text" className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm" value={data.metadata.cargo || ''} onChange={(e) => handleMetadataChange(act.id, 'cargo', e.target.value)} />
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
-                          <div className="flex-1 flex gap-3 items-start justify-end">
+                          <div className="flex-[1.3] flex gap-4 items-start justify-end">
                             {act.id !== 'PREPARACION_Y_EVALUACION' && (
                               <div className="flex-1 relative">
-                                <textarea className="w-full min-h-[60px] resize-y bg-yellow-50/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Detalle de las actividades..." value={data.descripcion} onChange={(e) => handleFieldChange(act.id, 'descripcion', e.target.value)} />
+                                <textarea 
+                                  disabled={!isEditing}
+                                  className="w-full min-h-[72px] resize-y bg-yellow-50/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 disabled:opacity-60" 
+                                  placeholder="Detalle de las actividades..." 
+                                  value={data.descripcion} 
+                                  onChange={(e) => handleFieldChange(act.id, 'descripcion', e.target.value)} 
+                                />
                               </div>
                             )}
-                            <div className="w-24 flex-shrink-0 flex items-center gap-2">
+                            <div className="w-32 flex-shrink-0 flex items-center gap-2">
                               <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Horas:</label>
-                              <input type="number" min="0" className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-center font-bold text-slate-800 dark:text-slate-100" value={data.horas} onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)} onBlur={() => handleHorasBlur(act.id)} />
+                              <input 
+                                disabled={!isEditing}
+                                type="number" 
+                                min="0" 
+                                className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-3 text-center font-bold text-slate-800 dark:text-slate-100 disabled:opacity-60" 
+                                value={data.horas} 
+                                onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)} 
+                                onBlur={() => handleHorasBlur(act.id)} 
+                              />
                             </div>
                           </div>
                         </div>
@@ -635,9 +658,18 @@ export default function CargaAcademicaAdminPage() {
 
                   <div className="flex justify-end gap-3 mt-2">
                     <Button
+                      onClick={() => setIsEditing(true)}
+                      disabled={isEditing}
+                      className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md disabled:opacity-50"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Editar Declaración
+                    </Button>
+                    
+                    <Button
                       onClick={handleGuardarNoLectiva}
-                      disabled={guardando || totalNoLectivas !== dataLectiva.horasNoLectivasDisponibles}
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                      disabled={!isEditing || guardando || totalNoLectivas !== dataLectiva.horasNoLectivasDisponibles}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md disabled:opacity-50"
                     >
                       {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Guardar Declaración
