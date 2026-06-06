@@ -2,9 +2,6 @@
 
 import { useMemo } from 'react';
 
-// ────────────────────────────────────────────
-// Interfaz pública (exportada para otros archivos)
-// ────────────────────────────────────────────
 export interface HorarioCalendarItem {
   id: string;
   horaInicio: string;
@@ -30,16 +27,12 @@ export interface HorarioCalendarItem {
   tipoComponente?: string;
 }
 
-// ────────────────────────────────────────────
-// Props del componente
-// ────────────────────────────────────────────
 interface HorarioWeeklyCalendarProps {
   horarios: HorarioCalendarItem[];
   dias: readonly string[];
   diaLabels: Record<string, string>;
   horas: number[];
   loading?: boolean;
-  /** Datos institucionales para la cabecera */
   ciclo?: string | number;
   seccion?: string;
   anio?: string | number;
@@ -48,9 +41,6 @@ interface HorarioWeeklyCalendarProps {
   fechaFin?: string;
 }
 
-// ────────────────────────────────────────────
-// Constantes
-// ────────────────────────────────────────────
 const COLORES = [
   '#c6efce', '#ffc7ce', '#bdd7ee', '#e2efda',
   '#ffff00', '#92d050', '#dce6f1', '#e4dfec',
@@ -58,34 +48,36 @@ const COLORES = [
 ];
 
 type DiaSemanaKey = 'LUNES' | 'MARTES' | 'MIERCOLES' | 'JUEVES' | 'VIERNES' | 'SABADO';
-
 const DIAS_GRILLA: DiaSemanaKey[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 
 const FRANJAS = [
-  { ini: '07:00', fin: '08:00', label: '7-8' },
-  { ini: '08:00', fin: '09:00', label: '8-9' },
-  { ini: '09:00', fin: '10:00', label: '9-10' },
-  { ini: '10:00', fin: '11:00', label: '10-11' },
-  { ini: '11:00', fin: '12:00', label: '11-12' },
-  { ini: '12:00', fin: '13:00', label: '12-1' },
-  { ini: '13:00', fin: '14:00', label: '1-2' },
-  { ini: '14:00', fin: '15:00', label: '2-3' },
-  { ini: '15:00', fin: '16:00', label: '3-4' },
-  { ini: '16:00', fin: '17:00', label: '4-5' },
-  { ini: '17:00', fin: '18:00', label: '5-6' },
-  { ini: '18:00', fin: '19:00', label: '6-7' },
-  { ini: '19:00', fin: '20:00', label: '7-8p' },
+  { ini: '07:00', label: '7-8' },
+  { ini: '08:00', label: '8-9' },
+  { ini: '09:00', label: '9-10' },
+  { ini: '10:00', label: '10-11' },
+  { ini: '11:00', label: '11-12' },
+  { ini: '12:00', label: '12-1' },
+  { ini: '13:00', label: '1-2' },
+  { ini: '14:00', label: '2-3' },
+  { ini: '15:00', label: '3-4' },
+  { ini: '16:00', label: '4-5' },
+  { ini: '17:00', label: '5-6' },
+  { ini: '18:00', label: '6-7' },
+  { ini: '19:00', label: '7-8' },
 ];
 
+const normalizeTime = (time: string): string => {
+  const [h, m] = time.split(':').map(Number);
+  return `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+};
+
 const calcRowspan = (ini: string, fin: string) => {
-  const [h1] = ini.split(':').map(Number);
-  const [h2] = fin.split(':').map(Number);
+  const h1 = parseInt(ini.split(':')[0]);
+  const h2 = parseInt(fin.split(':')[0]);
   return Math.max(h2 - h1, 1);
 };
 
-// ────────────────────────────────────────────
-// Estilos inline (formato oficial UNT)
-// ────────────────────────────────────────────
+// ── Estilos base ──
 const celda: React.CSSProperties = {
   border: '1px solid #000',
   padding: '2px 4px',
@@ -93,38 +85,32 @@ const celda: React.CSSProperties = {
   verticalAlign: 'middle',
   fontSize: 10,
 };
-
 const celdaInst: React.CSSProperties = {
   ...celda,
   textAlign: 'left',
-  fontSize: 10,
 };
-
 const horaCol: React.CSSProperties = {
   ...celda,
   background: '#f2f2f2',
   fontWeight: 'bold',
   width: 38,
 };
-
 const th: React.CSSProperties = {
   ...celda,
-  background: '#000',
+  background: '#1a1a2e',
   color: '#fff',
   fontWeight: 'bold',
+  padding: '4px 6px',
 };
-
 const azul: React.CSSProperties = { color: '#0070c0', fontWeight: 'bold' };
 const rojo: React.CSSProperties = { color: '#c00000', fontWeight: 'bold' };
 
-// ────────────────────────────────────────────
-// Componente principal
-// ────────────────────────────────────────────
+const SEPARATOR_STYLE: React.CSSProperties = {
+  borderTop: '3px solid #000',
+};
+
 export function HorarioWeeklyCalendar({
   horarios,
-  dias: _dias,
-  diaLabels: _diaLabels,
-  horas: _horas,
   loading,
   ciclo = '',
   seccion = '',
@@ -134,97 +120,106 @@ export function HorarioWeeklyCalendar({
   fechaFin = '',
 }: HorarioWeeklyCalendarProps) {
 
-  // ── Paso 1 — Deduplicar docentes por docenteId ──
+  const normalizedHorarios = useMemo(() => {
+    return horarios.map(h => ({
+      ...h,
+      horaInicio: normalizeTime(h.horaInicio),
+      horaFin: normalizeTime(h.horaFin)
+    }));
+  }, [horarios]);
+
   const docentesUnicos = useMemo(() => {
     const seen = new Map<string, any>();
-    for (const h of horarios) {
+    for (const h of normalizedHorarios) {
       const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-      if (!seen.has(docId)) {
-        // Calcular total de horas reales programadas (sesiones semanales)
-        const totalHorasSemana = horarios
-          .filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId)
-          .reduce((sum, x) => {
-            if (!x.horaInicio || !x.horaFin) return sum;
-            const h1 = parseInt(x.horaInicio.split(':')[0]);
-            const h2 = parseInt(x.horaFin.split(':')[0]);
-            return sum + Math.max(h2 - h1, 0);
-          }, 0);
-
-        seen.set(docId, {
+      const key = `${docId}||${h.curso.codigo}`;
+      if (!seen.has(key)) {
+        seen.set(key, {
           docenteId: docId,
-          nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`, // Formato: Nombre Apellidos
+          nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
           asignatura: h.curso.nombre,
           cursoCodigo: h.curso.codigo || '',
           horasT: h.curso.horasTeoria ?? 0,
           horasP: h.curso.horasPractica ?? 0,
           horasL: h.curso.horasLaboratorio ?? 0,
-          grupos: horarios.filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId).length,
-          totalHoras: totalHorasSemana,
+          grupos: new Set(
+            normalizedHorarios.filter(x => {
+              const xDocId = x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`;
+              return xDocId === docId && x.curso.codigo === h.curso.codigo;
+            }).map(x => x.grupo?.nombre ?? 'A')
+          ).size,
+          totalHoras: (h.curso.horasTeoria ?? 0) + (h.curso.horasPractica ?? 0) + (h.curso.horasLaboratorio ?? 0),
           departamento: h.docente.departamento ?? '',
         });
       }
     }
 
-    // Convertir a array y ordenar por prioridad de código de curso
     const list = Array.from(seen.values());
     list.sort((a, b) => {
-      const getPrefixPriority = (code: string) => {
-        if (code.startsWith('IS-')) return 1;
-        if (code.startsWith('EG-')) return 2;
-        return 3;
-      };
-      const prioA = getPrefixPriority(a.cursoCodigo);
-      const prioB = getPrefixPriority(b.cursoCodigo);
-      if (prioA !== prioB) return prioA - prioB;
+      const p = (c: string) => c.startsWith('IS-') ? 1 : c.startsWith('EG-') ? 2 : 3;
+      if (p(a.cursoCodigo) !== p(b.cursoCodigo)) return p(a.cursoCodigo) - p(b.cursoCodigo);
       return a.cursoCodigo.localeCompare(b.cursoCodigo);
     });
-
-    // Asignar número y color en base al orden prioritario
     list.forEach((doc, idx) => {
       doc.numero = idx + 1;
       doc.color = COLORES[idx % COLORES.length];
     });
-
     return list;
-  }, [horarios]);
+  }, [normalizedHorarios]);
 
   const getDocente = (h: HorarioCalendarItem) => {
     const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-    return docentesUnicos.find(d => d.docenteId === docId);
+    const key = `${docId}||${h.curso.codigo}`;
+    return docentesUnicos.find(d => (d.docenteId + '||' + d.cursoCodigo) === key);
   };
 
-  // ── Extraer ciclo para verificar ──
   const esCicloI = useMemo(() => {
-    const cStr = String(ciclo).toUpperCase().trim();
-    return cStr === 'I' || cStr === '1';
+    const c = String(ciclo).toUpperCase().trim();
+    return c === 'I' || c === '1';
   }, [ciclo]);
 
-  // ── Mapa de celdas "consumidas" por rowspan ──
   const consumed = useMemo(() => {
     const map = new Set<string>();
-    for (const h of horarios) {
-      if (!h.horaInicio || !h.horaFin || !h.diaSemana) continue;
+    for (const h of normalizedHorarios) {
+      if (!h.horaInicio || !h.horaFin) continue;
       const span = calcRowspan(h.horaInicio, h.horaFin);
-      const startHour = parseInt(h.horaInicio);
-      for (let offset = 1; offset < span; offset++) {
-        const nextHour = startHour + offset;
-        const nextIni = `${String(nextHour).padStart(2, '0')}:00`;
-        map.add(`${h.diaSemana}-${nextIni}`);
+      const startH = parseInt(h.horaInicio);
+      for (let o = 1; o < span; o++) {
+        const nextIni = `${String(startH + o).padStart(2, '0')}:00`;
+        map.add(`${h.diaSemana}-${nextIni}-${h.id}`);
       }
     }
-
     if (esCicloI) {
-      const horasMiercoles = [
-        '08:00', '09:00', '10:00', '11:00', '12:00',
-        '15:00', '16:00', '17:00'
-      ];
-      horasMiercoles.forEach(h => map.add(`MIERCOLES-${h}`));
+      [
+        '08:00',
+        '09:00',
+        '10:00',
+        '11:00',
+        '12:00',
+        '14:00',
+        '15:00',
+        '16:00',
+        '17:00',
+        '18:00',
+        '19:00'
+      ].forEach(h => map.add(`MIERCOLES-${h}-ESTUDIOS`));
     }
-
     return map;
-  }, [horarios, esCicloI]);
+  }, [normalizedHorarios, esCicloI]);
 
-  // ── Loading ──
+  const formatAmbiente = (name: string) => {
+    if (!name) return '';
+    if (name.toLowerCase().includes('posgrado')) return `(${name.toLowerCase()})`;
+    return name.replace(/\s*-\s*/, '\n');
+  };
+
+  const getComponentLabel = (h: HorarioCalendarItem) => {
+    if (h.tipoComponente === 'PRACTICA') return ' Práctica';
+    if (h.tipoComponente === 'TEORIA' && h.curso.codigo === 'EG-106B') return ' Teoría';
+    if (h.tipoComponente === 'LABORATORIO') return ' Lab.';
+    return '';
+  };
+
   if (loading) {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', padding: 16 }}>
@@ -235,8 +230,7 @@ export function HorarioWeeklyCalendar({
     );
   }
 
-  // ── Sin horarios ──
-  if (horarios.length === 0) {
+  if (normalizedHorarios.length === 0) {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', padding: 16, textAlign: 'center', color: '#888' }}>
         No hay bloques en el calendario para este período.
@@ -244,50 +238,49 @@ export function HorarioWeeklyCalendar({
     );
   }
 
-  // ── Helpers para el render de la grilla ──
-  const formatAmbiente = (name: string) => {
-    if (!name) return '';
-    if (name.toLowerCase().includes('posgrado')) {
-      return `(${name.toLowerCase()})`;
-    }
-    // Dividir en dos líneas en el guión
-    return name.replace(/\s*-\s*/, '\n');
-  };
+  const totalFilas = Math.max(13, docentesUnicos.length);
 
-  const getComponentLabel = (h: HorarioCalendarItem) => {
-    if (h.tipoComponente === 'PRACTICA') return ' Práctica';
-    if (h.tipoComponente === 'TEORIA' && h.curso.codigo === 'EG-106B') return ' Teoría';
-    return '';
-  };
-
-  // ── RENDER ──
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 10 }}>
 
-      {/* ── TABLA SUPERIOR — Información institucional + leyenda docentes ── */}
+      {/* ── TABLA SUPERIOR ── */}
       <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 6 }}>
         <thead>
           <tr>
-            <th colSpan={2} style={{ ...th, width: '30%' }}>DATOS INSTITUCIONALES</th>
-            <th style={{ ...th, width: 30 }}>N°</th>
-            <th style={{ ...th, textAlign: 'left' }}>PROFESOR</th>
+            <th colSpan={2} style={{ ...th, width: '30%', textAlign: 'center' }}>
+              DATOS INSTITUCIONALES
+            </th>
+            <th style={{ ...th, width: 28, textAlign: 'center' }}>N°</th>
+            <th style={{ ...th, textAlign: 'left' }}>DOCENTE</th>
             <th style={{ ...th, textAlign: 'left' }}>ASIGNATURA</th>
-            <th style={{ ...th, width: 28 }}>T</th>
-            <th style={{ ...th, width: 28 }}>P</th>
-            <th style={{ ...th, width: 28 }}>L</th>
-            <th style={{ ...th, width: 28 }}>G</th>
-            <th style={{ ...th, width: 40 }}>T.HORAS</th>
+            <th style={{ ...th, width: 24, textAlign: 'center' }}>T</th>
+            <th style={{ ...th, width: 24, textAlign: 'center' }}>P</th>
+            <th style={{ ...th, width: 24, textAlign: 'center' }}>L</th>
+            <th style={{ ...th, width: 24, textAlign: 'center' }}>G</th>
+            <th style={{ ...th, width: 44, textAlign: 'center' }}>T. HORAS</th>
             <th style={{ ...th, textAlign: 'left' }}>DEPARTAMENTO</th>
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: Math.max(13, docentesUnicos.length) }, (_, i) => {
+          {Array.from({ length: totalFilas }, (_, i) => {
             const doc = docentesUnicos[i];
+            const bg = doc?.color ?? 'transparent';
+
             return (
               <tr key={i}>
-                {/* Columna izquierda institucional */}
+                {/* ── Columna izquierda institucional ── */}
                 {i === 0 && (
-                  <td rowSpan={3} colSpan={2} style={{ ...celdaInst, fontWeight: 'bold', fontSize: 11, verticalAlign: 'top' }}>
+                  <td
+                    rowSpan={3}
+                    colSpan={2}
+                    style={{
+                      ...celda,
+                      fontWeight: 'bold',
+                      fontSize: 11,
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                    }}
+                  >
                     Universidad Nacional de Trujillo<br />
                     Facultad de Ingeniería<br />
                     Trujillo
@@ -295,33 +288,26 @@ export function HorarioWeeklyCalendar({
                 )}
                 {i === 3 && (
                   <td colSpan={2} style={celdaInst}>
-                    ESCUELA:{' '}
-                    <span style={{ color: '#0070c0', fontWeight: 'bold' }}>
-                      INGENIERÍA DE SISTEMAS
-                    </span>
+                    ESCUELA: <span style={azul}>INGENIERÍA DE SISTEMAS</span>
                   </td>
                 )}
-                {i === 4 && (
-                  <td colSpan={2} style={{ border: 'none' }} />
-                )}
+                {i === 4 && <td colSpan={2} style={{ border: 'none' }} />}
                 {i === 5 && (
                   <td colSpan={2} style={celdaInst}>
-                    CICLO: <span style={azul}>{ciclo}</span>&nbsp;&nbsp;
+                    CICLO: <span style={azul}>{ciclo}</span>
+                    &nbsp;&nbsp;&nbsp;
                     SECCIÓN: <span style={azul}>{seccion}</span>
                   </td>
                 )}
-                {i === 6 && (
-                  <td colSpan={2} style={{ border: 'none' }} />
-                )}
+                {i === 6 && <td colSpan={2} style={{ border: 'none' }} />}
                 {i === 7 && (
                   <td colSpan={2} style={celdaInst}>
-                    AÑO ACADÉMICO: <span style={azul}>{anio}</span>&nbsp;
+                    AÑO ACADÉMICO: <span style={azul}>{anio}</span>
+                    &nbsp;&nbsp;
                     SEMESTRE: <span style={{ fontWeight: 'bold' }}>{semestre}</span>
                   </td>
                 )}
-                {i === 8 && (
-                  <td colSpan={2} style={{ border: 'none' }} />
-                )}
+                {i === 8 && <td colSpan={2} style={{ border: 'none' }} />}
                 {i === 9 && (
                   <td colSpan={2} style={celdaInst}>
                     Inicio del Ciclo: <span style={rojo}>{fechaInicio}</span>
@@ -336,22 +322,40 @@ export function HorarioWeeklyCalendar({
                   <td colSpan={2} style={{ border: 'none' }} />
                 )}
 
-                {/* Columna derecha — datos del docente */}
-                <td style={{ ...celda, textAlign: 'center' }}>{doc ? doc.numero : ''}</td>
-                <td style={{ ...celda, textAlign: 'left', backgroundColor: doc?.color ?? 'transparent' }}>
+                {/* ── Columna N° ── */}
+                <td style={{ ...celda, textAlign: 'center', fontWeight: 'bold' }}>
+                  {doc ? doc.numero : ''}
+                </td>
+
+                {/* ── DOCENTE ── */}
+                <td style={{ ...celda, textAlign: 'left', backgroundColor: bg }}>
                   {doc?.nombre ?? ''}
                 </td>
-                <td style={{ ...celda, textAlign: 'left', backgroundColor: doc?.color ?? 'transparent' }}>
+
+                {/* ── ASIGNATURA ── */}
+                <td style={{ ...celda, textAlign: 'left', backgroundColor: bg }}>
                   {doc?.asignatura ?? ''}
                 </td>
-                <td style={{ ...celda, textAlign: 'center', backgroundColor: doc?.color ?? 'transparent' }}>{doc ? (doc.horasT || '') : ''}</td>
-                <td style={{ ...celda, textAlign: 'center', backgroundColor: doc?.color ?? 'transparent' }}>{doc ? (doc.horasP || '') : ''}</td>
-                <td style={{ ...celda, textAlign: 'center', backgroundColor: doc?.color ?? 'transparent' }}>{doc ? (doc.horasL || '') : ''}</td>
-                <td style={{ ...celda, textAlign: 'center', backgroundColor: doc?.color ?? 'transparent' }}>{doc ? (doc.grupos || '') : ''}</td>
-                <td style={{ ...celda, textAlign: 'center', fontWeight: 'bold', backgroundColor: doc?.color ?? 'transparent' }}>
+
+                {/* ── T P L G T.HORAS ── */}
+                <td style={{ ...celda, textAlign: 'center', backgroundColor: bg }}>
+                  {doc ? (doc.horasT || '') : ''}
+                </td>
+                <td style={{ ...celda, textAlign: 'center', backgroundColor: bg }}>
+                  {doc ? (doc.horasP || '') : ''}
+                </td>
+                <td style={{ ...celda, textAlign: 'center', backgroundColor: bg }}>
+                  {doc ? (doc.horasL || '') : ''}
+                </td>
+                <td style={{ ...celda, textAlign: 'center', backgroundColor: bg }}>
+                  {doc ? (doc.grupos || '') : ''}
+                </td>
+                <td style={{ ...celda, textAlign: 'center', fontWeight: 'bold', backgroundColor: bg }}>
                   {doc ? (doc.totalHoras || '') : ''}
                 </td>
-                <td style={{ ...celda, textAlign: 'left', backgroundColor: doc?.color ?? 'transparent' }}>
+
+                {/* ── DEPARTAMENTO ── */}
+                <td style={{ ...celda, textAlign: 'left', backgroundColor: bg }}>
                   {doc?.departamento ?? ''}
                 </td>
               </tr>
@@ -360,102 +364,228 @@ export function HorarioWeeklyCalendar({
         </tbody>
       </table>
 
-      {/* ── TABLA INFERIOR — GRILLA SEMANAL ── */}
+      {/* ── TABLA GRILLA SEMANAL ── */}
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
-            {['HORA', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'HORA']
-              .map((d, idx) => <th key={`${d}-${idx}`} style={th}>{d}</th>)}
+            {['HORA', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'HORA'].map(
+              (d, idx) => <th key={idx} style={th}>{d}</th>
+            )}
           </tr>
         </thead>
         <tbody>
-          {FRANJAS.map(({ ini, label }) => (
-            <tr key={ini}>
-              {/* Celda hora izquierda */}
-              <td style={horaCol}>{label}</td>
+          {FRANJAS.map(({ ini, label }, franjaIdx) => {
+            // Separador entre mañana y tarde
+            const esPrimeroTarde = ini === '13:00';
+            const trStyle: React.CSSProperties = esPrimeroTarde ? SEPARATOR_STYLE : {};
 
-              {/* Celdas por día */}
-              {DIAS_GRILLA.map(dia => {
-                // Celda ya consumida por un rowspan anterior → omitir
-                if (consumed.has(`${dia}-${ini}`)) return null;
+            return (
+              <tr key={ini} style={trStyle}>
+                {/* ── Columna hora izquierda ── */}
+                <td style={{
+                  ...horaCol,
+                  borderTop: esPrimeroTarde ? '3px solid #000' : '1px solid #000',
+                }}>
+                  {label}
+                </td>
 
-                // Bloque especial Miércoles Ciclo I
-                if (dia === 'MIERCOLES' && esCicloI) {
-                  if (ini === '07:00') {
+                {DIAS_GRILLA.map(dia => {
+                  // ── Miércoles Ciclo I ──
+                  if (dia === 'MIERCOLES' && esCicloI) {
+                    if (consumed.has(`MIERCOLES-${ini}-ESTUDIOS`)) return null;
+                    if (ini === '07:00') {
+                      return (
+                        <td
+                          key={dia}
+                          rowSpan={6}
+                          style={{
+                            ...celda,
+                            background: '#bdd7ee',
+                            fontWeight: 'bold',
+                            fontSize: 11,
+                            verticalAlign: 'middle',
+                            textAlign: 'center',
+                          }}
+                        >
+                          ESTUDIOS<br />
+                          GENERALES
+                        </td>
+                      );
+                    }
+                    if (ini === '13:00') {
+                      return (
+                        <td
+                          key={dia}
+                          rowSpan={7}
+                          style={{
+                            ...celda,
+                            background: '#bdd7ee',
+                            fontWeight: 'bold',
+                            fontSize: 11,
+                            verticalAlign: 'middle',
+                            textAlign: 'center',
+                          }}
+                        >
+                          ESTUDIOS<br />
+                          GENERALES
+                        </td>
+                      );
+                    }
+                  }
+
+                  // ── Verificar rowspan ──
+                  const cubiertoPorRowspan = normalizedHorarios.some(x => {
+                    if (x.diaSemana !== dia || x.horaInicio === ini) return false;
+                    const startH = parseInt(x.horaInicio);
+                    const endH = parseInt(x.horaFin ?? x.horaInicio);
+                    const iniH = parseInt(ini);
+                    return iniH > startH && iniH < endH;
+                  });
+                  if (cubiertoPorRowspan) return null;
+
+                  // ── Buscar bloques ──
+                  const bloques = normalizedHorarios.filter(x =>
+                    x.diaSemana === dia &&
+                    x.horaInicio === ini &&
+                    !consumed.has(`${dia}-${ini}-${x.id}`)
+                  );
+
+                  // ── Celda vacía ──
+                  if (bloques.length === 0) {
                     return (
-                      <td key={dia} rowSpan={6}
+                      <td
+                        key={dia}
                         style={{
                           ...celda,
-                          background: '#bdd7ee',
-                          fontWeight: 'bold',
-                          fontSize: 11,
+                          borderTop: esPrimeroTarde ? '3px solid #000' : '1px solid #000',
+                        }}
+                      />
+                    );
+                  }
+
+                  // ── Un solo bloque ──
+                  if (bloques.length === 1) {
+                    const h = bloques[0];
+                    const doc = getDocente(h);
+                    const span = calcRowspan(h.horaInicio, h.horaFin);
+                    const labelComp = getComponentLabel(h);
+                    const ambNombre = h.ambiente?.nombre ?? h.ambiente?.codigo ?? '';
+                    const ambLines = formatAmbiente(ambNombre).split('\n');
+                    const nombreCorto = doc?.asignatura
+                      ? doc.asignatura.split(' ').slice(0, 4).join(' ')
+                      : '';
+
+                    return (
+                      <td
+                        key={dia}
+                        rowSpan={span}
+                        style={{
+                          ...celda,
+                          backgroundColor: doc?.color ?? '#fff',
                           verticalAlign: 'middle',
-                        }}>
-                        ESTUDIOS<br />GENERALES
+                          padding: '3px 2px',
+                          borderTop: esPrimeroTarde ? '3px solid #000' : '1px solid #000',
+                        }}
+                      >
+                        <div style={{ fontSize: 15, fontWeight: 'bold', lineHeight: 1 }}>
+                          {doc?.numero ?? ''}
+                        </div>
+                        {labelComp && (
+                          <div style={{ fontSize: 8, fontWeight: 'normal', marginTop: 1 }}>
+                            {labelComp}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 8, marginTop: 2, fontStyle: 'italic', lineHeight: 1.2 }}>
+                          {nombreCorto}
+                        </div>
+                        <div style={{ fontSize: 8, marginTop: 2, lineHeight: 1.2 }}>
+                          {ambLines.map((line, li) => (
+                            <span key={li}>
+                              {line}
+                              {li < ambLines.length - 1 && <br />}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                     );
                   }
-                  if (ini === '14:00') {
-                    return (
-                      <td key={dia} rowSpan={4}
-                        style={{
-                          ...celda,
-                          background: '#bdd7ee',
-                          fontWeight: 'bold',
-                          fontSize: 11,
-                          verticalAlign: 'middle',
-                        }}>
-                        ESTUDIOS<br />GENERALES
-                      </td>
-                    );
-                  }
-                }
 
-                // Buscar si hay sesión que empieza en esta franja/día
-                const sesion = horarios.find(x => x.diaSemana === dia && x.horaInicio === ini);
-                if (!sesion) {
-                  return <td key={dia} style={celda} />;
-                }
+                  // ── Múltiples bloques ──
+                  const minSpan = Math.min(...bloques.map(h => calcRowspan(h.horaInicio, h.horaFin)));
 
-                const docente = getDocente(sesion);
-                const span = calcRowspan(sesion.horaInicio, sesion.horaFin);
-                const labelComp = getComponentLabel(sesion);
-                const ambNombre = sesion.ambiente?.nombre ?? sesion.ambiente?.codigo ?? '';
-                const ambLines = formatAmbiente(ambNombre).split('\n');
+                  return (
+                    <td
+                      key={dia}
+                      rowSpan={minSpan}
+                      style={{
+                        ...celda,
+                        padding: 0,
+                        verticalAlign: 'middle',
+                        borderTop: esPrimeroTarde ? '3px solid #000' : '1px solid #000',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'row', height: '100%', width: '100%' }}>
+                        {bloques.map((h, idx) => {
+                          const doc = getDocente(h);
+                          const labelComp = getComponentLabel(h);
+                          const ambNombre = h.ambiente?.nombre ?? h.ambiente?.codigo ?? '';
+                          const ambLines = formatAmbiente(ambNombre).split('\n');
+                          const nombreCorto = doc?.asignatura
+                            ? doc.asignatura.split(' ').slice(0, 3).join(' ')
+                            : '';
 
-                return (
-                  <td
-                    key={dia}
-                    rowSpan={span}
-                    style={{
-                      ...celda,
-                      backgroundColor: docente?.color ?? '#fff',
-                      verticalAlign: 'middle',
-                      padding: '4px 2px',
-                    }}
-                  >
-                    {/* Número grande del docente */}
-                    <span style={{ fontSize: 16, fontWeight: 'bold' }}>
-                      {docente?.numero ?? ''}
-                    </span>
-                    {/* Etiqueta de componente (Práctica / Teoría) */}
-                    {labelComp && (
-                      <span style={{ fontSize: 10, fontWeight: 'normal' }}>{labelComp}</span>
-                    )}
-                    {/* Nombre del ambiente en línea(s) más pequeña */}
-                    <div style={{ fontSize: 9, marginTop: 2 }}>
-                      {ambLines.map((line, li) => (
-                        <span key={li}>{line}{li < ambLines.length - 1 && <br />}</span>
-                      ))}
-                    </div>
-                  </td>
-                );
-              })}
+                          return (
+                            <div
+                              key={h.id}
+                              style={{
+                                flex: 1,
+                                backgroundColor: doc?.color ?? '#fff',
+                                borderLeft: idx > 0 ? '1px solid #000' : 'none',
+                                textAlign: 'center',
+                                padding: '2px 1px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <span style={{ fontSize: 13, fontWeight: 'bold', lineHeight: 1 }}>
+                                {doc?.numero ?? ''}
+                              </span>
+                              {labelComp && (
+                                <span style={{ fontSize: 7, fontWeight: 'normal' }}>
+                                  {labelComp}
+                                </span>
+                              )}
+                              <div style={{ fontSize: 7, marginTop: 1, fontStyle: 'italic', lineHeight: 1.2 }}>
+                                {nombreCorto}
+                              </div>
+                              <div style={{ fontSize: 7, marginTop: 1, lineHeight: 1.2 }}>
+                                {ambLines.map((line, li) => (
+                                  <span key={li}>
+                                    {line}
+                                    {li < ambLines.length - 1 && <br />}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                })}
 
-              {/* Celda hora derecha */}
-              <td style={horaCol}>{label}</td>
-            </tr>
-          ))}
+                {/* ── Columna hora derecha ── */}
+                <td style={{
+                  ...horaCol,
+                  borderTop: esPrimeroTarde ? '3px solid #000' : '1px solid #000',
+                }}>
+                  {label}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

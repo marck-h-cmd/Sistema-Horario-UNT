@@ -14,6 +14,7 @@ const distribucionItemSchema = z.object({
 
 const distributeSchema = z.object({
   periodoId: z.string().uuid(),
+  docenteId: z.string().uuid().optional(),
   distribuciones: z.array(distribucionItemSchema),
 });
 
@@ -23,7 +24,7 @@ function parseTimeToDecimal(timeStr: string): number {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE']);
+  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -36,22 +37,31 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos de distribución inválidos', 400, validation.error.errors);
     }
 
-    const { periodoId, distribuciones } = validation.data;
+    const { periodoId, distribuciones, docenteId: docenteIdFromBody } = validation.data;
 
-    // 1. Buscar docente
-    const docente = await prisma.docente.findUnique({
-      where: { usuarioId: user.userId },
-    });
+    let docenteId: string;
+    if (user.rol === 'DOCENTE') {
+      const docente = await prisma.docente.findUnique({
+        where: { usuarioId: user.userId },
+      });
 
-    if (!docente) {
-      return createErrorResponse('DOCENTE_NOT_FOUND', 'No se encontró un docente asociado a este usuario', 404);
+      if (!docente) {
+        return createErrorResponse('DOCENTE_NOT_FOUND', 'No se encontró un docente asociado a este usuario', 404);
+      }
+
+      docenteId = docente.id;
+    } else {
+      if (!docenteIdFromBody) {
+        return createErrorResponse('MISSING_DOCENTE', 'El campo docenteId es requerido', 400);
+      }
+      docenteId = docenteIdFromBody as string;
     }
 
     // 2. Obtener declaración e items
     const declaracion = await prisma.declaracionNoLectiva.findUnique({
       where: {
         docenteId_periodoId: {
-          docenteId: docente.id,
+          docenteId,
           periodoId,
         },
       },
@@ -103,7 +113,7 @@ export async function POST(request: NextRequest) {
       // Limpiar distribuciones anteriores de este docente en este período
       await tx.distribucionNoLectiva.deleteMany({
         where: {
-          docenteId: docente.id,
+          docenteId,
           periodoId,
         },
       });
@@ -112,7 +122,7 @@ export async function POST(request: NextRequest) {
       if (distribuciones.length > 0) {
         await tx.distribucionNoLectiva.createMany({
           data: distribuciones.map(d => ({
-            docenteId: docente.id,
+            docenteId,
             periodoId,
             declaracionItemId: d.declaracionItemId,
             diaSemana: d.diaSemana as DiaSemana,

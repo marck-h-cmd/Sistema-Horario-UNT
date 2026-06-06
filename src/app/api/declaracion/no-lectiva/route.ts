@@ -31,7 +31,7 @@ const saveSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE']);
+  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -39,14 +39,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const periodoId = searchParams.get('periodoId');
+    const qDocenteId = searchParams.get('docenteId');
 
     if (!periodoId) {
       return createErrorResponse('MISSING_PERIOD', 'El parámetro periodoId es requerido', 400);
     }
 
-    // Buscar el docenteId asociado al usuario actual
+    // Buscar el docenteId asociado al usuario actual o el solicitado
     const docente = await prisma.docente.findUnique({
-      where: { usuarioId: user.userId },
+      where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
     });
 
     if (!docente) {
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE']);
+  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -75,9 +76,12 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos de declaración inválidos', 400, validation.error.errors);
     }
 
-    // Buscar el docenteId asociado al usuario actual
+    const { searchParams } = new URL(request.url);
+    const qDocenteId = searchParams.get('docenteId');
+
+    // Buscar el docenteId asociado al usuario actual o el solicitado
     const docente = await prisma.docente.findUnique({
-      where: { usuarioId: user.userId },
+      where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
     });
 
     if (!docente) {

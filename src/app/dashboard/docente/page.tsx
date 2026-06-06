@@ -207,12 +207,26 @@ export default function DocenteDashboardPage() {
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
+    let intentosFallidos = 0;
+    let conectadoAlgunaVez = false;
+    const maxIntentosIniciales = 3;
+    const wsEnabled = process.env.NEXT_PUBLIC_WS_ENABLED === 'true';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const connectWS = () => {
       try {
+        if (!wsEnabled) return;
+        if (!token) return;
+        if (!conectadoAlgunaVez && intentosFallidos >= maxIntentosIniciales) return;
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}/api/websocket`);
+        const url = `${protocol}//${window.location.host}/api/websocket?token=${encodeURIComponent(token)}&channel=general`;
+        ws = new WebSocket(url);
         
+        ws.onopen = () => {
+          conectadoAlgunaVez = true;
+          intentosFallidos = 0;
+        };
+
         ws.onmessage = (e) => {
           try {
             const msg = JSON.parse(e.data);
@@ -225,7 +239,9 @@ export default function DocenteDashboardPage() {
         };
 
         ws.onclose = () => {
-          reconnectTimeout = setTimeout(connectWS, 5000);
+          if (!conectadoAlgunaVez) intentosFallidos++;
+          if (!conectadoAlgunaVez && intentosFallidos >= maxIntentosIniciales) return;
+          reconnectTimeout = setTimeout(connectWS, conectadoAlgunaVez ? 5000 : 15000);
         };
 
         ws.onerror = () => {

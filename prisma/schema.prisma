@@ -274,8 +274,8 @@ model Docente {
   codigo          String    @unique
   categoria       CategoriaDocente
   dedicacion      DedicacionDocente @default(TIEMPO_COMPLETO_40H)
-  dni             String    @unique @db.Char(8)
-  departamentoId  Int       @map("id_departamento")
+  dni            String    @unique @db.Char(8) @default("00000000")
+  departamentoId Int       @map("id_departamento") @default(1)
   telefono        String?
   whatsapp        String?
   telegramId      String?
