@@ -1,0 +1,20 @@
+{
+  "name": "Sistema de Gestión de Horarios - UNT",
+  "short_name": "Horarios UNT",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/logo-unt.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

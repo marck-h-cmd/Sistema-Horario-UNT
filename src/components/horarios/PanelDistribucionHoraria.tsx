@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Save, Calendar } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Calendar, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { apiGet, apiPost, ApiClientError, downloadFile } from '@/lib/api-client';
 
 const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const DIAS_LABEL: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
   const [distribuciones, setDistribuciones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   
   // Estado para el formulario de agregar
   const [selectedItemId, setSelectedItemId] = useState('');
@@ -51,16 +53,15 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
   const cargarDistribucion = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/horario/no-lectivo/distribucion?periodoId=${periodoId}&docenteId=${docenteId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiGet<any[]>('/api/horario/no-lectivo/distribucion', {
+        periodoId,
+        docenteId,
       });
-      const data = await res.json();
-      if (data.success) {
-        setDistribuciones(data.data);
-      }
+      setDistribuciones(res.data || []);
     } catch (e) {
       console.error(e);
+      setDistribuciones([]);
+      setError(e instanceof ApiClientError ? e.message : 'No se pudo cargar la distribución del horario');
     } finally {
       setLoading(false);
     }
@@ -75,12 +76,46 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
       return;
     }
     
-    const hIni = parseFloat(horaInicio.replace(':', '.'));
-    const hFin = parseFloat(horaFin.replace(':', '.'));
+    const itemDeclaracion = declaracionItems.find(i => i.id === selectedItemId);
+    if (!itemDeclaracion) return;
+
+    const asignadas = horasAsignadasPorActividad[selectedItemId] || 0;
+    const hIni = hourStrToInt(horaInicio);
+    const hFin = hourStrToInt(horaFin);
+    const duracion = hFin - hIni;
     
     if (hIni >= hFin) {
       setError('La hora de fin debe ser mayor a la hora de inicio');
       return;
+    }
+
+    if (asignadas + duracion > itemDeclaracion.horasSemanales) {
+      setError(`No puede exceder las ${itemDeclaracion.horasSemanales} horas declaradas para esta actividad.`);
+      return;
+    }
+
+    // Validar cruces
+    for (let hour = hIni; hour < hFin; hour++) {
+      const colLectiva = horariosLectivos.some(
+        h =>
+          h.diaSemana === selectedDia &&
+          typeof h.horaInicio === 'string' &&
+          typeof h.horaFin === 'string' &&
+          hourStrToInt(h.horaInicio) <= hour &&
+          hourStrToInt(h.horaFin) > hour
+      );
+      const colNoLectiva = distribuciones.some(
+        d =>
+          d.diaSemana === selectedDia &&
+          typeof d.horaInicio === 'string' &&
+          typeof d.horaFin === 'string' &&
+          hourStrToInt(d.horaInicio) <= hour &&
+          hourStrToInt(d.horaFin) > hour
+      );
+      if (colLectiva || colNoLectiva) {
+        setError(`Cruce de horario detectado a las ${intToHourStr(hour)} el día ${DIAS_LABEL[selectedDia]}`);
+        return;
+      }
     }
     
     const nuevo = {
@@ -89,10 +124,11 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
       diaSemana: selectedDia,
       horaInicio,
       horaFin,
-      tipoActividad: declaracionItems.find(i => i.id === selectedItemId)?.tipoActividad
+      tipoActividad: itemDeclaracion.tipoActividad
     };
     
     setDistribuciones([...distribuciones, nuevo]);
+    setSelectedItemId(''); // Resetear el select
   };
 
   const handleEliminar = (id: string) => {
@@ -104,7 +140,6 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         periodoId,
         docenteId, // en caso de ser admin
@@ -115,21 +150,12 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
           horaFin: d.horaFin,
         }))
       };
-      
-      const res = await fetch('/api/horario/no-lectivo/distribuir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.message || 'Error al guardar');
-      }
+
+      await apiPost('/api/horario/no-lectivo/distribuir', payload);
       setSuccess('Horario guardado correctamente');
       cargarDistribucion();
     } catch (e: any) {
-      setError(e.message);
+      setError(e instanceof ApiClientError ? e.message : e?.message || 'Error al guardar');
     } finally {
       setGuardando(false);
     }
@@ -176,17 +202,97 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
     return m;
   }, [horariosLectivos, distribuciones]);
 
+  // Construir matriz unificada con rowspan
+  const grid = useMemo(() => {
+    // Array de objetos celda
+    // grid[hora][dia]
+    const g: Record<string, Record<string, any>> = {};
+    HORAS.slice(0, -1).forEach(h => {
+      g[h] = {};
+      DIAS.forEach(d => g[h][d] = null);
+    });
+
+    // Rellenar datos
+    DIAS.forEach(dia => {
+      let skipRows = 0; // Cuántas celdas hacia abajo saltar
+      
+      HORAS.slice(0, -1).forEach((hora, idx) => {
+        if (skipRows > 0) {
+          // Si estamos "dentro" de un bloque que se unió (rowspan), dejamos esta celda invisible
+          g[hora][dia] = { skip: true };
+          skipRows--;
+          return;
+        }
+
+        const cell = matriz[dia]?.[hora];
+        if (cell && cell.spanStart) {
+          // Calcular la duración en horas
+          const hIni = hourStrToInt(cell.horaInicio);
+          const hFin = hourStrToInt(cell.horaFin);
+          const duracion = hFin - hIni;
+          
+          g[hora][dia] = { 
+            ...cell, 
+            rowSpan: duracion,
+            skip: false 
+          };
+          skipRows = duracion - 1; // Las siguientes (duracion - 1) celdas se saltan
+        } else {
+          g[hora][dia] = { skip: false, empty: true };
+        }
+      });
+    });
+
+    return g;
+  }, [matriz]);
+
   // Contar horas asignadas por actividad
   const horasAsignadasPorActividad = useMemo(() => {
     const conteo: Record<string, number> = {};
     distribuciones.forEach(d => {
-      const hIni = parseFloat(d.horaInicio.replace(':', '.'));
-      const hFin = parseFloat(d.horaFin.replace(':', '.'));
+      const hIni = hourStrToInt(d.horaInicio);
+      const hFin = hourStrToInt(d.horaFin);
       const duracion = hFin - hIni;
       conteo[d.declaracionItemId] = (conteo[d.declaracionItemId] || 0) + duracion;
     });
     return conteo;
   }, [distribuciones]);
+
+  const horarioCompleto = useMemo(() => {
+    return declaracionItems.every(item => {
+      const asignadas = horasAsignadasPorActividad[item.id] || 0;
+      return asignadas >= item.horasSemanales;
+    });
+  }, [declaracionItems, horasAsignadasPorActividad]);
+
+  useEffect(() => {
+    if (!selectedItemId) return;
+    const item = declaracionItems.find(i => i.id === selectedItemId);
+    if (!item) {
+      setSelectedItemId('');
+      return;
+    }
+    const asignadas = horasAsignadasPorActividad[item.id] || 0;
+    if (asignadas >= item.horasSemanales) setSelectedItemId('');
+  }, [selectedItemId, declaracionItems, horasAsignadasPorActividad]);
+
+  const handleExportarPDF = async () => {
+    setExportando(true);
+    setError('');
+    setSuccess('');
+    try {
+      await downloadFile(
+        '/api/reportes/horario-personal',
+        { periodoId, docenteId },
+        `Horario_Personal_${docenteId}.pdf`
+      );
+      setSuccess('PDF generado correctamente');
+    } catch (e: any) {
+      setError(e instanceof ApiClientError ? e.message : e?.message || 'No se pudo generar el PDF');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   if (loading) return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" /></div>;
 
@@ -220,8 +326,9 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
               <option value="">Seleccione una actividad declarada...</option>
               {declaracionItems.map(item => {
                 const asignadas = horasAsignadasPorActividad[item.id] || 0;
+                if (asignadas >= item.horasSemanales) return null; // Ocultar si ya completó sus horas
                 return (
-                  <option key={item.id} value={item.id} disabled={asignadas >= item.horasSemanales}>
+                  <option key={item.id} value={item.id}>
                     {item.tipoActividad} ({asignadas}/{item.horasSemanales}h)
                   </option>
                 );
@@ -279,14 +386,21 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
               </tr>
             </thead>
             <tbody>
-              {HORAS.slice(0, -1).map(hora => (
+              {HORAS.slice(0, -1).map((hora, idx) => (
                 <tr key={hora}>
-                  <td className="p-2 text-center font-medium bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                    {hora}
+                  <td className="p-0 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    <div className="flex flex-col items-center justify-center h-full min-h-[60px] text-slate-600 dark:text-slate-300">
+                      <span className="font-medium text-[11px] leading-tight whitespace-nowrap">
+                        {hora.replace(/^0/, '')}-{HORAS[idx + 1].replace(/^0/, '')}
+                      </span>
+                    </div>
                   </td>
                   {DIAS.map(dia => {
-                    const cell = matriz[dia]?.[hora];
-                    if (!cell) {
+                    const cell = grid[hora][dia];
+                    
+                    if (cell.skip) return null; // Oculto porque otra celda ocupa este espacio con rowSpan
+
+                    if (cell.empty) {
                       return (
                         <td
                           key={dia}
@@ -300,45 +414,43 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
                       return (
                         <td
                           key={dia}
-                          className="border border-slate-200 dark:border-slate-700 bg-blue-50/80 dark:bg-blue-950/35 p-1.5"
-                          style={{ height: 60 }}
+                          rowSpan={cell.rowSpan}
+                          className="border border-slate-200 dark:border-slate-700 bg-blue-50/80 dark:bg-blue-950/35 p-0 align-top"
+                          style={{ height: 60 * cell.rowSpan }}
                         >
-                          {cell.spanStart ? (
-                            <>
-                              <div className="font-bold text-blue-800 dark:text-blue-200 text-[10px] leading-tight">
-                                {cell.cursoNombre}
-                              </div>
-                              <div className="text-blue-600 dark:text-blue-300 text-[9px]">{cell.tipoComponente}</div>
-                              <div className="text-slate-500 dark:text-slate-400 text-[9px]">
-                                {cell.horaInicio} - {cell.horaFin}
-                              </div>
-                            </>
-                          ) : null}
+                          <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center">
+                            <div className="font-bold text-blue-800 dark:text-blue-200 text-[11px] leading-tight">
+                              {cell.cursoNombre}
+                            </div>
+                            <div className="text-blue-600 dark:text-blue-300 text-[10px] mt-1 uppercase">{cell.tipoComponente}</div>
+                            <div className="text-slate-500 dark:text-slate-400 text-[10px] mt-1">
+                              {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
+                            </div>
+                          </div>
                         </td>
                       );
                     } else {
                       return (
                         <td
                           key={dia}
-                          className="border border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/25 p-1.5 relative group"
-                          style={{ height: 60 }}
+                          rowSpan={cell.rowSpan}
+                          className="border border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/25 p-0 align-top relative group"
+                          style={{ height: 60 * cell.rowSpan }}
                         >
-                          {cell.spanStart ? (
-                            <>
-                              <div className="font-bold text-amber-800 dark:text-amber-200 text-[10px] leading-tight break-words">
-                                {cell.tipoActividad}
-                              </div>
-                              <div className="text-amber-600 dark:text-amber-300 text-[9px]">
-                                {cell.horaInicio} - {cell.horaFin}
-                              </div>
-                              <button 
-                                onClick={() => handleEliminar(cell.id)}
-                                className="absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </>
-                          ) : null}
+                          <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center px-4">
+                            <div className="font-bold text-amber-800 dark:text-amber-200 text-[11px] leading-tight break-words">
+                              {cell.tipoActividad}
+                            </div>
+                            <div className="text-amber-600 dark:text-amber-300 text-[10px] mt-1">
+                              {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleEliminar(cell.id)}
+                            className="absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </td>
                       );
                     }
@@ -349,9 +461,18 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
           </table>
         </div>
         
-        <div className="mt-6 flex justify-end">
-          <Button onClick={handleGuardar} disabled={guardando} className="bg-emerald-600 hover:bg-emerald-700">
-            {guardando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+        <div className="mt-6 flex justify-between items-center">
+          <Button
+            onClick={handleExportarPDF}
+            disabled={!horarioCompleto || exportando}
+            variant="outline"
+            className="gap-2 border-slate-300 dark:border-slate-700 disabled:opacity-50"
+          >
+            {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Exportar PDF
+          </Button>
+          <Button onClick={handleGuardar} disabled={guardando} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md gap-2">
+            {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Guardar Horario Personal
           </Button>
         </div>

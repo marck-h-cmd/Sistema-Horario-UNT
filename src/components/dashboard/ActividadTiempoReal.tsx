@@ -44,8 +44,12 @@ export default function ActividadTiempoReal() {
       .finally(() => setLoading(false));
 
     try {
+      const wsEnabled = process.env.NEXT_PUBLIC_WS_ENABLED === 'true';
+      if (!wsEnabled) return () => { wsRef.current?.close(); };
+      if (!token) return () => { wsRef.current?.close(); };
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${window.location.host}/api/websocket`);
+      const wsUrl = `${protocol}//${window.location.host}/api/websocket?token=${encodeURIComponent(token)}&channel=general`;
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => setConnected(true);
       ws.onclose = () => setConnected(false);
