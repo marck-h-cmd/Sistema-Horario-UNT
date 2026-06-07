@@ -6,6 +6,15 @@ const COLORES = [
 
 const DIAS_GRILLA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 
+const DIA_LABELS: Record<string, string> = {
+  LUNES: 'LUNES',
+  MARTES: 'MARTES',
+  MIERCOLES: 'MIÉRCOLES',
+  JUEVES: 'JUEVES',
+  VIERNES: 'VIERNES',
+  SABADO: 'SÁBADO',
+};
+
 const FRANJAS = [
   { ini: '07:00', label: '7-8' },
   { ini: '08:00', label: '8-9' },
@@ -269,8 +278,13 @@ const getMetadatosCursoPDF = (h: any): MetadatosCursoPDF => {
 export async function exportarHorarioPDF(
   horarios: any[],
   titulo: string,
-  subtitulo: string
+  subtitulo: string,
+  diasMostrados?: string[]
 ): Promise<void> {
+
+  const diasRender = diasMostrados && diasMostrados.length > 0 
+    ? DIAS_GRILLA.filter(d => diasMostrados.includes(d)) 
+    : DIAS_GRILLA;
 
   const normalizedHorarios = horarios.map((h, index) => ({
     ...h,
@@ -411,15 +425,12 @@ export async function exportarHorarioPDF(
     box-sizing:border-box;
   `;
 
+  const colsMedias = diasRender.map(dia => `<col style="width:calc((100% - 76px) / ${diasRender.length})" />`).join('');
+
   const colgroupHorario = `
     <colgroup>
       <col style="width:38px" />
-      <col style="width:calc((100% - 134px) / 5)" />
-      <col style="width:calc((100% - 134px) / 5)" />
-      <col style="width:calc((100% - 134px) / 5)" />
-      <col style="width:calc((100% - 134px) / 5)" />
-      <col style="width:calc((100% - 134px) / 5)" />
-      <col style="width:58px" />
+      ${colsMedias}
       <col style="width:38px" />
     </colgroup>
   `;
@@ -825,7 +836,7 @@ export async function exportarHorarioPDF(
 
     const diasSoloPrimeraFila =
       index === 0
-        ? DIAS_GRILLA.map(dia => renderDiaCompleto(dia)).join('')
+        ? diasRender.map(dia => renderDiaCompleto(dia)).join('')
         : '';
 
     return `
@@ -948,12 +959,7 @@ export async function exportarHorarioPDF(
     <thead>
       <tr>
         <th style="${thStyle}width:38px">HORA</th>
-        <th style="${thStyle}">LUNES</th>
-        <th style="${thStyle}">MARTES</th>
-        <th style="${thStyle}">MIÉRCOLES</th>
-        <th style="${thStyle}">JUEVES</th>
-        <th style="${thStyle}">VIERNES</th>
-        <th style="${thStyle}width:58px">SÁBADO</th>
+        ${diasRender.map(dia => `<th style="${thStyle}">${DIA_LABELS[dia] ?? dia}</th>`).join('')}
         <th style="${thStyle}width:38px">HORA</th>
       </tr>
     </thead>

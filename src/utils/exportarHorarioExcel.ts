@@ -48,10 +48,8 @@ const FRANJAS = [
 ];
 
 const HORA_COL_IZQ = 1;      // A
-const HORA_COL_DER = 26;     // Z
 const PRIMER_DIA_COL = 2;    // B
 const ANCHO_DIA = 4;         // 4 subcolumnas por día para poder dividir bloques simultáneos
-const ULTIMA_COL = 26;       // Z
 
 const borderThin: Partial<ExcelJS.Borders> = {
   top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -442,12 +440,7 @@ const colLetter = (n: number): string => {
   return s;
 };
 
-const diaStartCol = (dia: string): number => {
-  const idx = DIAS_GRILLA.indexOf(dia);
-  return PRIMER_DIA_COL + idx * ANCHO_DIA;
-};
 
-const diaEndCol = (dia: string): number => diaStartCol(dia) + ANCHO_DIA - 1;
 
 const applyStyle = (cell: ExcelJS.Cell, style: Partial<ExcelJS.Style>): void => {
   if (style.fill) cell.fill = style.fill;
@@ -576,8 +569,21 @@ export async function exportarHorarioExcel(
   horarios: HorarioCalendarItem[],
   titulo: string,
   subtitulo = '',
-  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean } = {}
+  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[] } = {}
 ): Promise<void> {
+  const diasRender = opciones.diasMostrados && opciones.diasMostrados.length > 0
+    ? DIAS_GRILLA.filter(d => opciones.diasMostrados!.includes(d))
+    : DIAS_GRILLA;
+
+  const diaStartCol = (dia: string): number => {
+    const idx = diasRender.indexOf(dia);
+    return PRIMER_DIA_COL + Math.max(0, idx) * ANCHO_DIA;
+  };
+
+  const diaEndCol = (dia: string): number => diaStartCol(dia) + ANCHO_DIA - 1;
+
+  const ULTIMA_COL = PRIMER_DIA_COL + Math.max(0, diasRender.length) * ANCHO_DIA;
+  const HORA_COL_DER = ULTIMA_COL + 1;
   const normalizedHorarios = horarios.map((h, index) => ({
     ...h,
     __ordenOriginal: index,
@@ -692,7 +698,7 @@ export async function exportarHorarioExcel(
   // ─────────────────────────────────────────────
   // 2. Anchos de columnas
   // ─────────────────────────────────────────────
-  for (let c = 1; c <= ULTIMA_COL; c++) {
+  for (let c = 1; c <= HORA_COL_DER; c++) {
     ws.getColumn(c).width = c === HORA_COL_IZQ || c === HORA_COL_DER ? 7 : 6.5;
   }
 
@@ -817,7 +823,7 @@ export async function exportarHorarioExcel(
 
   mergeAndStyle(ws, grillaStartRow, HORA_COL_IZQ, grillaStartRow, HORA_COL_IZQ, 'HORA', headerStyle);
 
-  DIAS_GRILLA.forEach(dia => {
+  diasRender.forEach(dia => {
     mergeAndStyle(
       ws,
       grillaStartRow,
@@ -861,7 +867,7 @@ export async function exportarHorarioExcel(
     mergeAndStyle(ws, excelRow, HORA_COL_IZQ, excelRow, HORA_COL_IZQ, label, horaStyle(thickTop));
     mergeAndStyle(ws, excelRow, HORA_COL_DER, excelRow, HORA_COL_DER, label, horaStyle(thickTop));
 
-    DIAS_GRILLA.forEach(dia => {
+    diasRender.forEach(dia => {
       const c1 = diaStartCol(dia);
       const c2 = diaEndCol(dia);
 
@@ -979,7 +985,7 @@ export async function exportarHorarioExcel(
   });
 
   const ultimaFilaGrilla = grillaStartRow + FRANJAS.length;
-  ws.pageSetup.printArea = `A1:${colLetter(ULTIMA_COL)}${ultimaFilaGrilla}`;
+  ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${ultimaFilaGrilla}`;
 
   // Repetir encabezados al imprimir.
   ws.pageSetup.printTitlesRow = '1:1';
@@ -1025,8 +1031,8 @@ export async function exportarHorarioExcel(
   wsListado.getRow(1).eachCell(cell => applyStyle(cell, headerStyle));
 
   const horariosOrdenados = [...normalizedHorarios].sort((a, b) => {
-    const diaA = DIAS_GRILLA.indexOf(normalizarDia(a.diaSemana));
-    const diaB = DIAS_GRILLA.indexOf(normalizarDia(b.diaSemana));
+    const diaA = diasRender.indexOf(normalizarDia(a.diaSemana));
+    const diaB = diasRender.indexOf(normalizarDia(b.diaSemana));
     if (diaA !== diaB) return diaA - diaB;
     const horaCompare = String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? ''));
     if (horaCompare !== 0) return horaCompare;

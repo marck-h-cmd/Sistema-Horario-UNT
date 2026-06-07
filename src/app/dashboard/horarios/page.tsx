@@ -197,7 +197,7 @@ export default function HorariosPage() {
   const [ambientesAll, setAmbientesAll] = useState<AmbienteOpt[]>([]);
   const [docentesSearch, setDocentesSearch] = useState('');
 
-  const [diaResaltado, setDiaResaltado] = useState<string | null>(null);
+  const [diasSeleccionados, setDiasSeleccionados] = useState<string[]>([]);
   const [estadoFiltro, setEstadoFiltro] = useState<string>('Todos');
   const [grupoFiltro, setGrupoFiltro] = useState<string>('Todos');
   const [vistaTipo, setVistaTipo] = useState<'General' | 'Por Docente' | 'Por Aula'>('General');
@@ -560,7 +560,13 @@ export default function HorariosPage() {
     try {
       const periodoNombre = periodoSeleccionado?.nombre || 'General';
       const cicloNombre = filtros.ciclo ? `Ciclo ${CICLO_ROMANO[filtros.ciclo] || filtros.ciclo}` : 'Todos los ciclos';
-      await exportarHorarioPDF(horarios, 'HORARIO ACADÉMICO', `${periodoNombre} - ${cicloNombre}`);
+      
+      // Filtrar los horarios por días seleccionados si los hay
+      const horariosExportar = diasSeleccionados.length > 0
+        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
+        : horarios;
+
+      await exportarHorarioPDF(horariosExportar, 'HORARIO ACADÉMICO', `${periodoNombre} - ${cicloNombre}`, diasSeleccionados.length > 0 ? diasSeleccionados : undefined);
       toast.success('PDF exportado');
     } catch (e: any) {
       toast.error('Error al generar PDF: ' + e.message);
@@ -574,7 +580,13 @@ export default function HorariosPage() {
     setDownloadingExcel(true);
     try {
       const titulo = `Horario Académico - ${periodoSeleccionado?.nombre || 'General'}`;
-      await exportarHorarioExcel(horarios, titulo);
+      
+      // Filtrar los horarios por días seleccionados si los hay
+      const horariosExportar = diasSeleccionados.length > 0
+        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
+        : horarios;
+
+      await exportarHorarioExcel(horariosExportar, titulo, '', { diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined });
       toast.success('Excel exportado');
     } catch (e: any) {
       toast.error('Error al generar Excel: ' + e.message);
@@ -674,9 +686,13 @@ export default function HorariosPage() {
     return res;
   }, [horariosFiltrados]);
 
+  const diasAMostrar = useMemo(() => {
+    return diasSeleccionados.length > 0 ? DIAS.filter(d => diasSeleccionados.includes(d)) : DIAS;
+  }, [diasSeleccionados]);
+
   const totalLanes = useMemo(() => {
-    return DIAS.reduce((sum, d) => sum + (lanesPorDia[d]?.length || 1), 0);
-  }, [lanesPorDia]);
+    return diasAMostrar.reduce((sum, d) => sum + (lanesPorDia[d]?.length || 1), 0);
+  }, [lanesPorDia, diasAMostrar]);
 
   const minTableWidth = useMemo(() => {
     return Math.max(1000, totalLanes * 100 + 160); // 100px por carril, más 80px por cada columna de hora lateral
@@ -860,7 +876,7 @@ export default function HorariosPage() {
                 setEstadoFiltro('Todos');
                 setGrupoFiltro('Todos');
               }} 
-              className="text-sm font-medium text-[#1a365d] hover:underline whitespace-nowrap"
+              className="text-sm font-medium text-[#1a365d] hover:underline whitespace-nowrap dark:text-unt-gold-light dark:hover:text-unt-gold-dark"
             >
               Limpiar filtros
             </button>
@@ -873,10 +889,10 @@ export default function HorariosPage() {
             {DIAS.map(d => (
               <button
                 key={d}
-                onClick={() => setDiaResaltado(diaResaltado === d ? null : d)}
+                onClick={() => setDiasSeleccionados(prev => prev.includes(d) ? prev.filter(dia => dia !== d) : [...prev, d])}
                 className={cn(
                   "px-3 py-1 text-sm font-medium rounded-full transition-colors border",
-                  diaResaltado === d 
+                  diasSeleccionados.includes(d) 
                     ? "bg-[#1a365d] text-white border-[#1a365d]" 
                     : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
                 )}
@@ -884,6 +900,16 @@ export default function HorariosPage() {
                 {DIA_LABEL[d].slice(0, 3)}
               </button>
             ))}
+            {diasSeleccionados.length > 0 && (
+              <button
+                onClick={() => setDiasSeleccionados([])}
+                className="ml-1 px-3 py-1 text-sm font-medium rounded-full transition-colors border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:bg-red-950/40 dark:hover:bg-red-950/60 flex items-center gap-1"
+                title="Quitar todos los filtros de días"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpiar
+              </button>
+            )}
           </div>
           
           <div className="flex flex-wrap gap-6 items-center">
@@ -960,7 +986,7 @@ export default function HorariosPage() {
               <thead className="bg-[#1a365d] text-white">
                 <tr>
                   <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
-                  {DIAS.map(d => {
+                  {diasAMostrar.map(d => {
                     const lanesCount = lanesPorDia[d]?.length || 1;
                     const percentWidth = (lanesCount / totalLanes) * 100;
                     return (
@@ -968,8 +994,7 @@ export default function HorariosPage() {
                         key={d} 
                         style={{ width: `${percentWidth}%` }}
                         className={cn(
-                          "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700",
-                          diaResaltado === d && "bg-blue-800"
+                          "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700"
                         )}
                       >
                         {DIA_LABEL[d]}
@@ -996,7 +1021,7 @@ export default function HorariosPage() {
                     </td>
 
                     {/* Celdas de Días */}
-                    {DIAS.map(dia => {
+                    {diasAMostrar.map(dia => {
                       if (rowIndex > 0) return null; // Solo renderizar el TD en la primera fila (rowSpan={14})
 
                       const dayClasses = horariosFiltrados.filter(h => h.diaSemana === dia);
@@ -1008,8 +1033,7 @@ export default function HorariosPage() {
                           key={dia} 
                           rowSpan={14}
                           className={cn(
-                            "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px] overflow-hidden",
-                            diaResaltado === dia && "bg-blue-50/30"
+                            "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px] overflow-hidden"
                           )}
                         >
                           <div className="absolute inset-0 flex flex-row divide-x divide-slate-200 h-full w-full">
@@ -1284,7 +1308,7 @@ export default function HorariosPage() {
               <tfoot className="bg-slate-800 text-white font-bold shadow-inner">
                 <tr>
                   <td className="py-3 px-4 text-center border-t border-slate-700">TOTALES</td>
-                  {DIAS.map(dia => (
+                  {diasAMostrar.map(dia => (
                     <td key={dia} className="py-3 px-4 text-center border-t border-slate-700 border-r border-slate-700/50">
                       {getTotalHoras(dia)}h
                     </td>
