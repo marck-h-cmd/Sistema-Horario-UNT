@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -22,6 +22,7 @@ import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { CategoriaDocente, Rol } from '@prisma/client';
 import { toast } from 'sonner';
+import { CargaHorariaModal } from '@/components/docentes/CargaHorariaModal';
 
 interface UsuarioDocente {
   nombre: string;
@@ -97,6 +98,7 @@ export default function DocentesPage() {
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [cargaHorariaDocenteId, setCargaHorariaDocenteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<DocenteRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<{
@@ -295,13 +297,16 @@ export default function DocentesPage() {
     {
       key: 'acciones',
       header: '',
-      className: 'w-32 text-right',
+      className: 'w-36 text-right',
       cell: (r) => (
         <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
+          <Button type="button" size="sm" variant="outline" title="Ver Carga Horaria" onClick={() => setCargaHorariaDocenteId(r.id)}>
+            <FileText className="h-3.5 w-3.5" />
+          </Button>
+          <Button type="button" size="sm" variant="outline" title="Editar" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" size="sm" variant="destructive" onClick={() => handleDelete(r)}>
+          <Button type="button" size="sm" variant="destructive" title="Eliminar" onClick={() => handleDelete(r)}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -600,6 +605,12 @@ export default function DocentesPage() {
         variant={confirmState.variant}
         onConfirm={() => handleConfirmClose(true)}
         onCancel={() => handleConfirmClose(false)}
+      />
+
+      <CargaHorariaModal
+        docenteId={cargaHorariaDocenteId}
+        isOpen={!!cargaHorariaDocenteId}
+        onClose={() => setCargaHorariaDocenteId(null)}
       />
     </div>
   );
