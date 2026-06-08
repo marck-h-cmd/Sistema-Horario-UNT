@@ -7,6 +7,7 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { FormatoCargaHoraria } from '@/components/pdf/FormatoCargaHoraria';
 import { DeclaracionJuradaCentral } from '@/components/pdf/DeclaracionJuradaCentral';
 import { DeclaracionJuradaDesconcentrada } from '@/components/pdf/DeclaracionJuradaDesconcentrada';
+import { FormatoHorarioSemanal } from '@/components/pdf/FormatoHorarioSemanal';
 import { TipoActividadNoLectiva } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
       include: {
         curso: true,
         grupo: true,
+        ambiente: true,
       },
     });
 
@@ -255,6 +257,83 @@ export async function POST(req: NextRequest) {
         docente: docenteAdaptado,
         periodo: periodoAdaptado,
         comisionServicio: comisionAdaptada,
+      });
+    } else if (tipo === 'horario') {
+      // Formateo de horarios para el F03-CAD
+      const formatDia = (d: string) => d.substring(0, 2).toUpperCase();
+      
+      const cargaLectivaHorarioList = Object.values(hashCursos).map((curso: any) => {
+        // Encontrar horarios correspondientes a este curso/grupo
+        const hs = horariosDb.filter(h => h.curso.codigo === curso.codigo && (h.grupo?.nombre || 'A') === curso.seccion);
+        
+        const hTeoria = hs.filter(h => h.tipoComponente === 'TEORIA');
+        const hPractica = hs.filter(h => h.tipoComponente === 'PRACTICA');
+        const hLab = hs.filter(h => h.tipoComponente === 'LABORATORIO');
+        
+        let horarioStr = '';
+        if (hTeoria.length > 0) {
+          horarioStr += 'T: ' + hTeoria.map(h => `${formatDia(h.diaSemana || '')}(${h.horaInicio}-${h.horaFin})`).join(', ') + '\n';
+        }
+        if (hPractica.length > 0) {
+          horarioStr += 'P: ' + hPractica.map(h => `${formatDia(h.diaSemana || '')}(${h.horaInicio}-${h.horaFin})`).join(', ') + '\n';
+        }
+        if (hLab.length > 0) {
+          horarioStr += 'L: ' + hLab.map(h => `${formatDia(h.diaSemana || '')}(${h.horaInicio}-${h.horaFin})`).join(', ') + '\n';
+        }
+        
+        const lugares = Array.from(new Set(hs.map(h => h.sede === 'SEDE_CENTRAL' ? 'F11' : 'F14'))).join(', ');
+        const aulas = Array.from(new Set(hs.map(h => h.ambiente?.nombre || 'PD'))).join(', ');
+        
+        return {
+          horarioStr: horarioStr.trim(),
+          asignatura: `${curso.nombre}\n${curso.ciclo}-C ${curso.escuela} ${curso.seccion}`,
+          lugar: lugares || 'F11',
+          aula: aulas || 'PD',
+          total: curso.horas_teoria + curso.horas_practica + curso.horas_laboratorio,
+        };
+      });
+
+      // Distribucion para No Lectivas
+      const distribucionesDb = await prisma.distribucionNoLectiva.findMany({
+        where: { docenteId, periodoId },
+        include: { declaracionItem: true },
+      });
+
+      const cargaNoLectivaHorarioList = cargaNoLectivaList.map(n => {
+        // Find matching item in db
+        const matchingItem = noLectivaDb?.items.find(i => (MAP_TIPO_ACTIVIDAD[i.tipoActividad] || i.tipoActividad) === n.tipoActividad);
+        
+        let horarioStr = '';
+        if (matchingItem) {
+          const dists = distribucionesDb.filter(d => d.declaracionItemId === matchingItem.id);
+          horarioStr = dists.map(d => `${formatDia(d.diaSemana)}(${d.horaInicio}-${d.horaFin})`).join(', ');
+        }
+        
+        return {
+          actividadId: matchingItem?.tipoActividad || 'OTRO',
+          actividadNombre: n.tipoActividad,
+          horarioStr: horarioStr,
+          lugar: 'F11',
+          aula: 'CUBÍCULO',
+          total: n.horasSemanales,
+        };
+      });
+
+      pdfElement = React.createElement(FormatoHorarioSemanal, {
+        docente: {
+          ...docenteAdaptado,
+          nombreCompleto: `${docenteAdaptado.nombres} ${docenteAdaptado.apellidos}`,
+          categoriaDedicacion: `${docenteAdaptado.categoria}\n${docenteDb.dedicacion === 'TIEMPO_COMPLETO_40H' ? 'TC' : docenteDb.dedicacion === 'TIEMPO_PARCIAL_20H' ? 'TP' : 'DE'}`,
+        },
+        periodo: {
+          anio: periodoAdaptado.anio,
+          ciclo: periodoAdaptado.ciclo,
+          fechaInicio: periodoAdaptado.fecha_inicio,
+          fechaFin: periodoAdaptado.fecha_fin,
+        },
+        cargaLectiva: cargaLectivaHorarioList,
+        cargaNoLectiva: cargaNoLectivaHorarioList,
+        totalHoras: totalLectivas + totalNoLectivas,
       });
     } else {
       return NextResponse.json(
