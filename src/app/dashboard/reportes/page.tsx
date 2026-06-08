@@ -122,8 +122,8 @@ export default function ReportesPage() {
   // Departamentos únicos extraídos de la lista de docentes
   const departamentosUnicos = useMemo(() => {
     const set = new Set<string>();
-    (opciones.docentes as (Opt & { departamento?: string })[]).forEach((d) => {
-      if (d.departamento) set.add(d.departamento);
+    (opciones.docentes as (Opt & { departamento?: { nombre: string } })[]).forEach((d) => {
+      if (d.departamento?.nombre) set.add(d.departamento.nombre);
     });
     return Array.from(set).sort();
   }, [opciones.docentes]);
@@ -134,7 +134,7 @@ export default function ReportesPage() {
       setErrCatalogos(null);
       try {
         const [docentes, cursos, ambientes, periodos, grupos, carga] = await Promise.all([
-          apiGet<(Opt & { departamento?: string })[]>('/api/docentes', { limit: 500, page: 1 }),
+          apiGet<(Opt & { departamento?: { nombre: string } })[]>('/api/docentes', { limit: 500, page: 1 }),
           apiGet<Opt[]>('/api/cursos', { limit: 500, page: 1 }),
           apiGet<Opt[]>('/api/ambientes', { limit: 500, page: 1 }),
           apiGet<Opt[]>('/api/periodos', { limit: 100, page: 1 }),

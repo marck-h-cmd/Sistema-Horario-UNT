@@ -1,13 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
-import { CategoriaDocente, Prisma } from '@prisma/client';
+import { CategoriaDocente, DedicacionDocente, Prisma, Rol } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export interface DocenteFiltros {
   search?: string;
   categoria?: CategoriaDocente;
   departamento?: string;
+  departamentoId?: number;
   activo?: boolean;
   page?: number;
   limit?: number;
@@ -21,7 +22,9 @@ export interface DocenteCreateInput {
   apellidos: string;
   codigo: string;
   categoria: CategoriaDocente;
-  departamento?: string;
+  dedicacion?: DedicacionDocente;
+  departamentoId: number;
+  dni: string;
   telefono?: string;
   whatsapp?: string;
   fechaIngreso?: Date | null;
@@ -48,7 +51,7 @@ export class ServicioDocente {
     if (search) {
       where.OR = [
         { codigo: { contains: search, mode: 'insensitive' } },
-        { departamento: { contains: search, mode: 'insensitive' } },
+        { departamento: { nombre: { contains: search, mode: 'insensitive' } } },
         {
           usuario: {
             OR: [
@@ -62,7 +65,12 @@ export class ServicioDocente {
     }
 
     if (categoria) where.categoria = categoria;
-    if (departamento) where.departamento = { contains: departamento, mode: 'insensitive' };
+    if (departamento) {
+      where.departamento = { nombre: { contains: departamento, mode: 'insensitive' } };
+    }
+    if (filtros.departamentoId) {
+      where.departamentoId = filtros.departamentoId;
+    }
     if (activo !== undefined) where.usuario = { ...(where.usuario as any || {}), activo };
 
     const [docentes, total] = await Promise.all([
@@ -73,6 +81,11 @@ export class ServicioDocente {
             select: {
               id: true, email: true, nombre: true,
               apellidos: true, rol: true, activo: true, ultimoAcceso: true,
+            },
+          },
+          departamento: {
+            include: {
+              facultad: true,
             },
           },
           preferenciasNotificacion: true,
@@ -101,6 +114,11 @@ export class ServicioDocente {
           select: {
             id: true, email: true, nombre: true, apellidos: true,
             rol: true, activo: true, ultimoAcceso: true, verificado: true,
+          },
+        },
+        departamento: {
+          include: {
+            facultad: true,
           },
         },
         preferenciasNotificacion: true,
@@ -135,6 +153,11 @@ export class ServicioDocente {
         usuario: {
           select: { id: true, email: true, nombre: true, apellidos: true },
         },
+        departamento: {
+          include: {
+            facultad: true,
+          },
+        },
       },
     });
 
@@ -166,7 +189,11 @@ export class ServicioDocente {
       data: {
         codigo: datos.codigo,
         categoria: datos.categoria,
-        departamento: datos.departamento,
+        dedicacion: datos.dedicacion || (datos.categoria === CategoriaDocente.PRINCIPAL || datos.categoria === CategoriaDocente.ASOCIADO ? DedicacionDocente.TIEMPO_COMPLETO_40H : DedicacionDocente.TIEMPO_PARCIAL_20H),
+        departamento: {
+          connect: { id: datos.departamentoId }
+        },
+        dni: datos.dni,
         telefono: datos.telefono,
         whatsapp: datos.whatsapp,
         fechaIngreso: datos.fechaIngreso ?? null,
@@ -176,7 +203,7 @@ export class ServicioDocente {
             password: passwordHash,
             nombre: datos.nombre,
             apellidos: datos.apellidos,
-            rol: 'DOCENTE',
+            rol: Rol.DOCENTE,
             verificado: true,
           },
         },
@@ -193,6 +220,11 @@ export class ServicioDocente {
         usuario: {
           select: { id: true, email: true, nombre: true, apellidos: true },
         },
+        departamento: {
+          include: {
+            facultad: true,
+          },
+        },
         preferenciasNotificacion: true,
       },
     });
@@ -207,7 +239,11 @@ export class ServicioDocente {
 
     const updateData: any = {};
     if (datos.categoria) updateData.categoria = datos.categoria;
-    if (datos.departamento !== undefined) updateData.departamento = datos.departamento;
+    if (datos.dedicacion) updateData.dedicacion = datos.dedicacion;
+    if (datos.departamentoId !== undefined) {
+      updateData.departamento = { connect: { id: datos.departamentoId } };
+    }
+    if (datos.dni !== undefined) updateData.dni = datos.dni;
     if (datos.telefono !== undefined) updateData.telefono = datos.telefono;
     if (datos.whatsapp !== undefined) updateData.whatsapp = datos.whatsapp;
     if (datos.verificadoWhatsapp !== undefined) updateData.verificadoWhatsapp = datos.verificadoWhatsapp;
@@ -231,6 +267,11 @@ export class ServicioDocente {
       include: {
         usuario: {
           select: { id: true, email: true, nombre: true, apellidos: true, activo: true },
+        },
+        departamento: {
+          include: {
+            facultad: true,
+          },
         },
         preferenciasNotificacion: true,
       },

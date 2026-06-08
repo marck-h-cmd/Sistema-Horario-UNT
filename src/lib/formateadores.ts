@@ -136,4 +136,28 @@ export class Formateadores {
     };
     return colores[estado] || 'gray';
   }
+
+  // Formatear dedicación de docente
+  static dedicacionDocente(dedicacion: string): string {
+    const mapa: Record<string, string> = {
+      'TIEMPO_COMPLETO_40H': 'Tiempo Completo (40h)',
+      'TIEMPO_PARCIAL_20H': 'Tiempo Parcial (20h)',
+      'DEDICACION_EXCLUSIVA': 'Dedicación Exclusiva',
+    };
+    return mapa[dedicacion] || dedicacion;
+  }
+
+  // Formatear día de la semana
+  static diaSemana(dia: string): string {
+    const mapa: Record<string, string> = {
+      'LUNES': 'Lunes',
+      'MARTES': 'Martes',
+      'MIERCOLES': 'Miércoles',
+      'JUEVES': 'Jueves',
+      'VIERNES': 'Viernes',
+      'SABADO': 'Sábado',
+      'DOMINGO': 'Domingo',
+    };
+    return mapa[dia.toUpperCase()] || dia;
+  }
 }

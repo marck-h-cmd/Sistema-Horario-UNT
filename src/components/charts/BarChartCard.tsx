@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { CHART_MIN_HEIGHT, CHART_PRIMARY, CHART_COLORS } from '@/lib/chart-colors';
+import { CHART_MIN_HEIGHT, CHART_COLORS } from '@/lib/chart-colors';
 import { cn } from '@/lib/cn';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -20,9 +20,10 @@ interface BarChartCardProps {
   data: Record<string, unknown>[];
   dataKey: string;
   xKey: string;
-  color?: string;
   className?: string;
   loading?: boolean;
+  color?: string;
+  colors?: string[];
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -41,13 +42,22 @@ export function BarChartCard({
   data,
   dataKey,
   xKey,
-  color,
   className,
   loading,
+  color,
+  colors,
 }: BarChartCardProps) {
   const { isDark } = useTheme();
 
   const filteredData = data.filter(d => (d[dataKey] as number) > 0);
+  
+  // Determinar los colores a usar: priority → colors prop → color prop → CHART_COLORS
+  let coloresParaUsar = CHART_COLORS;
+  if (colors && colors.length > 0) {
+    coloresParaUsar = colors;
+  } else if (color) {
+    coloresParaUsar = [color];
+  }
 
   return (
     <div className={cn('bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm', className)}>
@@ -58,11 +68,13 @@ export function BarChartCard({
       <div className="p-6 pt-0" style={{ minHeight: CHART_MIN_HEIGHT }}>
         {loading ? (
           <div className="flex items-end gap-4 h-full min-h-[320px] px-4">
-            <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12" style={{ height: '40%' }}></div>
-            <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12" style={{ height: '75%' }}></div>
-            <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12" style={{ height: '55%' }}></div>
-            <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12" style={{ height: '30%' }}></div>
-            <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12" style={{ height: '60%' }}></div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg w-full max-w-12"
+                style={{ height: `${40 + i * 10}%` }}
+              ></div>
+            ))}
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[320px] text-center">
@@ -74,39 +86,40 @@ export function BarChartCard({
         ) : (
           <ResponsiveContainer width="100%" height={CHART_MIN_HEIGHT}>
             <BarChart data={filteredData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              {/* Gradientes individuales por barra */}
               <defs>
-                {color ? (
-                  <linearGradient id="singleBarGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.95} />
-                    <stop offset="100%" stopColor={color} stopOpacity={0.5} />
+                {coloresParaUsar.map((c, i) => (
+                  <linearGradient key={i} id={`barGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c} stopOpacity={0.95} />
+                    <stop offset="100%" stopColor={c} stopOpacity={0.5} />
                   </linearGradient>
-                ) : (
-                  CHART_COLORS.map((c, i) => (
-                    <linearGradient key={i} id={`barGrad${i}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={c} stopOpacity={0.95} />
-                      <stop offset="100%" stopColor={c} stopOpacity={0.5} />
-                    </linearGradient>
-                  ))
-                )}
+                ))}
               </defs>
+
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" vertical={false} />
-              <XAxis dataKey={xKey} tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey={xKey}
+                tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'inherit' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'inherit' }}
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip content={<CustomTooltip />} />
               <Bar
                 dataKey={dataKey}
                 radius={[8, 8, 0, 0]}
                 maxBarSize={60}
-                isAnimationActive={true}
+                isAnimationActive
                 animationBegin={0}
                 animationDuration={1000}
                 animationEasing="ease-out"
               >
                 {filteredData.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={color ? 'url(#singleBarGrad)' : `url(#barGrad${i})`}
-                  />
+                  <Cell key={i} fill={`url(#barGrad${i % coloresParaUsar.length})`} />
                 ))}
               </Bar>
             </BarChart>

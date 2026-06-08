@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       return {
         id: w.id,
         nombre: w.nombre,
-        categoria: w.categoria,
+        categorias: w.categorias,
         fechaInicio: w.fechaInicio,
         fechaFin: w.fechaFin,
         estado: w.estado,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -22,6 +22,7 @@ import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { CategoriaDocente, Rol } from '@prisma/client';
 import { toast } from 'sonner';
+import { CargaHorariaModal } from '@/components/docentes/CargaHorariaModal';
 
 interface UsuarioDocente {
   nombre: string;
@@ -30,11 +31,21 @@ interface UsuarioDocente {
   activo: boolean;
 }
 
+interface DepartamentoRow {
+  id: number;
+  nombre: string;
+  facultad: {
+    nombre: string;
+  };
+}
+
 interface DocenteRow {
   id: string;
   codigo: string;
   categoria: string;
-  departamento: string | null;
+  dni: string;
+  departamentoId: number;
+  departamento: DepartamentoRow | null;
   usuario: UsuarioDocente;
   fechaIngreso?: string | null;
 }
@@ -48,15 +59,38 @@ export default function DocentesPage() {
   const [qInput, setQInput] = useState('');
   const [search, setSearch] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<'' | CategoriaDocente>('');
+  const [departamentoFiltro, setDepartamentoFiltro] = useState<'' | number>('');
   const [ordenarAntiguedad, setOrdenarAntiguedad] = useState<'none' | 'asc' | 'desc'>('none');
+  const [departamentos, setDepartamentos] = useState<DepartamentoRow[]>([]);
+  const [loadingDepts, setLoadingDepts] = useState(false);
+
+  useEffect(() => {
+    const cargarDepartamentos = async () => {
+      setLoadingDepts(true);
+      try {
+        const res = await apiGet<DepartamentoRow[]>('/api/departamentos');
+        if (res.data) {
+          setDepartamentos(res.data);
+        }
+      } catch (error) {
+        console.error('Error cargando departamentos:', error);
+        toast.error('No se pudieron cargar los departamentos académicos');
+      } finally {
+        setLoadingDepts(false);
+      }
+    };
+    cargarDepartamentos();
+  }, []);
+
   const listParams = useMemo(
     () => ({
       search: search || undefined,
       categoria: categoriaFiltro || undefined,
+      departamentoId: departamentoFiltro || undefined,
       sortBy: ordenarAntiguedad !== 'none' ? 'fechaIngreso' : undefined,
       sortOrder: ordenarAntiguedad !== 'none' ? ordenarAntiguedad : undefined,
     }),
-    [search, categoriaFiltro, ordenarAntiguedad]
+    [search, categoriaFiltro, departamentoFiltro, ordenarAntiguedad]
   );
   const { data, meta, loading, error, page, setPage, refresh } = usePaginatedQuery<DocenteRow>(
     '/api/docentes',
@@ -64,6 +98,7 @@ export default function DocentesPage() {
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [cargaHorariaDocenteId, setCargaHorariaDocenteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<DocenteRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<{
@@ -72,7 +107,8 @@ export default function DocentesPage() {
     apellidos: string;
     codigo: string;
     categoria: CategoriaDocente;
-    departamento: string;
+    departamentoId: number | '';
+    dni: string;
     telefono: string;
     whatsapp: string;
     activo: boolean;
@@ -83,7 +119,8 @@ export default function DocentesPage() {
     apellidos: '',
     codigo: '',
     categoria: CategoriaDocente.PRINCIPAL,
-    departamento: '',
+    departamentoId: '',
+    dni: '',
     telefono: '',
     whatsapp: '',
     activo: true,
@@ -97,7 +134,8 @@ export default function DocentesPage() {
       apellidos: '',
       codigo: '',
       categoria: CategoriaDocente.PRINCIPAL,
-      departamento: '',
+      departamentoId: '',
+      dni: '',
       telefono: '',
       whatsapp: '',
       activo: true,
@@ -126,7 +164,8 @@ export default function DocentesPage() {
         apellidos: d.usuario?.apellidos ?? row.usuario.apellidos,
         codigo: d.codigo,
         categoria: d.categoria as CategoriaDocente,
-        departamento: d.departamento ?? '',
+        departamentoId: d.departamentoId,
+        dni: d.dni || '',
         telefono: d.telefono ?? '',
         whatsapp: d.whatsapp ?? '',
         activo: d.usuario?.activo ?? row.usuario.activo,
@@ -143,6 +182,14 @@ export default function DocentesPage() {
   };
 
   const handleSave = async () => {
+    if (!form.dni || form.dni.length !== 8 || !/^\d+$/.test(form.dni)) {
+      toast.error('El DNI debe tener exactamente 8 dígitos numéricos');
+      return;
+    }
+    if (!form.departamentoId) {
+      toast.error('Debe seleccionar un departamento académico');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -150,7 +197,8 @@ export default function DocentesPage() {
           nombre: form.nombre,
           apellidos: form.apellidos,
           categoria: form.categoria,
-          departamento: form.departamento || undefined,
+          departamentoId: Number(form.departamentoId),
+          dni: form.dni,
           telefono: form.telefono || undefined,
           whatsapp: form.whatsapp || undefined,
           activo: form.activo,
@@ -164,7 +212,8 @@ export default function DocentesPage() {
           apellidos: form.apellidos,
           codigo: Formateadores.codigo(form.codigo),
           categoria: form.categoria,
-          departamento: form.departamento || undefined,
+          departamentoId: Number(form.departamentoId),
+          dni: form.dni,
           telefono: form.telefono || undefined,
           whatsapp: form.whatsapp || undefined,
           fechaIngreso: form.fechaIngreso || undefined,
@@ -200,10 +249,11 @@ export default function DocentesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoriaFiltro, ordenarAntiguedad, setPage]);
+  }, [search, categoriaFiltro, departamentoFiltro, ordenarAntiguedad, setPage]);
 
   const columns: Column<DocenteRow>[] = [
     { key: 'codigo', header: 'Código', cell: (r) => <span className="font-mono text-sm">{r.codigo}</span> },
+    { key: 'dni', header: 'DNI', cell: (r) => <span className="font-mono text-sm">{r.dni}</span> },
     {
       key: 'nombre',
       header: 'Usuario',
@@ -221,7 +271,7 @@ export default function DocentesPage() {
       header: 'Categoría',
       cell: (r) => Formateadores.categoriaDocente(r.categoria),
     },
-    { key: 'depto', header: 'Departamento', cell: (r) => r.departamento || '—' },
+    { key: 'depto', header: 'Departamento', cell: (r) => r.departamento ? `${r.departamento.nombre} (${r.departamento.facultad?.nombre || ''})` : '—' },
     {
       key: 'antiguedad',
       header: 'Antigüedad',
@@ -247,13 +297,16 @@ export default function DocentesPage() {
     {
       key: 'acciones',
       header: '',
-      className: 'w-32 text-right',
+      className: 'w-36 text-right',
       cell: (r) => (
         <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
+          <Button type="button" size="sm" variant="outline" title="Ver Carga Horaria" onClick={() => setCargaHorariaDocenteId(r.id)}>
+            <FileText className="h-3.5 w-3.5" />
+          </Button>
+          <Button type="button" size="sm" variant="outline" title="Editar" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" size="sm" variant="destructive" onClick={() => handleDelete(r)}>
+          <Button type="button" size="sm" variant="destructive" title="Eliminar" onClick={() => handleDelete(r)}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -314,6 +367,24 @@ export default function DocentesPage() {
             </select>
           </div>
           <div className="flex items-center gap-2">
+            <Label htmlFor="filtro-departamento" className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Dpto.
+            </Label>
+            <select
+              id="filtro-departamento"
+              value={departamentoFiltro}
+              onChange={(e) => setDepartamentoFiltro(e.target.value ? Number(e.target.value) : '')}
+              className="h-10 min-w-[150px] max-w-[200px] truncate rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-unt-blue/20"
+            >
+              <option value="">Todos</option>
+              {departamentos.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <Label htmlFor="ordenar-antiguedad" className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Orden
             </Label>
@@ -333,7 +404,7 @@ export default function DocentesPage() {
           <Button type="button" variant="outline" onClick={() => setSearch(qInput.trim())}>
             Buscar
           </Button>
-          {(search || categoriaFiltro || ordenarAntiguedad !== 'none') && (
+          {(search || categoriaFiltro || departamentoFiltro || ordenarAntiguedad !== 'none') && (
             <Button
               type="button"
               variant="ghost"
@@ -341,6 +412,7 @@ export default function DocentesPage() {
                 setQInput('');
                 setSearch('');
                 setCategoriaFiltro('');
+                setDepartamentoFiltro('');
                 setOrdenarAntiguedad('none');
               }}
               className="text-xs text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
@@ -444,13 +516,35 @@ export default function DocentesPage() {
                 </select>
               </div>
             </div>
-            <div>
-              <Label htmlFor="departamento">Departamento</Label>
-              <Input
-                id="departamento"
-                value={form.departamento}
-                onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="dni">DNI</Label>
+                <Input
+                  id="dni"
+                  value={form.dni}
+                  onChange={(e) => setForm((f) => ({ ...f, dni: e.target.value }))}
+                  maxLength={8}
+                  placeholder="8 dígitos"
+                />
+              </div>
+              <div>
+                <Label htmlFor="departamentoId">Departamento</Label>
+                <select
+                  id="departamentoId"
+                  className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-unt-blue/20"
+                  value={form.departamentoId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, departamentoId: e.target.value ? Number(e.target.value) : '' }))
+                  }
+                >
+                  <option value="">Seleccione...</option>
+                  {departamentos.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nombre} ({d.facultad?.nombre || ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <Label htmlFor="fechaIngreso">Fecha de ingreso</Label>
@@ -511,6 +605,12 @@ export default function DocentesPage() {
         variant={confirmState.variant}
         onConfirm={() => handleConfirmClose(true)}
         onCancel={() => handleConfirmClose(false)}
+      />
+
+      <CargaHorariaModal
+        docenteId={cargaHorariaDocenteId}
+        isOpen={!!cargaHorariaDocenteId}
+        onClose={() => setCargaHorariaDocenteId(null)}
       />
     </div>
   );

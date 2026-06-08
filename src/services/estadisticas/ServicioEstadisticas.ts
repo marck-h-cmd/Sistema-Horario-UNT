@@ -93,9 +93,11 @@ export class ServicioEstadisticas {
       }
 
       for (const horario of docente.horarios) {
-        const [hInicio, mInicio] = horario.horaInicio.split(':').map(Number);
-        const [hFin, mFin] = horario.horaFin.split(':').map(Number);
-        cat.horasAsignadas += (hFin + mFin / 60) - (hInicio + mInicio / 60);
+        if (horario.horaInicio && horario.horaFin) {
+          const [hInicio, mInicio] = horario.horaInicio.split(':').map(Number);
+          const [hFin, mFin] = horario.horaFin.split(':').map(Number);
+          cat.horasAsignadas += (hFin + mFin / 60) - (hInicio + mInicio / 60);
+        }
       }
     }
 
@@ -168,9 +170,11 @@ export class ServicioEstadisticas {
     }
 
     for (const horario of horarios) {
-      const hora = parseInt(horario.horaInicio.split(':')[0]);
-      if (hora >= 8 && hora < 20 && mapaCalor[horario.diaSemana]) {
-        mapaCalor[horario.diaSemana][`${hora}:00`]++;
+      if (horario.horaInicio && horario.diaSemana) {
+        const hora = parseInt(horario.horaInicio.split(':')[0]);
+        if (hora >= 8 && hora < 20 && mapaCalor[horario.diaSemana]) {
+          mapaCalor[horario.diaSemana][`${hora}:00`]++;
+        }
       }
     }
 

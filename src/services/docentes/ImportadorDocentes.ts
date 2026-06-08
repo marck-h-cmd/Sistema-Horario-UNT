@@ -14,6 +14,7 @@ export class ImportadorDocentes {
   private servicioDocente: ServicioDocente;
   private readonly COLUMNAS_REQUERIDAS = [
     'codigo',
+    'dni',
     'email',
     'nombre',
     'apellidos',
@@ -22,6 +23,45 @@ export class ImportadorDocentes {
 
   constructor() {
     this.servicioDocente = new ServicioDocente();
+  }
+
+  private async obtenerDepartamentoId(nombreDept?: string): Promise<number> {
+    const defaultFacultadNombre = 'Facultad de Ingeniería';
+    const deptName = nombreDept?.trim() || 'Ing. de Sistemas';
+
+    const dept = await prisma.departamentoAcademico.findFirst({
+      where: { nombre: { equals: deptName, mode: 'insensitive' } },
+    });
+
+    if (dept) {
+      return dept.id;
+    }
+
+    let facultad = await prisma.facultad.findFirst({
+      where: { nombre: { equals: defaultFacultadNombre, mode: 'insensitive' } }
+    });
+
+    if (!facultad) {
+      facultad = await prisma.facultad.create({
+        data: {
+          nombre: defaultFacultadNombre,
+          decano: 'Decano General',
+        }
+      });
+    }
+
+    const nuevoDept = await prisma.departamentoAcademico.create({
+      data: {
+        nombre: deptName,
+        facultadId: facultad.id,
+      }
+    });
+
+    return nuevoDept.id;
+  }
+
+  private generarDniTemporal(): string {
+    return Math.floor(10000000 + Math.random() * 90000000).toString();
   }
 
   /**
@@ -84,13 +124,18 @@ export class ImportadorDocentes {
   ): Promise<void> {
     // Validar datos requeridos
     const codigo = fila.codigo?.trim();
+    const dni = fila.dni?.trim() || this.generarDniTemporal();
     const email = fila.email?.trim();
     const nombre = fila.nombre?.trim();
     const apellidos = fila.apellidos?.trim();
     const categoria = this.validarCategoria(fila.categoria?.trim());
 
-    if (!codigo || !email || !nombre || !apellidos || !categoria) {
-      throw new Error('Faltan datos requeridos (código, email, nombre, apellidos, categoría)');
+    if (!codigo || !dni || !email || !nombre || !apellidos || !categoria) {
+      throw new Error('Faltan datos requeridos (código, DNI, email, nombre, apellidos, categoría)');
+    }
+
+    if (dni.length !== 8) {
+      throw new Error(`DNI inválido (debe tener 8 caracteres): ${dni}`);
     }
 
     // Validar formato de email
@@ -102,6 +147,8 @@ export class ImportadorDocentes {
     if (!categoria) {
       throw new Error(`Categoría inválida: ${fila.categoria}`);
     }
+
+    const departamentoId = await this.obtenerDepartamentoId(fila.departamento);
 
     // Verificar si ya existe
     const codigoExiste = await this.verificarExistencia(codigo, email);
@@ -118,7 +165,8 @@ export class ImportadorDocentes {
             nombre,
             apellidos,
             categoria: categoria as CategoriaDocente,
-            departamento: fila.departamento?.trim(),
+            departamentoId,
+            dni,
             telefono: fila.telefono?.trim(),
             whatsapp: fila.whatsapp?.trim(),
           });
@@ -137,7 +185,8 @@ export class ImportadorDocentes {
       nombre,
       apellidos,
       categoria: categoria as CategoriaDocente,
-      departamento: fila.departamento?.trim(),
+      departamentoId,
+      dni,
       telefono: fila.telefono?.trim(),
       whatsapp: fila.whatsapp?.trim(),
     });
@@ -166,12 +215,16 @@ export class ImportadorDocentes {
             activo: true,
           },
         },
+        departamento: {
+          select: { nombre: true }
+        }
       },
       orderBy: { codigo: 'asc' },
     });
 
     const headers = [
       'codigo',
+      'dni',
       'email',
       'nombre',
       'apellidos',
@@ -187,11 +240,12 @@ export class ImportadorDocentes {
     for (const docente of docentes) {
       const fila = [
         docente.codigo,
+        docente.dni,
         docente.usuario.email,
         docente.usuario.nombre,
         docente.usuario.apellidos,
         docente.categoria,
-        docente.departamento || '',
+        docente.departamento?.nombre || '',
         docente.telefono || '',
         docente.whatsapp || '',
         docente.usuario.activo ? 'SI' : 'NO',
@@ -256,6 +310,7 @@ export class ImportadorDocentes {
   static generarPlantillaCSV(): string {
     const headers = [
       'codigo',
+      'dni',
       'email',
       'nombre',
       'apellidos',
@@ -267,11 +322,12 @@ export class ImportadorDocentes {
 
     const ejemplo = [
       'DOC001',
+      '12345678',
       'juan.perez@unitru.edu.pe',
       'Juan',
       'Pérez García',
       'PRINCIPAL',
-      'Ingeniería de Software',
+      'Ing. de Sistemas',
       '999123456',
       '51999123456',
     ];

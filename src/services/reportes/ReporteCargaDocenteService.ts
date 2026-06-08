@@ -64,9 +64,22 @@ export class ReporteCargaDocenteService {
       orderBy: [{ categoria: 'asc' }, { codigo: 'asc' }],
     });
 
-    const totalDocentes = docentes.length;
-    const totalAsignaciones = docentes.reduce((s, d) => s + d.cursos.length, 0);
-    const totalHoras = docentes.reduce(
+    const docentesFormateados = docentes.map(d => ({
+      ...d,
+      horarios: (d.horarios || [])
+        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+        .map(h => ({
+          ...h,
+          diaSemana: h.diaSemana!,
+          horaInicio: h.horaInicio!,
+          horaFin: h.horaFin!,
+          ambiente: h.ambiente || { codigo: 'Sin ambiente' },
+        })),
+    }));
+
+    const totalDocentes = docentesFormateados.length;
+    const totalAsignaciones = docentesFormateados.reduce((s, d) => s + d.cursos.length, 0);
+    const totalHoras = docentesFormateados.reduce(
       (s, d) => s + d.cursos.reduce((h, c) => h + c.horasAsignadas, 0),
       0
     );
@@ -77,7 +90,7 @@ export class ReporteCargaDocenteService {
       { label: 'Horas asignadas (total)', value: totalHoras },
     ]);
 
-    const bloques = docentes.map((d) => this.bloqueDocente(d, periodoId)).join('');
+    const bloques = docentesFormateados.map((d) => this.bloqueDocente(d as any, periodoId)).join('');
 
     const subtitulo = [
       categoriaFiltro

@@ -17,13 +17,14 @@ EG-104	Lectura Crítica y Redac. Textos Académicos	I	Jorge Luis Rios Gonzales	P
 EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	09:00	11:00	A	CONFIRMADO
 EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	LUNES	11:00	13:00	A	CONFIRMADO
 EG-105	Introducción al Análisis Matemático	I	Segundo Guibar Obeso	Posgrado A-307	MARTES	16:00	18:00	A	CONFIRMADO
-EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller Confecciones Ing. Industrial	JUEVES	7:00	09:00	A	CONFIRMADO
-EG-106B	Estadística General	I	Martha Cardoso	Posgrado A-303	VIERNES	14:00	16:00	A	CONFIRMADO
+EG-106	Estadística General	I	Miguel Ipanaque Zapata	Taller de Confecciones - Ing. Industrial	JUEVES	7:00	09:00	A	CONFIRMADO
+EG-106B	Estadística General	I	Martha Cardoso	posgrado B-104	VIERNES	14:00	16:00	A	CONFIRMADO
 EG-106B	Estadística General	I	Martha Cardoso	Taller Confecciones Ing. Industrial	VIERNES	16:00	18:00	A	CONFIRMADO
+
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	LUNES	9:00	13:00	A	CONFIRMADO
-IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	9:00	13:00	B	CONFIRMADO
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 2	MARTES	9:00	13:00	C	CONFIRMADO
 IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	I-4	MARTES	14:00	16:00	A	CONFIRMADO
+IS-301	Programación Orientada a Objetos II	III	Zoraida Vidal Melgarejo	Lab. 4	VIERNES	9:00	13:00	B	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Posgrado A-307	MIÉRCOLES	9:00	12:00	A	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	14:00	16:00	A	CONFIRMADO
 IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
@@ -31,21 +32,54 @@ IS-302	Sistémica	III	Everson David Agreda Gamboa	Lab. 3	JUEVES	16:00	18:00	C	CO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Posgrado A-303	MIÉRCOLES	7:00	9:00	A	CONFIRMADO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	7:00	10:00	A	CONFIRMADO
 IS-303	Ingeniería Gráfica (e)	III	Juan Carlos Obando Roldán	Lab. 1	JUEVES	10:00	13:00	B	CONFIRMADO
-MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Posgrado A-303	MIÉRCOLES	18:00	21:00	A	CONFIRMADO
-MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Indust.	JUEVES	14:00	16:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	MARTES	16:00	18:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Indust.	JUEVES	18:00	21:00	A	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones Ing. Indust.	VIERNES	7:00	9:00	B	CONFIRMADO
-EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Posgrado A-303	VIERNES	16:00	18:00	C	CONFIRMADO
-ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confecciones - Ing. Indust.	LUNES	07:00	9:00	A	CONFIRMADO
+
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	posgrado B-104	MIÉRCOLES	18:00	21:00	A	CONFIRMADO
+MAT-301	Matemática Aplicada	III	Marcos Ferrer Reyna	Taller Confecciones Ing. Indust. 	JUEVES	14:00	16:00	A	CONFIRMADO
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	posgrado B-105	MARTES	16:00	18:00	A	CONFIRMADO
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones - Ing. Industrial	JUEVES	18:00	21:00	A	CONFIRMADO
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	Taller Confecciones (Ing. Industrial)	VIERNES	7:00	9:00	B	CONFIRMADO
+EST-301	Estadística Aplicada	III	Teresita Rojas Garcia	posgrado B-104	VIERNES	16:00	18:00	C	CONFIRMADO
+ADM-301	Administración General	III	Juan Carrascal Cabanillas	Taller Confecciones - Ing. Indust. 	LUNES	07:00	9:00	A	CONFIRMADO
 ADM-301	Administración General	III	Juan Carrascal Cabanillas	I I 2 (Pabellon Ing. Industrial)	MARTES	07:00	9:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Posgrado A-303	MARTES	15:00	20:00	A	CONFIRMADO
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	posgrado B-105	LUNES	15:00	20:00	A	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	7:00	9:00	A	CONFIRMADO
-FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	A	CONFIRMADO
+FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	JUEVES	09:00	11:00	B	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	14:00	16:00	B	CONFIRMADO
 FIS-301	Física Electrónica	III	Vilma Mendez Gil	Lab. Fisica	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
 PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	MARTES	18:00	20:00	A	CONFIRMADO
 PSI-301	Psicología Organizacional (e)	III	Sheyla Laura Escobedo Rodriguez	Posgrado A-311	VIERNES	18:00	20:00	A	CONFIRMADO
+
+
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	posgrado B-104	LUNES	7:00	10:00	A	CONFIRMADO
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	LAB	LUNES	10:00	13:00	A	CONFIRMADO
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	LAB	MARTES	7:00	10:00	B	CONFIRMADO
+IS-501	Ingeniería de Datos I	V	Luis Boy Chavil	LAB	MARTES	10:00	13:00	C	CONFIRMADO
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	posgrado B-104	MIÉRCOLES	9:00	13:00	A	CONFIRMADO
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 1	MIÉRCOLES	14:00	16:00	A	CONFIRMADO
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 1	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
+IS-502	Sistemas de Información	V	Juan Carlos Obando Roldan	Lab. 1	MIÉRCOLES	18:00	20:00	C	CONFIRMADO
+IS-503	Transformación Digital	V	Everson David Agreda Gamboa	Lab. 3	JUEVES	07:00	09:00	A	CONFIRMADO
+IS-503	Transformación Digital	V	Everson David Agreda Gamboa	I-5	JUEVES	09:00	11:00	A	CONFIRMADO
+IS-503	Transformación Digital	V	Everson David Agreda Gamboa	Lab. 3	JUEVES	11:00	13:00	B	CONFIRMADO
+IS-504	Tecnología Web	V	Robert Jerry Sánchez Ticona	Lab. 1	LUNES	15:00	18:00	A	CONFIRMADO
+IS-504	Tecnología Web	V	Robert Jerry Sánchez Ticona	Lab. 1	MARTES	15:00	18:00	B	CONFIRMADO
+IS-504	Tecnología Web	V	Robert Jerry Sánchez Ticona	posgrado B-105	MIÉRCOLES	7:00	9:00	A	CONFIRMADO
+IS-504	Tecnología Web	V	Robert Jerry Sánchez Ticona	Lab. 4	JUEVES	15:00	18:00	C	CONFIRMADO
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	posgrado B-105	VIERNES	09:00	12:00	A	CONFIRMADO
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Lab. 2	MIÉRCOLES	14:00	16:00	A	CONFIRMADO
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Lab. 2	MIÉRCOLES	16:00	18:00	B	CONFIRMADO
+IS-505	Arquitectura de Computadoras	V	Cesar Arellano Salazar	Lab. 2	MIÉRCOLES	18:00	20:00	C	CONFIRMADO
+IS-506	Teleinformática (e)	V	Camilo Suárez Rebaza	posgrado B-105	VIERNES	17:00	20:00	A	CONFIRMADO
+IS-506	Teleinformática (e)	V	Camilo Suárez Rebaza	Lab. 2	MARTES	13:00	15:00	A	CONFIRMADO
+IS-506	Teleinformática (e)	V	Camilo Suárez Rebaza	Lab. 2	MARTES	19:00	21:00	A	CONFIRMADO
+IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	posgrado B-105	JUEVES	11:00	14:00	A	CONFIRMADO
+IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	JUEVES	7:00	9:00	A	CONFIRMADO
+IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	JUEVES	9:00	11:00	B	CONFIRMADO
+IND-501	Investigación de Operaciones	V	Marcos Baca Lopez	Lab. 2	VIERNES	7:00	9:00	C	CONFIRMADO
+CF-501	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	posgrado B-105	VIERNES	14:00	17:00	A	CONFIRMADO
+CF-501	Contabilidad Gerencial	V	Ana Cuadra Mitzugaray	posgrado B-105	JUEVES	18:00	20:00	A	CONFIRMADO
+
+
 IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Lab. 1	MARTES	7:00	10:00	C	CONFIRMADO
 IS-701	Ingeniería de Software I	VII	Juan Pedro Santos Fernández	Posgrado A-303	MARTES	10:00	13:00	A	CONFIRMADO
 IS-702	Redes y Comunicaciones I	VII	César Arellano Salazar	Lab. 2	LUNES	13:00	16:00	A	CONFIRMADO
@@ -58,8 +92,8 @@ IS-704	Negocios Electrónicos (e)	VII	Everson David Agreda Gamboa	Posgrado A-311
 IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	10:00	12:00	A	CONFIRMADO
 IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Lab. 1	VIERNES	12:00	14:00	B	CONFIRMADO
 IS-705	Gestión de Servicios de TI	VII	Alberto Mendoza de los Santos	Posgrado A-303	VIERNES	7:00	10:00	A	CONFIRMADO
-IS-706	Metodología de la Investigación Científica	VII	Paul Cotrina Castellanos	Posgrado A-307	JUEVES	14:00	18:00	A	CONFIRMADO
-IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Posgrado A-307	JUEVES	7:00	9:00	A	CONFIRMADO
+IS-706	Metodología de la Investigación Científica	VII	Paul Cotrina Castellanos	posgrado B-105	JUEVES	14:00	18:00	A	CONFIRMADO
+IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	posgrado B-105	JUEVES	7:00	9:00	A	CONFIRMADO
 IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 4	JUEVES	18:00	21:00	A	CONFIRMADO
 IS-707	Administración de Base de Datos	VII	Ricardo Mendoza Rivera	Lab. 2	VIERNES	18:00	21:00	B	CONFIRMADO
 IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Posgrado A-307	MARTES	13:00	16:00	A	CONFIRMADO
@@ -69,7 +103,41 @@ IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Lab. 3	
 IS-708	Planeamiento Estratégico de TI	VII	Oscar Romel Alcántara Moreno	Audiovisuales	MIÉRCOLES	17:00	19:00	C	CONFIRMADO
 IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	14:00	16:00	A	CONFIRMADO
 IS-704B	Negocios Electrónicos (e)	VII	Paul Cotrina Castellanos	Lab. 4	LUNES	16:00	18:00	B	CONFIRMADO
-EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Lab. 4	MIÉRCOLES	7:00	11:00	A	CONFIRMADO`;
+EP-701	Cadena de Suministros (e)	VII	Jhoe Gonzalez Vasquez	Taller de Confecciones - Ing. Industria	MIÉRCOLES	7:00	11:00	A	CONFIRMADO
+
+
+IS-901	Tesis I	IX	Juan Pedro Santos Fernández	Lab 2	JUEVES	11:00	13:00	A	CONFIRMADO
+IS-901	Tesis I	IX	Juan Pedro Santos Fernández	posgrado B-104	JUEVES	7:00	11:00	A	CONFIRMADO
+IS-901B	Tesis I	IX	Ricardo Mendoza Rivera	posgrado B-304	JUEVES	14:00	18:00	A	CONFIRMADO
+
+IS-902B	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	10:00	13:00	A	CONFIRMADO
+IS-902B	Analítica de Negocios	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	14:00	16:00	A	CONFIRMADO
+
+
+
+IS-901B	Tesis I	IX	Ricardo Mendoza Rivera	Lab 4	VIERNES	16:00	18:00	A	CONFIRMADO
+
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	posgrado B-104	LUNES	10:00	13:00	A	CONFIRMADO
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	10:00	12:00	A	CONFIRMADO
+IS-904	Auditoría Informática	IX	Alberto Mendoza de los Santos	Lab. 3	MARTES	12:00	14:00	B	CONFIRMADO
+IS-905	Gestión de Proyectos de TI	IX	José Gómez Ávila	posgrado B-104	LUNES	14:00	17:00	A	CONFIRMADO
+IS-905	Gestión de Proyectos de TI	IX	José Gómez Ávila	Audiovisuales	MARTES	10:00	12:00	A	CONFIRMADO
+IS-905	Gestión de Proyectos de TI	IX	José Gómez Ávila	Lab. 1	MARTES	13:00	15:00	B	CONFIRMADO
+IS-905	Gestión de Proyectos de TI	IX	José Gómez Ávila	Lab 1	MARTES	19:00	21:00	C	CONFIRMADO
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcántara Moreno	Lab. 2	VIERNES	14:00	16:00	A	CONFIRMADO
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcántara Moreno	Lab. 2	VIERNES	16:00	18:00	B	CONFIRMADO
+IS-906	Emprendimiento Tecnológico	IX	Oscar Romel Alcántara Moreno	posgrado B-104	VIERNES	18:00	20:00	A	CONFIRMADO
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 4	MARTES	14:00	17:00	A	CONFIRMADO
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 4	MARTES	17:00	20:00	B	CONFIRMADO
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	Lab. 4	MIÉRCOLES	10:00	13:00	C	CONFIRMADO
+IS-907	Ingeniería Web	IX	Marcelino Torres Villanueva	posgrado B-104	LUNES	18:00	20:00	A	CONFIRMADO
+IS-908	Computación en la Nube	IX	José Gómez Ávila	Lab. 3	LUNES	7:00	10:00	A	CONFIRMADO
+IS-908	Computación en la Nube	IX	José Gómez Ávila	Lab. 3	MIÉRCOLES	7:00	10:00	B	CONFIRMADO
+IS-908	Computación en la Nube	IX	José Gómez Ávila	Lab. 4	MIÉRCOLES	17:00	20:00	C	CONFIRMADO
+IS-908	Computación en la Nube	IX	José Gómez Ávila	posgrado B-104	JUEVES	18:00	20:00	A	CONFIRMADO
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	posgrado B-104	MARTES	8:00	10:00	A	CONFIRMADO
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	MARTES	15:00	17:00	A	CONFIRMADO
+IS-909	Hackeo Ético (e)	IX	Camilo Suarez Rebaza	Lab. 2	MARTES	17:00	19:00	B	CONFIRMADO`;
 
 // ==================== FUNCIONES AUXILIARES DE NORMALIZACIÓN ====================
 
@@ -86,29 +154,35 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
   if (n.includes('Posgrado A-307')) return { codigo: 'A-307', nombre: 'Posgrado A-307', tipo: TipoAmbiente.AULA };
   if (n.includes('Posgrado A-303')) return { codigo: 'A-303', nombre: 'Posgrado A-303', tipo: TipoAmbiente.AULA };
   if (n.includes('Posgrado A-311')) return { codigo: 'A-311', nombre: 'Posgrado A-311', tipo: TipoAmbiente.AULA };
-  if (n.includes('Lab. 1')) return { codigo: 'Lab-1', nombre: 'Laboratorio 1', tipo: TipoAmbiente.LABORATORIO };
-  if (n.includes('Lab. 2')) return { codigo: 'Lab-2', nombre: 'Laboratorio 2', tipo: TipoAmbiente.LABORATORIO };
-  if (n.includes('Lab. 3')) return { codigo: 'Lab-3', nombre: 'Laboratorio 3', tipo: TipoAmbiente.LABORATORIO };
-  if (n.includes('Lab. 4')) return { codigo: 'Lab-4', nombre: 'Laboratorio 4', tipo: TipoAmbiente.LABORATORIO };
-  if (n.includes('Lab. Fisica')) return { codigo: 'Lab-Fisica', nombre: 'Laboratorio de Física', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 1') || n.includes('Lab 1')) return { codigo: 'Lab-1', nombre: 'Laboratorio 1', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 2') || n.includes('Lab 2')) return { codigo: 'Lab-2', nombre: 'Laboratorio 2', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 3') || n.includes('Lab 3')) return { codigo: 'Lab-3', nombre: 'Laboratorio 3', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. 4') || n.includes('Lab 4')) return { codigo: 'Lab-4', nombre: 'Laboratorio 4', tipo: TipoAmbiente.LABORATORIO };
+  if (n.includes('Lab. Fisica') || n.includes('Lab Fisica')) return { codigo: 'Lab-Fisica', nombre: 'Laboratorio de Física', tipo: TipoAmbiente.LABORATORIO };
   
   // Unificador potente para Taller de Confecciones (Ing. Industrial) y similares
   if (n.toLowerCase().includes('taller confecciones') || n.toLowerCase().includes('taller de confecciones')) {
     return { codigo: 'Lab-Taller', nombre: 'Taller de Confecciones', tipo: TipoAmbiente.LABORATORIO };
   }
-  
+
   if (n.includes('I-4')) return { codigo: 'I-4', nombre: 'Aula I-4', tipo: TipoAmbiente.AULA };
+  if (n.includes('I-5')) return { codigo: 'I-5', nombre: 'Aula I-5', tipo: TipoAmbiente.AULA };
+  if (n === 'LAB') return { codigo: 'Lab-Gral', nombre: 'Laboratorio General', tipo: TipoAmbiente.LABORATORIO };
   
   // Unificador para aulas II-2
   if (
-    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') || 
+    n.includes('I I - 2') || n.includes('II - 2') || n.includes('II-2') ||
     n.includes('I I-2') || n.includes('I I 2') || n.includes('II 2')
   ) {
     return { codigo: 'II-2', nombre: 'Aula II-2 (Pabellón Ing. Industrial)', tipo: TipoAmbiente.AULA };
   }
-  
+
   if (n.includes('Audiovisuales')) return { codigo: 'AUD', nombre: 'Audiovisuales', tipo: TipoAmbiente.AUDITORIO };
   
+  if (n.toLowerCase().includes('posgrado b-104')) return { codigo: 'B-104', nombre: 'Posgrado B-104', tipo: TipoAmbiente.AULA };
+  if (n.toLowerCase().includes('posgrado b-105')) return { codigo: 'B-105', nombre: 'Posgrado B-105', tipo: TipoAmbiente.AULA };
+  if (n.toLowerCase().includes('posgrado b-304')) return { codigo: 'B-304', nombre: 'Posgrado B-304', tipo: TipoAmbiente.AULA };
+
   const cleanCode = n.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 10);
   return { codigo: cleanCode, nombre: n, tipo: TipoAmbiente.AULA };
 };
@@ -116,7 +190,9 @@ const normalizarAmbiente = (nombre: string): { codigo: string; nombre: string; t
 const mapCiclo = (ciclo: string): number => {
   if (ciclo === 'I') return 1;
   if (ciclo === 'III') return 3;
+  if (ciclo === 'V') return 5;
   if (ciclo === 'VII') return 7;
+  if (ciclo === 'IX') return 9;
   return 1;
 };
 
@@ -145,7 +221,7 @@ const calcularHoras = (inicio: string, fin: string): number => {
 
 const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria: number; horasPractica: number; horasLaboratorio: number } => {
   const n = cleanStringForMatch(nombre);
-  
+
   if (n.includes('introduccionaprogramacion')) {
     return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
   }
@@ -215,7 +291,54 @@ const obtenerMetadatosCurso = (nombre: string): { creditos: number; horasTeoria:
   if (n.includes('cadenadesuministros')) {
     return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
   }
-  
+  if (n.includes('ingenieriadedatos')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+  }
+  if (n.includes('sistemasdeinformacion')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+  }
+  if (n.includes('transformaciondigital')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('tecnologiaweb')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 };
+  }
+  if (n.includes('arquitecturadecomputadoras')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+  }
+  if (n.includes('teleinformatica')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('investigaciondeoperaciones')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('contabilidadgerencial')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('tesisi')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 };
+  }
+  if (n.includes('auditoriainformatica')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('gestiondeproyectos')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('emprendimientotecnologico')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
+  }
+  if (n.includes('ingenieriaweb')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 };
+  }
+  if (n.includes('computacionenlanube')) {
+    return { creditos: 4, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 };
+  }
+  if (n.includes('hackeoetico')) {
+    return { creditos: 3, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+  }
+  if (n.includes('analiticadenegocios')) {
+  return { creditos: 3, horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 };
+}
   return { creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 };
 };
 
@@ -225,20 +348,34 @@ async function main() {
   console.log('🌱 Iniciando generación de datos semilla...');
 
   // ==================== PARSEO DE TABLA ====================
-  const lines = rawSchedulesText.trim().split('\n');
+  const lines = rawSchedulesText.trim().split('\n').filter(line => line.trim() !== '');
   const parsedSchedules = lines.map(line => {
     const cols = line.split(/\t/);
+    const metadatos = obtenerMetadatosCurso((cols[1] || '').trim());
+    const esLaboratorio = (cols[4] || '').trim().toLowerCase().includes('lab');
+    // Determine tipoComponente
+    let tipoComponente: 'TEORIA' | 'PRACTICA' | 'LABORATORIO' = 'TEORIA';
+    if (esLaboratorio) {
+      tipoComponente = 'LABORATORIO';
+    } else {
+      // Check if the course name or code suggests práctica
+      const lowerCourse = (cols[1] || '').toLowerCase();
+      if (lowerCourse.includes('práctica') || lowerCourse.includes('practica')) {
+        tipoComponente = 'PRACTICA';
+      }
+    }
     return {
-      codigoCurso: cols[0].trim(),
-      curso: cols[1].trim(),
-      ciclo: cols[2].trim(),
-      docente: cols[3].trim(),
-      ambiente: cols[4].trim(),
-      dia: cols[5].trim(),
-      inicio: cols[6].trim(),
-      fin: cols[7].trim(),
-      grupo: cols[8].trim(),
-      estado: cols[9].trim()
+      codigoCurso: (cols[0] || '').trim(),
+      curso: (cols[1] || '').trim(),
+      ciclo: (cols[2] || '').trim(),
+      docente: (cols[3] || '').trim(),
+      ambiente: (cols[4] || '').trim(),
+      dia: (cols[5] || '').trim(),
+      inicio: (cols[6] || '').trim(),
+      fin: (cols[7] || '').trim(),
+      grupo: (cols[8] || '').trim(),
+      estado: (cols[9] || '').trim(),
+      tipoComponente,
     };
   });
 
@@ -262,6 +399,8 @@ async function main() {
   await prisma.grupo.deleteMany();
   await prisma.curso.deleteMany();
   await prisma.docente.deleteMany();
+  await prisma.departamentoAcademico.deleteMany();
+  await prisma.facultad.deleteMany();
   await prisma.sesion.deleteMany();
   await prisma.usuario.deleteMany();
   await prisma.configuracionPeriodo.deleteMany();
@@ -319,7 +458,7 @@ async function main() {
     { email: 'cesar.arellano@unitru.edu.pe', nombre: 'César', apellidos: 'Arellano Salazar', codigo: 'DOC020', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
     { email: 'camilo.suarez@unitru.edu.pe', nombre: 'Camilo', apellidos: 'Suárez Rebaza', codigo: 'DOC021', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
     { email: 'marcos.baca@unitru.edu.pe', nombre: 'Marcos', apellidos: 'Baca López', codigo: 'DOC022', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ingeniería Industrial' },
-    { email: 'ana.cuadra@unitru.edu.pe', nombre: 'Ana', apellidos: 'Cuadra Mitzuquray', codigo: 'DOC023', categoria: CategoriaDocente.AUXILIAR, departamento: 'Contabilidad y Finanzas' },
+    { email: 'ana.cuadra@unitru.edu.pe', nombre: 'Ana', apellidos: 'Cuadra Mitzugaray', codigo: 'DOC023', categoria: CategoriaDocente.AUXILIAR, departamento: 'Contabilidad y Finanzas' },
 
     // Ciclo VII
     { email: 'juan.santos@unitru.edu.pe', nombre: 'Juan Pedro', apellidos: 'Santos Fernández', codigo: 'DOC024', categoria: CategoriaDocente.PRINCIPAL, departamento: 'Ing. de Sistemas' },
@@ -330,6 +469,78 @@ async function main() {
     // Ciclo IX
     { email: 'jose.gomez@unitru.edu.pe', nombre: 'José', apellidos: 'Gómez Ávila', codigo: 'DOC028', categoria: CategoriaDocente.ASOCIADO, departamento: 'Ing. de Sistemas' },
   ];
+
+  console.log('🏛️ Creando facultades...');
+  const facultadesDef = [
+    { nombre: 'Facultad de Ingeniería', decano: 'Dr. Donato Cárdenas Alayo' },
+    { nombre: 'Facultad de Ciencias Físicas y Matemáticas', decano: 'Dr. Edwin L. Arroyo Cruz' },
+    { nombre: 'Facultad de Ciencias Sociales', decano: 'Dra. Elena Gonzales Medina' },
+    { nombre: 'Facultad de Educación y CC. de la Comunicación', decano: 'Dr. Jorge Flores Ruiz' },
+    { nombre: 'Facultad de Ciencias Económicas', decano: 'Dr. Manuel Ramos Quiroz' },
+  ];
+  
+  const facultadesMap: Record<string, any> = {};
+  for (const fac of facultadesDef) {
+    const f = await prisma.facultad.upsert({
+      where: { nombre: fac.nombre },
+      update: fac,
+      create: fac
+    });
+    facultadesMap[fac.nombre] = f;
+  }
+
+  console.log('🏢 Creando departamentos académicos...');
+  const departamentosDef = [
+    { nombre: 'Ing. de Sistemas', facultadNombre: 'Facultad de Ingeniería', jefe: 'Dr. Marcelino Torres Villanueva' },
+    { nombre: 'Ing. Industrial', facultadNombre: 'Facultad de Ingeniería', jefe: 'Dra. Vilma Mendez Gil' },
+    { nombre: 'CC. Psicológicas', facultadNombre: 'Facultad de Ciencias Sociales', jefe: 'Dra. Bertha Urtecho Zavaleta' },
+    { nombre: 'Matemáticas', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Jose Luis Ponte Bejarano' },
+    { nombre: 'Física', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Segundo Guibar Obeso' },
+    { nombre: 'Estadística', facultadNombre: 'Facultad de Ciencias Físicas y Matemáticas', jefe: 'Dr. Miguel Ipanaque Zapata' },
+    { nombre: 'Lengua Nacional y Literatura', facultadNombre: 'Facultad de Educación y CC. de la Comunicación', jefe: 'Dr. Jorge Luis Rios Gonzales' },
+    { nombre: 'Administración', facultadNombre: 'Facultad de Ciencias Económicas', jefe: 'Dr. Juan Carrascal Cabanillas' },
+    { nombre: 'Contabilidad y Finanzas', facultadNombre: 'Facultad de Ciencias Económicas', jefe: 'Dra. Ana Cuadra Mitzugaray' },
+  ];
+
+  const deptsMap: Record<string, any> = {};
+  for (const dept of departamentosDef) {
+    const f = facultadesMap[dept.facultadNombre];
+    const existingDept = await prisma.departamentoAcademico.findFirst({
+      where: {
+        nombre: dept.nombre,
+        facultadId: f.id
+      }
+    });
+    let d;
+    if (existingDept) {
+      d = await prisma.departamentoAcademico.update({
+        where: { id: existingDept.id },
+        data: {
+          jefeDepartamento: dept.jefe
+        }
+      });
+    } else {
+      d = await prisma.departamentoAcademico.create({
+        data: {
+          nombre: dept.nombre,
+          facultadId: f.id,
+          jefeDepartamento: dept.jefe
+        }
+      });
+    }
+    deptsMap[dept.nombre] = d;
+  }
+
+  const getDeptId = (name: string): number => {
+    let normalized = name;
+    if (name === 'Ingeniería Industrial') normalized = 'Ing. Industrial';
+    return deptsMap[normalized]?.id || deptsMap['Ing. de Sistemas'].id;
+  };
+
+  const getDni = (codigo: string): string => {
+    const numStr = codigo.replace('DOC', '');
+    return `70000${numStr.padStart(3, '0')}`;
+  };
 
   const fechasIngreso: Record<string, string> = {
     'DOC001': '1998-03-15', 'DOC005': '2001-08-20', 'DOC007': '1995-11-05', 'DOC008': '2003-04-10',
@@ -359,7 +570,8 @@ async function main() {
         usuarioId: user.id,
         codigo: docenteData.codigo,
         categoria: docenteData.categoria,
-        departamento: docenteData.departamento,
+        departamentoId: getDeptId(docenteData.departamento),
+        dni: getDni(docenteData.codigo),
         telefono: '999123456',
         fechaIngreso: new Date(fechasIngreso[docenteData.codigo] ?? '2015-01-01'),
         preferenciasNotificacion: {
@@ -547,7 +759,8 @@ async function main() {
           diaSemana: mapDia(item.dia),
           horaInicio: mapHora(item.inicio),
           horaFin: mapHora(item.fin),
-          estado: EstadoHorario.CONFIRMADO,
+          tipoComponente: item.tipoComponente,
+          estado: EstadoHorario.PUBLICADO,
           publicado: true,
           creadoPor: adminUser.id,
           fechaConfirmacion: new Date(),

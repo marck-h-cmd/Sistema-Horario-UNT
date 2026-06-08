@@ -125,6 +125,7 @@ async function main() {
         usuarioId: user.id,
         codigo: docenteData.codigo,
         categoria: docenteData.categoria,
+        dedicacion: docenteData.categoria === CategoriaDocente.PRINCIPAL || docenteData.categoria === CategoriaDocente.ASOCIADO ? 'TIEMPO_COMPLETO_40H' : 'TIEMPO_PARCIAL_20H',
         departamento: docenteData.departamento,
         telefono: docenteData.telefono,
         preferenciasNotificacion: {

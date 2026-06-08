@@ -2,16 +2,16 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
 import { EstadoVentana, EstadoAtencion, CategoriaDocente } from '@prisma/client';
+import { calcularHorasEntre } from '@/lib/horario-horas';
 import { TemporizadorService } from './TemporizadorService';
 import { GestorNotificaciones } from '../notificaciones/GestorNotificaciones';
 
 export interface CrearVentanaDTO {
   periodoId: string;
   nombre: string;
-  categoria: CategoriaDocente;
+  categorias: string[];
   fechaInicio: Date | string;
   fechaFin: Date | string;
-  ordenAtencion: string[];
 }
 
 export interface ConfigurarVentanaDTO {
@@ -123,18 +123,23 @@ export class GestorVentanasAtencion {
       throw new AppError('Período no encontrado', 404, 'PERIODO_NOT_FOUND');
     }
 
-    // Verificar que no haya otra ventana activa para la misma categoría
-    const ventanaActiva = await prisma.ventanaAtencion.findFirst({
+    // Verificar que no haya otra ventana activa para alguna de las categorías
+    const ventanasActivas = await prisma.ventanaAtencion.findMany({
       where: {
         periodoId: datos.periodoId,
-        categoria: datos.categoria,
         estado: { in: ['PROGRAMADA', 'ABIERTA', 'EN_CURSO'] },
       },
     });
 
-    if (ventanaActiva) {
+    const catSet = new Set(datos.categorias);
+    const overlapping = ventanasActivas.some(v => {
+      const vCats = v.categorias as string[];
+      return vCats.some(c => catSet.has(c));
+    });
+
+    if (overlapping) {
       throw new AppError(
-        'Ya existe una ventana activa para esta categoría',
+        'Ya existe una ventana activa para alguna de estas categorías',
         409,
         'VENTANA_DUPLICADA'
       );
@@ -144,10 +149,9 @@ export class GestorVentanasAtencion {
       data: {
         periodoId: datos.periodoId,
         nombre: datos.nombre,
-        categoria: datos.categoria,
+        categorias: datos.categorias,
         fechaInicio: new Date(datos.fechaInicio),
         fechaFin: new Date(datos.fechaFin),
-        ordenAtencion: datos.ordenAtencion || ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO'],
       },
       include: {
         periodo: true,
@@ -233,6 +237,32 @@ export class GestorVentanasAtencion {
 
     if (!['ABIERTA', 'EN_CURSO'].includes(ventana.estado)) {
       throw new AppError('La ventana no está activa', 400, 'VENTANA_NO_ACTIVA');
+    }
+
+    // Calcular el slot de 15 minutos actual desde el inicio de la ventana (updatedAt)
+    const elapsedSeconds = Math.floor((Date.now() - new Date(ventana.updatedAt).getTime()) / 1000);
+    const currentSlotIndex = Math.floor(elapsedSeconds / 900);
+    const slotStartTime = new Date(new Date(ventana.updatedAt).getTime() + currentSlotIndex * 900 * 1000);
+
+    // Verificar si ya se llamó a algún docente en este mismo slot de 15 minutos
+    const alreadyCalledInSlot = await prisma.atencionVentana.findFirst({
+      where: {
+        ventanaId,
+        horaInicio: { gte: slotStartTime },
+      },
+    });
+
+    if (alreadyCalledInSlot) {
+      const slotEndTime = new Date(slotStartTime.getTime() + 900 * 1000);
+      const remainingMs = slotEndTime.getTime() - Date.now();
+      const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+      const remainingMins = Math.floor(remainingSeconds / 60);
+      const remainingSecs = remainingSeconds % 60;
+      throw new AppError(
+        `Debe respetar la ventana de atención actual. Espere ${remainingMins}m y ${remainingSecs}s para llamar al siguiente docente.`,
+        400,
+        'VENTANA_TIME_RESTRICTION'
+      );
     }
 
     // Buscar el siguiente docente en espera
@@ -408,6 +438,35 @@ export class GestorVentanasAtencion {
     return atencionActualizada;
   }
 
+  async saltarTurno(ventanaId: string, deltaSeconds: number) {
+    const ventana = await this.obtenerVentana(ventanaId);
+
+    if (!['ABIERTA', 'EN_CURSO'].includes(ventana.estado)) {
+      throw new AppError('La ventana no está activa', 400, 'VENTANA_NO_ACTIVA');
+    }
+
+    const newUpdatedAt = new Date(new Date(ventana.updatedAt).getTime() - deltaSeconds * 1000);
+
+    const ventanaActualizada = await prisma.ventanaAtencion.update({
+      where: { id: ventanaId },
+      data: {
+        updatedAt: newUpdatedAt,
+      },
+    });
+
+    // Publicar evento en Redis/WebSocket
+    await redis.publish('ws:ventanas', JSON.stringify({
+      type: 'VENTANA_SHIFTED',
+      channel: `ventana:${ventanaId}`,
+      data: {
+        updatedAt: newUpdatedAt.toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    }));
+
+    return ventanaActualizada;
+  }
+
   async obtenerCola(ventanaId: string) {
     const cola = await prisma.atencionVentana.findMany({
       where: { ventanaId },
@@ -458,13 +517,38 @@ export class GestorVentanasAtencion {
   private async generarColaDocentes(ventanaId: string) {
     const ventana = await this.obtenerVentana(ventanaId);
 
-    // Obtener docentes de la categoría de la ventana
-    const docentes = await prisma.docente.findMany({
+    const cats = ventana.categorias as CategoriaDocente[];
+    // Obtener docentes de las categorías de la ventana con sus cursos y horarios
+    const docentesQuery = await prisma.docente.findMany({
       where: {
-        categoria: ventana.categoria,
+        categoria: { in: cats },
         usuario: { activo: true },
       },
+      include: {
+        cursos: true,
+        horarios: {
+          where: {
+            periodoId: ventana.periodoId,
+            estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] }
+          }
+        }
+      },
       orderBy: { codigo: 'asc' },
+    });
+
+    // Filtrar docentes que tengan horas pendientes
+    const docentes = docentesQuery.filter((docente) => {
+      const horasAsignadas = docente.cursos.reduce((sum, c) => sum + c.horasAsignadas, 0);
+      const horasProgramadas = docente.horarios.reduce((sum, h) => sum + calcularHorasEntre(h.horaInicio || '', h.horaFin || ''), 0);
+      return horasAsignadas > horasProgramadas;
+    });
+
+    // Ordenar docentes según el orden de categorias en la ventana, y luego por código
+    docentes.sort((a, b) => {
+      const idxA = cats.indexOf(a.categoria);
+      const idxB = cats.indexOf(b.categoria);
+      if (idxA !== idxB) return idxA - idxB;
+      return a.codigo.localeCompare(b.codigo);
     });
 
     // Crear atenciones en orden

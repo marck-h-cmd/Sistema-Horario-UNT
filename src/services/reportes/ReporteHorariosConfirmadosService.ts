@@ -31,20 +31,20 @@ export class ReporteHorariosConfirmadosService {
         grupo: { select: { nombre: true } },
       },
       orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
-    });
+    }) as any[];
 
     let totalHoras = 0;
     const filas = horarios.map((h) => {
-      const horas = calcularHorasEntre(h.horaInicio, h.horaFin);
+      const horas = calcularHorasEntre(h.horaInicio || '', h.horaFin || '');
       totalHoras += horas;
       return [
-        UtilidadesFecha.nombreDia(h.diaSemana),
-        `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`,
+        h.diaSemana ? UtilidadesFecha.nombreDia(h.diaSemana) : '',
+        h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : '',
         h.curso.codigo,
         h.curso.nombre,
         Formateadores.nombreUsuario(h.docente.usuario),
-        h.ambiente.codigo,
-        Formateadores.tipoAmbiente(h.ambiente.tipo),
+        h.ambiente?.codigo || '',
+        h.ambiente ? Formateadores.tipoAmbiente(h.ambiente.tipo) : '',
         h.grupo?.nombre ?? '—',
         h.estado,
         `${horas.toFixed(1)} h`,

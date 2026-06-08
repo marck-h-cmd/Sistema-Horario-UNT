@@ -52,14 +52,14 @@ export class ReporteHorariosAmbienteService {
         },
       },
       orderBy: [{ tipo: 'asc' }, { codigo: 'asc' }],
-    });
+    }) as any[];
 
     const ambientesConHorario = ambientes.filter((a) => a.horarios.length > 0);
     const totalSlots = ambientes.reduce((s, a) => s + a.horarios.length, 0);
     const horasOcupadas = ambientes.reduce((s, a) => {
-      return s + a.horarios.reduce((h, hor) => {
-        const [hi, hm] = hor.horaInicio.split(':').map(Number);
-        const [fi, fm] = hor.horaFin.split(':').map(Number);
+      return s + a.horarios.reduce((h: number, hor: any) => {
+        const [hi, hm] = (hor.horaInicio || '').split(':').map(Number);
+        const [fi, fm] = (hor.horaFin || '').split(':').map(Number);
         return h + ((fi * 60 + fm) - (hi * 60 + hm)) / 60;
       }, 0);
     }, 0);
@@ -70,7 +70,7 @@ export class ReporteHorariosAmbienteService {
       { label: 'Horas asignadas (suma)', value: `${horasOcupadas.toFixed(1)}h` },
     ]);
 
-    const bloques = ambientes.map((a) => this.bloqueAmbiente(a)).join('');
+    const bloques = ambientes.map((a) => this.bloqueAmbiente(a as any)).join('');
 
     const subtituloPartes: string[] = [];
     if (tipo) subtituloPartes.push(`Tipo: ${Formateadores.tipoAmbiente(tipo)}`);

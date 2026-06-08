@@ -12,7 +12,8 @@ const docenteSchema = z.object({
   apellidos: z.string().min(2).max(100),
   codigo: z.string().min(3).max(20),
   categoria: z.nativeEnum(CategoriaDocente),
-  departamento: z.string().optional(),
+  departamentoId: z.number().int(),
+  dni: z.string().length(8, 'El DNI debe tener exactamente 8 dígitos').regex(/^\d+$/, 'El DNI debe contener solo números'),
   telefono: z.string().optional(),
   whatsapp: z.string().optional(),
   fechaIngreso: z.string().optional().transform(val => val ? new Date(val) : undefined),
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || undefined;
     const categoria = searchParams.get('categoria') as CategoriaDocente || undefined;
+    const departamentoId = searchParams.get('departamentoId') ? parseInt(searchParams.get('departamentoId')!) : undefined;
     const activo = searchParams.get('activo') === 'true' ? true : 
                    searchParams.get('activo') === 'false' ? false : undefined;
     const sortBy = searchParams.get('sortBy') || undefined;
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
       limit,
       search,
       categoria,
+      departamentoId,
       activo,
       sortBy,
       sortOrder,

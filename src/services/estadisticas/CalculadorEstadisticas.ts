@@ -43,6 +43,8 @@ export class CalculadorEstadisticas {
         };
       }
 
+      if (!h.horaInicio || !h.horaFin) continue;
+
       const [hiH, hiM] = h.horaInicio.split(':').map(Number);
       const [hfH, hfM] = h.horaFin.split(':').map(Number);
       const horas = (hfH + hfM / 60) - (hiH + hiM / 60);
@@ -86,7 +88,7 @@ export class CalculadorEstadisticas {
     }
 
     for (const h of horarios) {
-      if (distribucion[h.diaSemana]) {
+      if (h.diaSemana && h.horaInicio && distribucion[h.diaSemana]) {
         distribucion[h.diaSemana][h.horaInicio] = h._count;
       }
     }
@@ -181,9 +183,11 @@ export class CalculadorEstadisticas {
 
     let horasTotales = 0;
     for (const h of horarios) {
-      const [hiH, hiM] = h.horaInicio.split(':').map(Number);
-      const [hfH, hfM] = h.horaFin.split(':').map(Number);
-      horasTotales += (hfH + hfM / 60) - (hiH + hiM / 60);
+      if (h.horaInicio && h.horaFin) {
+        const [hiH, hiM] = h.horaInicio.split(':').map(Number);
+        const [hfH, hfM] = h.horaFin.split(':').map(Number);
+        horasTotales += (hfH + hfM / 60) - (hiH + hiM / 60);
+      }
     }
 
     return {

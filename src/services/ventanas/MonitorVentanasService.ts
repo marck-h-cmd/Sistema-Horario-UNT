@@ -4,7 +4,7 @@ import { redis } from '@/lib/redis';
 export interface VentanaStatus {
   ventanaId: string;
   nombre: string;
-  categoria: string;
+  categorias: string[];
   estado: string;
   progreso: {
     total: number;
@@ -76,7 +76,7 @@ export class MonitorVentanasService {
       return {
         ventanaId: ventana.id,
         nombre: ventana.nombre,
-        categoria: ventana.categoria,
+        categorias: ventana.categorias as string[],
         estado: ventana.estado,
         progreso: {
           total,
@@ -176,7 +176,7 @@ export class MonitorVentanasService {
     totalDocentesEnEspera: number;
     ventanas: Array<{
       nombre: string;
-      categoria: string;
+      categorias: string[];
       progreso: number;
     }>;
   }> {
@@ -188,7 +188,7 @@ export class MonitorVentanasService {
       totalDocentesEnEspera: ventanas.reduce((sum, v) => sum + v.progreso.enEspera, 0),
       ventanas: ventanas.map(v => ({
         nombre: v.nombre,
-        categoria: v.categoria,
+        categorias: v.categorias,
         progreso: v.progreso.porcentajeCompletado,
       })),
     };
