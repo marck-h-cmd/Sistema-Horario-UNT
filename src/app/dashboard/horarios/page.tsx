@@ -150,6 +150,7 @@ export default function HorariosPage() {
   ]);
   const { can, user } = useAuth();
   const puedePublicar = can('PUBLICAR_HORARIOS');
+  const isAdmin = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMINISTRADOR';
   const { periodoSeleccionado, loading: periodoLoading } = usePeriodo();
   const periodoId = periodoSeleccionado?.id ?? '';
 
@@ -1124,20 +1125,22 @@ export default function HorariosPage() {
                                                     {esLab ? 'LAB' : 'TEO'}
                                                   </span>
                                                   
-                                                  {isBorrador && (
+                                                  {(isBorrador || isAdmin) && (
                                                     <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleConfirmHorario(h.id, h);
-                                                        }}
-                                                        title="Confirmar"
-                                                        className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                      </button>
+                                                      {isBorrador && (
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleConfirmHorario(h.id, h);
+                                                          }}
+                                                          title="Confirmar"
+                                                          className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                          </svg>
+                                                        </button>
+                                                      )}
                                                       <button
                                                         onClick={(e) => {
                                                           e.stopPropagation();
@@ -1197,20 +1200,22 @@ export default function HorariosPage() {
                                                     {h.horaInicio} - {h.horaFin}
                                                   </span>
                                                   
-                                                  {isBorrador && (
+                                                  {(isBorrador || isAdmin) && (
                                                     <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleConfirmHorario(h.id, h);
-                                                        }}
-                                                        title="Confirmar"
-                                                        className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                      </button>
+                                                      {isBorrador && (
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleConfirmHorario(h.id, h);
+                                                          }}
+                                                          title="Confirmar"
+                                                          className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                          </svg>
+                                                        </button>
+                                                      )}
                                                       <button
                                                         onClick={(e) => {
                                                           e.stopPropagation();

@@ -240,7 +240,9 @@ export class ServicioDocente {
     const updateData: any = {};
     if (datos.categoria) updateData.categoria = datos.categoria;
     if (datos.dedicacion) updateData.dedicacion = datos.dedicacion;
-    if (datos.departamentoId !== undefined) updateData.departamentoId = datos.departamentoId;
+    if (datos.departamentoId !== undefined) {
+      updateData.departamento = { connect: { id: datos.departamentoId } };
+    }
     if (datos.dni !== undefined) updateData.dni = datos.dni;
     if (datos.telefono !== undefined) updateData.telefono = datos.telefono;
     if (datos.whatsapp !== undefined) updateData.whatsapp = datos.whatsapp;
