@@ -33,12 +33,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#000',
-    alignItems: 'center',
+    alignItems: 'stretch',
     minHeight: 18,
   },
   rowNoBorder: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     minHeight: 18,
   },
   cell: {
@@ -88,6 +88,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
   },
+  registroFooter: {
+    marginTop: 40,
+    fontSize: 8,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
 });
 
 export interface CargaLectivaRow {
@@ -114,6 +120,7 @@ export interface FormatoHorarioSemanalProps {
     departamento: string;
     facultad: string;
     categoriaDedicacion: string;
+    email?: string;
   };
   periodo: {
     anio: string;
@@ -124,6 +131,7 @@ export interface FormatoHorarioSemanalProps {
   cargaLectiva: CargaLectivaRow[];
   cargaNoLectiva: CargaNoLectivaRow[];
   totalHoras: number;
+  fechaRegistro?: string;
 }
 
 const ACTIVIDADES_ORDENADAS = [
@@ -145,6 +153,7 @@ export function FormatoHorarioSemanal({
   cargaLectiva = [],
   cargaNoLectiva = [],
   totalHoras,
+  fechaRegistro,
 }: FormatoHorarioSemanalProps) {
   return (
     <Document>
@@ -311,6 +320,11 @@ export function FormatoHorarioSemanal({
             <View style={styles.signatureLine} />
             <Text style={styles.signatureTitle}>V°B° DECANO</Text>
           </View>
+        </View>
+
+        {/* Footer Registration Info */}
+        <View style={styles.registroFooter}>
+          <Text>FECHA DE REGISTRO: ({fechaRegistro || new Date().toLocaleString('es-PE')}) EMAIL: {docente.email || 'SIN CORREO'}</Text>
         </View>
 
       </Page>
