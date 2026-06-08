@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
 import { EstadoVentana, EstadoAtencion, CategoriaDocente } from '@prisma/client';
+import { calcularHorasEntre } from '@/lib/horario-horas';
 import { TemporizadorService } from './TemporizadorService';
 import { GestorNotificaciones } from '../notificaciones/GestorNotificaciones';
 
@@ -517,13 +518,29 @@ export class GestorVentanasAtencion {
     const ventana = await this.obtenerVentana(ventanaId);
 
     const cats = ventana.categorias as CategoriaDocente[];
-    // Obtener docentes de las categorías de la ventana
-    const docentes = await prisma.docente.findMany({
+    // Obtener docentes de las categorías de la ventana con sus cursos y horarios
+    const docentesQuery = await prisma.docente.findMany({
       where: {
         categoria: { in: cats },
         usuario: { activo: true },
       },
+      include: {
+        cursos: true,
+        horarios: {
+          where: {
+            periodoId: ventana.periodoId,
+            estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] }
+          }
+        }
+      },
       orderBy: { codigo: 'asc' },
+    });
+
+    // Filtrar docentes que tengan horas pendientes
+    const docentes = docentesQuery.filter((docente) => {
+      const horasAsignadas = docente.cursos.reduce((sum, c) => sum + c.horasAsignadas, 0);
+      const horasProgramadas = docente.horarios.reduce((sum, h) => sum + calcularHorasEntre(h.horaInicio || '', h.horaFin || ''), 0);
+      return horasAsignadas > horasProgramadas;
     });
 
     // Ordenar docentes según el orden de categorias en la ventana, y luego por código
