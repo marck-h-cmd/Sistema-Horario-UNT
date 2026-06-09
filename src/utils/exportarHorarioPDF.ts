@@ -1,7 +1,12 @@
-const COLORES = [
+const COLORES_GRILLA = [
   '#c6efce', '#ffc7ce', '#bdd7ee', '#e2efda',
   '#ffff00', '#92d050', '#dce6f1', '#e4dfec',
   '#fce4d6', '#d9d9d9', '#fff2cc', '#ddebf7', '#f8cbad',
+];
+
+const COLORES_TABLA = [
+  '#ffffff',
+  '#f0f7ff',
 ];
 
 const DIAS_GRILLA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
@@ -279,8 +284,23 @@ export async function exportarHorarioPDF(
   horarios: any[],
   titulo: string,
   subtitulo: string,
-  diasMostrados?: string[]
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
 ): Promise<void> {
+  const format = options?.format || 'grid';
+  const pageSize = options?.pageSize || 'A4';
+  const orientation = options?.orientation || 'landscape';
+  const margin = options?.margin ?? 8;
+  const printImmediately = options?.printImmediately ?? false;
+  
+  // Elegimos la paleta de colores según el formato
+  const COLORES = format === 'grid' ? COLORES_GRILLA : COLORES_TABLA;
 
   const diasRender = diasMostrados && diasMostrados.length > 0 
     ? DIAS_GRILLA.filter(d => diasMostrados.includes(d)) 
@@ -397,7 +417,7 @@ export async function exportarHorarioPDF(
     border:1px solid #000;
     padding:4px 6px;
     font-size:10px;
-    background:#1a1a2e;
+    background:#1a365d;
     color:#fff;
     font-weight:bold;
     text-align:center;
@@ -848,7 +868,132 @@ export async function exportarHorarioPDF(
     `;
   }).join('');
 
-  const htmlCompleto = `<!DOCTYPE html>
+  // Generar HTML para el formato de TABLA (listado por días)
+  const htmlTabla = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${titulo}</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+    }
+
+    body {
+      padding: 8mm;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      box-sizing: border-box;
+    }
+
+    .tabla-listado {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .dia-header {
+      background: #1a365d !important;
+      color: white !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid #000;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .tabla-listado {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <table class="tabla-listado">
+    ${diasRender.map(dia => {
+      const horariosDia = normalizedHorarios.filter(h => normalizarDia(h.diaSemana) === normalizarDia(dia));
+      if (horariosDia.length === 0) return '';
+
+      const filasListado = horariosDia.sort((a, b) => {
+        if (a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
+        return (a.curso?.codigo || '').localeCompare(b.curso?.codigo || '');
+      }).map(h => {
+        const doc = getDocenteCurso(h);
+        const bg = doc?.color ?? 'transparent';
+        return `
+          <tr>
+            <td style="${celdaBase}text-align:center;width:80px;background:${bg}">${h.horaInicio} - ${h.horaFin}</td>
+            <td style="${celdaBase}text-align:center;width:40px;background:${bg}">${doc?.numero ?? ''}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${h.curso?.codigo || ''} ${h.curso?.nombre || ''}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${getNombreDocente(h)}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${h.ambiente?.nombre ?? h.ambiente?.codigo ?? ''}</td>
+            <td style="${celdaBase}text-align:center;width:60px;background:${bg}">${h.grupo?.nombre ?? ''}</td>
+            <td style="${celdaBase}text-align:center;width:80px;background:${bg}">${h.estado ?? ''}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <thead>
+          <tr>
+            <th colspan="7" class="dia-header">${DIA_LABELS[dia] ?? dia}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:80px;background:#f2f2f2">HORA</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:40px;background:#f2f2f2">N°</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">ASIGNATURA</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">DOCENTE</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">AMBIENTE</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:60px;background:#f2f2f2">GRUPO</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:80px;background:#f2f2f2">ESTADO</td>
+          </tr>
+          ${filasListado}
+        </tbody>
+      `;
+    }).join('')}
+  </table>
+
+</body>
+</html>`;
+
+  // Generar HTML para el formato de GRILLA (original)
+  const htmlGrilla = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
@@ -972,6 +1117,342 @@ export async function exportarHorarioPDF(
 </body>
 </html>`;
 
+  // Generar HTML base con los estilos compartidos
+  const getHtmlBase = (content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${titulo}</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      color: #212529;
+    }
+
+    body {
+      padding: ${margin}mm;
+      padding-bottom: ${margin + 15}mm;
+    }
+
+    /* Encabezado y Pie de página */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 20mm;
+      padding: 5mm ${margin}mm;
+      background: #ffffff;
+      border-bottom: 2px solid #1a365d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .header .left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header .title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a365d;
+    }
+
+    .header .subtitle {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 15mm;
+      padding: 5mm ${margin}mm;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      color: #64748b;
+      z-index: 1000;
+    }
+
+    .page-number {
+      font-weight: bold;
+      color: #1a365d;
+    }
+
+    @page {
+      size: ${pageSize} ${orientation};
+      margin: 25mm ${margin}mm 20mm ${margin}mm;
+      
+      @top-left {
+        content: element(header);
+      }
+      
+      @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: Arial, sans-serif;
+        font-size: 9px;
+        color: #64748b;
+      }
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    th,
+    td {
+      box-sizing: border-box;
+      border: 1px solid #dee2e6;
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #1a365d !important;
+      color: #ffffff !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    td {
+      padding: 6px 8px;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f8fafc !important;
+    }
+
+    .tabla-superior {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+      table-layout: fixed;
+    }
+
+    .tabla-horario {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      page-break-inside: avoid;
+    }
+
+    .tabla-listado {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .tabla-horario th,
+    .tabla-horario td {
+      overflow: hidden;
+      word-break: normal;
+    }
+
+    .hora-col {
+      background-color: #e2e8f0 !important;
+      font-weight: bold;
+      text-align: center;
+      width: 45px;
+    }
+
+    .dia-header {
+      background-color: #1a365d !important;
+      color: white !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .col-header {
+      background-color: #f1f5f9 !important;
+      color: #1e293b !important;
+      font-weight: bold;
+    }
+
+    .text-center {
+      text-align: center !important;
+    }
+
+    .text-left {
+      text-align: left !important;
+    }
+
+    .text-right {
+      text-align: right !important;
+    }
+
+    .font-bold {
+      font-weight: bold !important;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .header {
+        position: running(header);
+      }
+      
+      .print-only {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header print-only">
+    <div class="left">
+      <div class="title">${titulo}</div>
+      <div class="subtitle">${subtitulo}</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 10px; font-weight: bold; color: #1a365d;">Universidad Nacional de Trujillo</div>
+      <div style="font-size: 9px;">Facultad de Ingeniería</div>
+    </div>
+  </div>
+
+  <div class="footer print-only">
+    <div>Generado el: ${new Date().toLocaleDateString('es-PE', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })}</div>
+    <div>Escuela Profesional de Ingeniería de Sistemas</div>
+  </div>
+
+${content}
+
+</body>
+</html>
+  `.trim();
+
+  const htmlGrillaFinal = getHtmlBase(`
+  <table class="tabla-superior">
+    <thead>
+      <tr>
+        <th colspan="2" style="${thStyle}width:30%;text-align:center">
+          DATOS INSTITUCIONALES
+        </th>
+        <th style="${thStyle}width:28px">N°</th>
+        <th style="${thStyle}text-align:left">DOCENTE</th>
+        <th style="${thStyle}text-align:left">ASIGNATURA</th>
+        <th style="${thStyle}width:24px">T</th>
+        <th style="${thStyle}width:24px">P</th>
+        <th style="${thStyle}width:24px">L</th>
+        <th style="${thStyle}width:24px">G</th>
+        <th style="${thStyle}width:44px">T.<br/>HORAS</th>
+        <th style="${thStyle}text-align:left">DEPARTAMENTO</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${filas}
+    </tbody>
+  </table>
+
+  <table class="tabla-horario">
+    ${colgroupHorario}
+
+    <thead>
+      <tr>
+        <th style="${thStyle}width:38px">HORA</th>
+        ${diasRender.map(dia => `<th style="${thStyle}">${DIA_LABELS[dia] ?? dia}</th>`).join('')}
+        <th style="${thStyle}width:38px">HORA</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${grillaFilas}
+    </tbody>
+  </table>
+  `);
+
+  const htmlTablaFinal = getHtmlBase(`
+  <div style="margin-bottom: 20px;">
+    <h2 style="color: #1a365d; font-size: 14px; margin-bottom: 15px; border-bottom: 2px solid #1a365d; padding-bottom: 5px;">${titulo}</h2>
+  </div>
+  
+  ${diasRender.map(dia => {
+    const horariosDia = normalizedHorarios.filter(h => normalizarDia(h.diaSemana) === normalizarDia(dia));
+    if (horariosDia.length === 0) return '';
+
+    const filasListado = horariosDia.sort((a, b) => {
+      if (a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
+      return (a.curso?.codigo || '').localeCompare(b.curso?.codigo || '');
+    }).map((h, index) => {
+      const doc = getDocenteCurso(h);
+      const bg = doc?.color || (index % 2 === 0 ? '#ffffff' : '#f0f7ff');
+      return `
+        <tr style="background-color: ${bg};">
+          <td style="text-align: center; padding: 8px;">${h.horaInicio} - ${h.horaFin}</td>
+          <td style="text-align: center; padding: 8px;">${doc?.numero ?? ''}</td>
+          <td style="text-align: left; padding: 8px;">${h.curso?.codigo || ''} ${h.curso?.nombre || ''}</td>
+          <td style="text-align: left; padding: 8px;">${getNombreDocente(h)}</td>
+          <td style="text-align: left; padding: 8px;">${h.ambiente?.nombre ?? h.ambiente?.codigo ?? ''}</td>
+          <td style="text-align: center; padding: 8px;">${h.grupo?.nombre ?? ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <table class="tabla-listado" style="margin-bottom: 25px; page-break-inside: avoid;">
+        <thead>
+          <tr>
+            <th colspan="6" class="dia-header">${DIA_LABELS[dia] ?? dia}</th>
+          </tr>
+          <tr>
+            <th style="width: 12%;">HORA</th>
+            <th style="width: 5%;">N°</th>
+            <th style="width: 35%;">ASIGNATURA</th>
+            <th style="width: 25%;">DOCENTE</th>
+            <th style="width: 18%;">AMBIENTE</th>
+            <th style="width: 5%;">GRUPO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasListado}
+        </tbody>
+      </table>
+    `;
+  }).join('')}
+  `);
+
+  const htmlCompleto = format === 'table' ? htmlTablaFinal : htmlGrillaFinal;
+
   const win = window.open('', '_blank');
 
   if (!win) {
@@ -983,19 +1464,19 @@ export async function exportarHorarioPDF(
   win.document.write(htmlCompleto);
   win.document.close();
 
+  const imprimir = () => {
+    win.focus();
 
-  //const imprimir = () => {
-   // win.focus();
+    setTimeout(() => {
+      if (printImmediately) {
+        win.print();
+      }
+    }, 800);
+  };
 
-   // setTimeout(() => {
-     // win.print();
-    //}, 800);
-  //};
-
-  //if (win.document.readyState === 'complete') {
-    //imprimir();
-  //} else {
-   // win.onload = imprimir;
-  //}
-//}
+  if (win.document.readyState === 'complete') {
+    imprimir();
+  } else {
+    win.onload = imprimir;
+  }
 }

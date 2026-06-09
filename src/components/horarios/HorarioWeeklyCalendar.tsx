@@ -97,7 +97,7 @@ const horaCol: React.CSSProperties = {
 };
 const th: React.CSSProperties = {
   ...celda,
-  background: '#1a1a2e',
+  background: '#1a365d',
   color: '#fff',
   fontWeight: 'bold',
   padding: '4px 6px',
