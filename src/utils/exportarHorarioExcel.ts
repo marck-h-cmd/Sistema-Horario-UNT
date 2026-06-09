@@ -12,11 +12,16 @@ import { HorarioCalendarItem } from '@/components/horarios/HorarioWeeklyCalendar
 // - Configura hoja para impresión horizontal A4.
 // ─────────────────────────────────────────────
 
-const COLORES_UNT = [
+const COLORES_UNT_GRILLA = [
   { argb: 'FFC6EFCE' }, { argb: 'FFFFC7CE' }, { argb: 'FFBDD7EE' }, { argb: 'FFE2EFDA' },
   { argb: 'FFFFFF00' }, { argb: 'FF92D050' }, { argb: 'FFDCE6F1' }, { argb: 'FFE4DFEC' },
   { argb: 'FFFCE4D6' }, { argb: 'FFD9D9D9' }, { argb: 'FFFFF2CC' }, { argb: 'FFDDEBF7' },
   { argb: 'FFF8CBAD' },
+];
+
+const COLORES_UNT_TABLA = [
+  { argb: 'FFFFFFFF' },
+  { argb: 'FFF0F7FF' },
 ];
 
 const DIAS_GRILLA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
@@ -569,8 +574,14 @@ export async function exportarHorarioExcel(
   horarios: HorarioCalendarItem[],
   titulo: string,
   subtitulo = '',
-  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[] } = {}
+  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[], format?: 'table' | 'grid' } = {}
 ): Promise<void> {
+  console.log('exportarHorarioExcel options:', opciones);
+  const { format = 'grid' } = opciones;
+  console.log('exportarHorarioExcel format:', format);
+  
+  // Elegimos la paleta de colores según el formato
+  const COLORES_UNT = format === 'grid' ? COLORES_UNT_GRILLA : COLORES_UNT_TABLA;
   const diasRender = opciones.diasMostrados && opciones.diasMostrados.length > 0
     ? DIAS_GRILLA.filter(d => opciones.diasMostrados!.includes(d))
     : DIAS_GRILLA;
@@ -703,292 +714,495 @@ export async function exportarHorarioExcel(
   }
 
   // ─────────────────────────────────────────────
-  // 3. Tabla superior: datos institucionales + docentes
+  // 3. Encabezado institucional (filas 1-4)
   // ─────────────────────────────────────────────
-  ws.getRow(1).height = 17;
-
-  mergeAndStyle(ws, 1, 1, 1, 4, 'DATOS INSTITUCIONALES', headerStyle);
-  mergeAndStyle(ws, 1, 5, 1, 5, 'N°', headerStyle);
-  mergeAndStyle(ws, 1, 6, 1, 9, 'DOCENTE', headerStyle);
-  mergeAndStyle(ws, 1, 10, 1, 13, 'ASIGNATURA', headerStyle);
-  mergeAndStyle(ws, 1, 14, 1, 14, 'T', headerStyle);
-  mergeAndStyle(ws, 1, 15, 1, 15, 'P', headerStyle);
-  mergeAndStyle(ws, 1, 16, 1, 16, 'L', headerStyle);
-  mergeAndStyle(ws, 1, 17, 1, 17, 'G', headerStyle);
-  mergeAndStyle(ws, 1, 18, 1, 18, 'T. HORAS', headerStyle);
-  mergeAndStyle(ws, 1, 19, 1, 26, 'DEPARTAMENTO', headerStyle);
-
-  const totalFilasDocentes = Math.max(13, docentesUnicos.length);
-
-  for (let i = 0; i < totalFilasDocentes; i++) {
-    const excelRow = i + 2;
-    const row = ws.getRow(excelRow);
-    row.height = 15;
-
-    const doc = docentesUnicos[i];
-    const bgArgb = doc?.colorArgb ?? 'FFFFFFFF';
-
-    if (i === 0) {
-      mergeAndStyle(ws, 2, 1, 4, 4, 'Universidad Nacional de Trujillo\nFacultad de Ingeniería\nTrujillo', {
-        font: { bold: true, size: 9 },
-        alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    } else if (i === 3) {
-      mergeAndStyle(ws, excelRow, 1, excelRow, 4, 'ESCUELA: INGENIERÍA DE SISTEMAS', {
-        font: { color: { argb: 'FF0070C0' }, bold: true, size: 9 },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    } else if (i === 5) {
-      mergeAndStyle(ws, excelRow, 1, excelRow, 4, `CICLO: ${ciclo || '—'}    SECCIÓN: A`, {
-        font: { color: { argb: 'FF0070C0' }, bold: true, size: 9 },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    } else if (i === 7) {
-      mergeAndStyle(ws, excelRow, 1, excelRow, 4, `AÑO ACADÉMICO: ${new Date().getFullYear()}    SEMESTRE: I`, {
-        font: { size: 9 },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    } else if (i === 9) {
-      mergeAndStyle(ws, excelRow, 1, excelRow, 4, 'Inicio del Ciclo: 13-04-2026', {
-        font: { color: { argb: 'FFC00000' }, bold: true, size: 9 },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    } else if (i === 10) {
-      mergeAndStyle(ws, excelRow, 1, excelRow, 4, 'Término del Ciclo: 08-08-2026', {
-        font: { color: { argb: 'FFC00000' }, bold: true, size: 9 },
-        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-        border: borderThin,
-      });
-    }
-
-    const docenteFill: ExcelJS.Fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: bgArgb },
-    };
-
-    const docBaseStyle: Partial<ExcelJS.Style> = {
-      fill: docenteFill,
-      font: { size: 8 },
-      alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
-      border: borderThin,
-    };
-
-    mergeAndStyle(ws, excelRow, 5, excelRow, 5, doc ? doc.numero : '', {
-      fill: docenteFill,
-      font: { size: 9, bold: true },
-      alignment: { horizontal: 'center', vertical: 'middle' },
-      border: borderThin,
-    });
-
-    mergeAndStyle(ws, excelRow, 6, excelRow, 9, doc?.nombre ?? '', docBaseStyle);
-    mergeAndStyle(ws, excelRow, 10, excelRow, 13, doc?.asignatura ?? '', docBaseStyle);
-    mergeAndStyle(ws, excelRow, 14, excelRow, 14, doc?.horasT ?? '', {
-      ...docBaseStyle,
-      alignment: { horizontal: 'center', vertical: 'middle' },
-    });
-    mergeAndStyle(ws, excelRow, 15, excelRow, 15, doc?.horasP ?? '', {
-      ...docBaseStyle,
-      alignment: { horizontal: 'center', vertical: 'middle' },
-    });
-    mergeAndStyle(ws, excelRow, 16, excelRow, 16, doc?.horasL ?? '', {
-      ...docBaseStyle,
-      alignment: { horizontal: 'center', vertical: 'middle' },
-    });
-    mergeAndStyle(ws, excelRow, 17, excelRow, 17, doc?.grupos ?? '', {
-      ...docBaseStyle,
-      alignment: { horizontal: 'center', vertical: 'middle' },
-    });
-    mergeAndStyle(ws, excelRow, 18, excelRow, 18, doc?.totalHoras ?? '', {
-      ...docBaseStyle,
-      font: { size: 9, bold: true },
-      alignment: { horizontal: 'center', vertical: 'middle' },
-    });
-    mergeAndStyle(ws, excelRow, 19, excelRow, 26, doc?.departamento ?? '', docBaseStyle);
+  
+  // Aumentar altura de las primeras filas para el encabezado
+  for (let r = 1; r <= 4; r++) {
+    ws.getRow(r).height = r === 1 ? 25 : 15;
   }
 
-  // ─────────────────────────────────────────────
-  // 4. Tabla inferior: grilla semanal
-  // ─────────────────────────────────────────────
-  const sepRow = totalFilasDocentes + 2;
-  ws.getRow(sepRow).height = 5;
-
-  const grillaStartRow = sepRow + 1;
-  ws.getRow(grillaStartRow).height = 17;
-
-  mergeAndStyle(ws, grillaStartRow, HORA_COL_IZQ, grillaStartRow, HORA_COL_IZQ, 'HORA', headerStyle);
-
-  diasRender.forEach(dia => {
-    mergeAndStyle(
-      ws,
-      grillaStartRow,
-      diaStartCol(dia),
-      grillaStartRow,
-      diaEndCol(dia),
-      DIA_LABELS[dia],
-      headerStyle
-    );
+  // Título principal institucional
+  mergeAndStyle(ws, 1, 1, 1, 26, 'UNIVERSIDAD NACIONAL DE TRUJILLO', {
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+    font: { bold: true, size: 14, color: { argb: 'FFFFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
   });
 
-  mergeAndStyle(ws, grillaStartRow, HORA_COL_DER, grillaStartRow, HORA_COL_DER, 'HORA', headerStyle);
+  // Subtítulo 1
+  mergeAndStyle(ws, 2, 1, 2, 26, 'FACULTAD DE INGENIERÍA', {
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7EFF6' } },
+    font: { bold: true, size: 11, color: { argb: 'FF1A365D' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+  });
 
-  const ocupado = new Set<string>();
+  // Subtítulo 2
+  mergeAndStyle(ws, 3, 1, 3, 26, 'ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS', {
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } },
+    font: { bold: true, size: 10, color: { argb: 'FF475569' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+  });
 
-  const crearBloque = (
-    r1: number,
-    c1: number,
-    r2: number,
-    c2: number,
-    value: ExcelJS.CellValue,
-    style: Partial<ExcelJS.Style>
-  ): void => {
-    mergeAndStyle(ws, r1, c1, r2, c2, value, style);
-    marcarOcupado(ocupado, r1, c1, r2, c2);
-  };
+  // Fecha y título del documento
+  const fechaGeneracion = new Date().toLocaleDateString('es-PE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  mergeAndStyle(ws, 4, 1, 4, 13, `${titulo || 'HORARIO ACADÉMICO'}`, {
+    font: { bold: true, size: 10 },
+    alignment: { horizontal: 'left', vertical: 'middle' },
+  });
+  mergeAndStyle(ws, 4, 14, 4, 26, `Generado el: ${fechaGeneracion}`, {
+    font: { size: 9, color: { argb: 'FF64748B' } },
+    alignment: { horizontal: 'right', vertical: 'middle' },
+  });
 
-  const crearVacios = (row: number, c1: number, c2: number, thickTop: boolean): void => {
-    const libres = getAvailableRanges(row, c1, c2, ocupado);
-    libres.forEach(([inicio, fin]) => {
-      crearBloque(row, inicio, row, fin, '', blankStyle(thickTop));
+  let currentRow = 6;
+
+  if (format === 'grid') {
+    // ─────────────────────────────────────────────
+    // 4. Tabla de docentes (solo para formato grilla)
+    // ─────────────────────────────────────────────
+    const dataStartRow = currentRow;
+    
+    // Encabezados de la tabla de docentes
+    mergeAndStyle(ws, dataStartRow, 1, dataStartRow, 4, 'DATOS INSTITUCIONALES', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      border: borderThin,
     });
-  };
+    mergeAndStyle(ws, dataStartRow, 5, dataStartRow, 5, 'N°', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 6, dataStartRow, 9, 'DOCENTE', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 10, dataStartRow, 13, 'ASIGNATURA', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 14, dataStartRow, 14, 'T', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 15, dataStartRow, 15, 'P', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 16, dataStartRow, 16, 'L', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 17, dataStartRow, 17, 'G', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 18, dataStartRow, 18, 'T. HORAS', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
+    });
+    mergeAndStyle(ws, dataStartRow, 19, dataStartRow, 26, 'DEPARTAMENTO', {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      border: borderThin,
+    });
 
-  FRANJAS.forEach(({ ini, label }, franjaIdx) => {
-    const excelRow = grillaStartRow + 1 + franjaIdx;
-    const thickTop = ini === '13:00';
-    const row = ws.getRow(excelRow);
-    row.height = 31;
+    const totalFilasDocentes = Math.max(13, docentesUnicos.length);
 
-    mergeAndStyle(ws, excelRow, HORA_COL_IZQ, excelRow, HORA_COL_IZQ, label, horaStyle(thickTop));
-    mergeAndStyle(ws, excelRow, HORA_COL_DER, excelRow, HORA_COL_DER, label, horaStyle(thickTop));
+    for (let i = 0; i < totalFilasDocentes; i++) {
+      const excelRow = dataStartRow + 1 + i;
+      const row = ws.getRow(excelRow);
+      row.height = 15;
+
+      const doc = docentesUnicos[i];
+      const bgArgb = doc?.colorArgb ?? 'FFFFFFFF';
+
+      if (i === 0) {
+        mergeAndStyle(ws, excelRow, 1, excelRow + 2, 4, 'ESCUELA: INGENIERÍA DE SISTEMAS\nCICLO: ' + (ciclo || '—') + '\nAÑO: ' + new Date().getFullYear(), {
+          font: { bold: true, size: 9 },
+          alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        });
+      } else if (i === 3) {
+        mergeAndStyle(ws, excelRow, 1, excelRow, 4, `SECCIÓN: A    SEMESTRE: I`, {
+          font: { color: { argb: 'FF1A365D' }, bold: true, size: 9 },
+          alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        });
+      } else if (i === 5) {
+        mergeAndStyle(ws, excelRow, 1, excelRow, 4, 'Inicio del Ciclo: 13-04-2026', {
+          font: { color: { argb: 'FFC00000' }, bold: true, size: 9 },
+          alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        });
+      } else if (i === 6) {
+        mergeAndStyle(ws, excelRow, 1, excelRow, 4, 'Término del Ciclo: 08-08-2026', {
+          font: { color: { argb: 'FFC00000' }, bold: true, size: 9 },
+          alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        });
+      }
+
+      const docenteFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: bgArgb },
+      };
+
+      const docBaseStyle: Partial<ExcelJS.Style> = {
+        fill: docenteFill,
+        font: { size: 8 },
+        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+        border: borderThin,
+      };
+
+      mergeAndStyle(ws, excelRow, 5, excelRow, 5, doc ? doc.numero : '', {
+        fill: docenteFill,
+        font: { size: 9, bold: true },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+        border: borderThin,
+      });
+
+      mergeAndStyle(ws, excelRow, 6, excelRow, 9, doc?.nombre ?? '', docBaseStyle);
+      mergeAndStyle(ws, excelRow, 10, excelRow, 13, doc?.asignatura ?? '', docBaseStyle);
+      mergeAndStyle(ws, excelRow, 14, excelRow, 14, doc?.horasT ?? '', {
+        ...docBaseStyle,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      mergeAndStyle(ws, excelRow, 15, excelRow, 15, doc?.horasP ?? '', {
+        ...docBaseStyle,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      mergeAndStyle(ws, excelRow, 16, excelRow, 16, doc?.horasL ?? '', {
+        ...docBaseStyle,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      mergeAndStyle(ws, excelRow, 17, excelRow, 17, doc?.grupos ?? '', {
+        ...docBaseStyle,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      mergeAndStyle(ws, excelRow, 18, excelRow, 18, doc?.totalHoras ?? '', {
+        ...docBaseStyle,
+        font: { size: 9, bold: true },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      mergeAndStyle(ws, excelRow, 19, excelRow, 26, doc?.departamento ?? '', docBaseStyle);
+    }
+
+    currentRow = dataStartRow + totalFilasDocentes + 2 + 1;
+  }
+
+  if (format === 'grid') {
+    // ─────────────────────────────────────────────
+    // 5. Tabla inferior: grilla semanal
+    // ─────────────────────────────────────────────
+    const sepRow = currentRow - 1;
+    ws.getRow(sepRow).height = 5;
+
+    const grillaStartRow = sepRow + 1;
+    ws.getRow(grillaStartRow).height = 17;
+
+    mergeAndStyle(ws, grillaStartRow, HORA_COL_IZQ, grillaStartRow, HORA_COL_IZQ, 'HORA', headerStyle);
 
     diasRender.forEach(dia => {
-      const c1 = diaStartCol(dia);
-      const c2 = diaEndCol(dia);
-
-      // Miércoles — Ciclo I: Estudios Generales, como en el PDF.
-      if (dia === 'MIERCOLES' && mostrarEstudiosGeneralesMiercoles) {
-        if (ini === '07:00') {
-          crearBloque(excelRow, c1, excelRow + 5, c2, 'ESTUDIOS\nGENERALES', {
-            fill: estudiosFill,
-            font: { bold: true, size: 11 },
-            alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
-            border: thickTop ? borderMediumTop : borderThin,
-          });
-          return;
-        }
-
-        if (ini === '13:00') {
-          crearBloque(excelRow, c1, excelRow + 6, c2, 'ESTUDIOS\nGENERALES', {
-            fill: estudiosFill,
-            font: { bold: true, size: 11 },
-            alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
-            border: borderMediumTop,
-          });
-          return;
-        }
-      }
-
-      const libres = getAvailableRanges(excelRow, c1, c2, ocupado);
-      if (libres.length === 0) return;
-
-      const bloques = normalizedHorarios
-        .filter(x =>
-          normalizarDia(x.diaSemana) === dia &&
-          x.horaInicio === ini
-        )
-        .sort(ordenarBloquesParaCarriles);
-
-      if (bloques.length === 0) {
-        crearVacios(excelRow, c1, c2, thickTop);
-        return;
-      }
-
-      // Si hay más bloques que subcolumnas libres, los colocamos juntos para no romper el Excel.
-      const columnasDisponibles = libres.flatMap(([inicio, fin]) =>
-        Array.from({ length: fin - inicio + 1 }, (_, idx) => inicio + idx)
+      mergeAndStyle(
+        ws,
+        grillaStartRow,
+        diaStartCol(dia),
+        grillaStartRow,
+        diaEndCol(dia),
+        DIA_LABELS[dia],
+        headerStyle
       );
+    });
 
-      if (bloques.length > columnasDisponibles.length) {
-        const contenido = bloques.map(h => {
+    mergeAndStyle(ws, grillaStartRow, HORA_COL_DER, grillaStartRow, HORA_COL_DER, 'HORA', headerStyle);
+
+    const ocupado = new Set<string>();
+
+    const crearBloque = (
+      r1: number,
+      c1: number,
+      r2: number,
+      c2: number,
+      value: ExcelJS.CellValue,
+      style: Partial<ExcelJS.Style>
+    ): void => {
+      mergeAndStyle(ws, r1, c1, r2, c2, value, style);
+      marcarOcupado(ocupado, r1, c1, r2, c2);
+    };
+
+    const crearVacios = (row: number, c1: number, c2: number, thickTop: boolean): void => {
+      const libres = getAvailableRanges(row, c1, c2, ocupado);
+      libres.forEach(([inicio, fin]) => {
+        crearBloque(row, inicio, row, fin, '', blankStyle(thickTop));
+      });
+    };
+
+    FRANJAS.forEach(({ ini, label }, franjaIdx) => {
+      const excelRow = grillaStartRow + 1 + franjaIdx;
+      const thickTop = ini === '13:00';
+      const row = ws.getRow(excelRow);
+      row.height = 31;
+
+      mergeAndStyle(ws, excelRow, HORA_COL_IZQ, excelRow, HORA_COL_IZQ, label, horaStyle(thickTop));
+      mergeAndStyle(ws, excelRow, HORA_COL_DER, excelRow, HORA_COL_DER, label, horaStyle(thickTop));
+
+      diasRender.forEach(dia => {
+        const c1 = diaStartCol(dia);
+        const c2 = diaEndCol(dia);
+
+        // Miércoles — Ciclo I: Estudios Generales, como en el PDF.
+        if (dia === 'MIERCOLES' && mostrarEstudiosGeneralesMiercoles) {
+          if (ini === '07:00') {
+            crearBloque(excelRow, c1, excelRow + 5, c2, 'ESTUDIOS\nGENERALES', {
+              fill: estudiosFill,
+              font: { bold: true, size: 11 },
+              alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+              border: thickTop ? borderMediumTop : borderThin,
+            });
+            return;
+          }
+
+          if (ini === '13:00') {
+            crearBloque(excelRow, c1, excelRow + 6, c2, 'ESTUDIOS\nGENERALES', {
+              fill: estudiosFill,
+              font: { bold: true, size: 11 },
+              alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+              border: borderMediumTop,
+            });
+            return;
+          }
+        }
+
+        const libres = getAvailableRanges(excelRow, c1, c2, ocupado);
+        if (libres.length === 0) return;
+
+        const bloques = normalizedHorarios
+          .filter(x =>
+            normalizarDia(x.diaSemana) === dia &&
+            x.horaInicio === ini
+          )
+          .sort(ordenarBloquesParaCarriles);
+
+        if (bloques.length === 0) {
+          crearVacios(excelRow, c1, c2, thickTop);
+          return;
+        }
+
+        // Si hay más bloques que subcolumnas libres, los colocamos juntos para no romper el Excel.
+        const columnasDisponibles = libres.flatMap(([inicio, fin]) =>
+          Array.from({ length: fin - inicio + 1 }, (_, idx) => inicio + idx)
+        );
+
+        if (bloques.length > columnasDisponibles.length) {
+          const contenido = bloques.map(h => {
+            const docId = docenteKey(h);
+            const key = `${docId}||${h.curso?.codigo ?? ''}`;
+            const doc = seenDocs.get(key);
+            const labelComp = getComponentLabel(h);
+            const ambiente = formatAmbienteExcel(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
+            const curso = nombreCursoCorto(doc?.asignatura, 3);
+            return `${doc?.numero ?? ''}${labelComp ? ` ${labelComp}` : ''}\n${curso}\n${ambiente}`;
+          }).join('\n────\n');
+
+          const span = Math.max(...bloques.map(h => calcSpanH(h.horaInicio, h.horaFin)));
+
+          // Usar solo rangos libres para no intentar fusionar sobre celdas ya ocupadas.
+          libres.forEach(([inicio, fin], idxLibre) => {
+            crearBloque(
+              excelRow,
+              inicio,
+              excelRow + span - 1,
+              fin,
+              idxLibre === 0 ? contenido : '',
+              blockStyle('FFFFFFFF', 7, thickTop)
+            );
+          });
+          return;
+        }
+
+        // Distribuir bloques simultáneos por subcolumnas, con colores propios.
+        const hayHuecosEnLibres = columnasDisponibles.some((col, idx) =>
+          idx > 0 && col !== columnasDisponibles[idx - 1] + 1
+        );
+
+        const rangosBloques = hayHuecosEnLibres
+          ? bloques.map((_, idx) => {
+            const col = columnasDisponibles[Math.min(idx, columnasDisponibles.length - 1)];
+            return [col, col] as [number, number];
+          })
+          : dividirColumnas(columnasDisponibles[0], columnasDisponibles[columnasDisponibles.length - 1], bloques.length);
+
+        bloques.forEach((h, idx) => {
           const docId = docenteKey(h);
           const key = `${docId}||${h.curso?.codigo ?? ''}`;
           const doc = seenDocs.get(key);
+          const span = calcSpanH(h.horaInicio, h.horaFin);
+          const [bc1, bc2] = rangosBloques[idx];
           const labelComp = getComponentLabel(h);
           const ambiente = formatAmbienteExcel(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
-          const curso = nombreCursoCorto(doc?.asignatura, 3);
-          return `${doc?.numero ?? ''}${labelComp ? ` ${labelComp}` : ''}\n${curso}\n${ambiente}`;
-        }).join('\n────\n');
+          const curso = nombreCursoCorto(doc?.asignatura, bloques.length > 1 ? 3 : 4);
+          const contenido = [
+            `${doc?.numero ?? ''}`,
+            labelComp,
+            curso,
+            ambiente,
+          ].filter(Boolean).join('\n');
 
-        const span = Math.max(...bloques.map(h => calcSpanH(h.horaInicio, h.horaFin)));
-
-        // Usar solo rangos libres para no intentar fusionar sobre celdas ya ocupadas.
-        libres.forEach(([inicio, fin], idxLibre) => {
           crearBloque(
             excelRow,
-            inicio,
+            bc1,
             excelRow + span - 1,
-            fin,
-            idxLibre === 0 ? contenido : '',
-            blockStyle('FFFFFFFF', 7, thickTop)
+            bc2,
+            contenido,
+            blockStyle(doc?.colorArgb ?? 'FFFFFFFF', bloques.length > 1 ? 7 : 8, thickTop)
           );
         });
-        return;
-      }
 
-      // Distribuir bloques simultáneos por subcolumnas, con colores propios.
-      const hayHuecosEnLibres = columnasDisponibles.some((col, idx) =>
-        idx > 0 && col !== columnasDisponibles[idx - 1] + 1
-      );
+        // Completar con celdas blancas si quedaron columnas libres no usadas.
+        crearVacios(excelRow, c1, c2, thickTop);
+      });
+    });
 
-      const rangosBloques = hayHuecosEnLibres
-        ? bloques.map((_, idx) => {
-          const col = columnasDisponibles[Math.min(idx, columnasDisponibles.length - 1)];
-          return [col, col] as [number, number];
-        })
-        : dividirColumnas(columnasDisponibles[0], columnasDisponibles[columnasDisponibles.length - 1], bloques.length);
+    const ultimaFilaGrilla = grillaStartRow + FRANJAS.length;
+    ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${ultimaFilaGrilla}`;
 
-      bloques.forEach((h, idx) => {
+    // Repetir encabezados al imprimir.
+    ws.pageSetup.printTitlesRow = '1:1';
+  } else {
+    // ─────────────────────────────────────────────
+    // 5. Tabla inferior: listado por días
+    // ─────────────────────────────────────────────
+    const horariosOrdenados = [...normalizedHorarios].sort((a, b) => {
+      const diaA = diasRender.indexOf(normalizarDia(a.diaSemana));
+      const diaB = diasRender.indexOf(normalizarDia(b.diaSemana));
+      if (diaA !== diaB) return diaA - diaB;
+      const horaCompare = String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? ''));
+      if (horaCompare !== 0) return horaCompare;
+      return ordenarBloquesParaCarriles(a, b);
+    });
+
+    // Set initial column widths for the table
+    ws.getColumn(1).width = 14; // Hora
+    ws.getColumn(2).width = 7;  // N°
+    ws.getColumn(3).width = 40; // Curso
+    ws.getColumn(4).width = 35; // Docente
+    ws.getColumn(5).width = 25; // Ambiente
+    ws.getColumn(6).width = 12; // Grupo
+    ws.getColumn(7).width = 14; // Estado
+
+    diasRender.forEach(dia => {
+      const horariosDia = horariosOrdenados.filter(x => normalizarDia(x.diaSemana) === dia);
+
+      if (horariosDia.length === 0) return;
+
+      // Add day header row
+      const headerRow = ws.getRow(currentRow);
+      headerRow.height = 24;
+      mergeAndStyle(ws, currentRow, 1, currentRow, 7, DIA_LABELS[dia], {
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+        font: { color: { argb: 'FFFFFFFF' }, bold: true, size: 13 },
+        alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+        border: borderThin,
+      });
+
+      currentRow++;
+
+      // Add table headers for this day (Horario primero)
+      const colHeaders = ['Horario', 'N°', 'Curso', 'Docente', 'Ambiente', 'Grupo', 'Estado'];
+      colHeaders.forEach((header, idx) => {
+        const cell = ws.getCell(currentRow, idx + 1);
+        applyStyle(cell, {
+          fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7EFF6' } },
+          font: { color: { argb: 'FF1A365D' }, bold: true, size: 10 },
+          alignment: { horizontal: idx === 0 || idx === 1 || idx === 5 || idx === 6 ? 'center' : 'left', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        });
+        cell.value = header;
+      });
+      ws.getRow(currentRow).height = 20;
+      currentRow++;
+
+      // Add the items for this day
+      horariosDia.forEach((h, index) => {
         const docId = docenteKey(h);
         const key = `${docId}||${h.curso?.codigo ?? ''}`;
         const doc = seenDocs.get(key);
-        const span = calcSpanH(h.horaInicio, h.horaFin);
-        const [bc1, bc2] = rangosBloques[idx];
-        const labelComp = getComponentLabel(h);
-        const ambiente = formatAmbienteExcel(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
-        const curso = nombreCursoCorto(doc?.asignatura, bloques.length > 1 ? 3 : 4);
-        const contenido = [
-          `${doc?.numero ?? ''}`,
-          labelComp,
-          curso,
-          ambiente,
-        ].filter(Boolean).join('\n');
 
-        crearBloque(
-          excelRow,
-          bc1,
-          excelRow + span - 1,
-          bc2,
-          contenido,
-          blockStyle(doc?.colorArgb ?? 'FFFFFFFF', bloques.length > 1 ? 7 : 8, thickTop)
-        );
+        const row = ws.getRow(currentRow);
+        row.height = 20;
+
+        const bgColor = index % 2 === 0 ? 'FFFFFFFF' : 'FFF0F8FF';
+        const docBaseStyle: Partial<ExcelJS.Style> = {
+          fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } },
+          font: { size: 10 },
+          alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+          border: borderThin,
+        };
+
+        // Column 1: Horario
+        applyStyle(ws.getCell(currentRow, 1), { ...docBaseStyle, alignment: { ...docBaseStyle.alignment, horizontal: 'center' } });
+        ws.getCell(currentRow, 1).value = `${h.horaInicio ?? ''} - ${h.horaFin ?? ''}`;
+
+        // Column 2: N°
+        applyStyle(ws.getCell(currentRow, 2), { ...docBaseStyle, alignment: { ...docBaseStyle.alignment, horizontal: 'center' } });
+        ws.getCell(currentRow, 2).value = doc?.numero ?? '';
+
+        // Column 3: Curso
+        applyStyle(ws.getCell(currentRow, 3), docBaseStyle);
+        ws.getCell(currentRow, 3).value = h.curso?.codigo ? `${h.curso.codigo} ${h.curso?.nombre ?? ''}` : (h.curso?.nombre ?? '');
+
+        // Column 4: Docente
+        applyStyle(ws.getCell(currentRow, 4), docBaseStyle);
+        ws.getCell(currentRow, 4).value = getNombreDocente(h);
+
+        // Column 5: Ambiente
+        applyStyle(ws.getCell(currentRow, 5), docBaseStyle);
+        ws.getCell(currentRow, 5).value = h.ambiente?.nombre ?? h.ambiente?.codigo ?? '';
+
+        // Column 6: Grupo
+        applyStyle(ws.getCell(currentRow, 6), { ...docBaseStyle, alignment: { ...docBaseStyle.alignment, horizontal: 'center' } });
+        ws.getCell(currentRow, 6).value = h.grupo?.nombre ?? '';
+
+        // Column 7: Estado
+        applyStyle(ws.getCell(currentRow, 7), { ...docBaseStyle, alignment: { ...docBaseStyle.alignment, horizontal: 'center' } });
+        ws.getCell(currentRow, 7).value = h.estado ?? '';
+
+        currentRow++;
       });
 
-      // Completar con celdas blancas si quedaron columnas libres no usadas.
-      crearVacios(excelRow, c1, c2, thickTop);
+      // Add a small gap between days
+      currentRow++;
     });
-  });
 
-  const ultimaFilaGrilla = grillaStartRow + FRANJAS.length;
-  ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${ultimaFilaGrilla}`;
-
-  // Repetir encabezados al imprimir.
-  ws.pageSetup.printTitlesRow = '1:1';
+    ws.pageSetup.printArea = `A1:G${currentRow - 1}`;
+    ws.pageSetup.printTitlesRow = '1:1';
+  }
 
   // ─────────────────────────────────────────────
   // 5. Hoja 2: listado detallado
@@ -1039,31 +1253,53 @@ export async function exportarHorarioExcel(
     return ordenarBloquesParaCarriles(a, b);
   });
 
-  horariosOrdenados.forEach((h, idx) => {
-    const docId = docenteKey(h);
-    const key = `${docId}||${h.curso?.codigo ?? ''}`;
-    const doc = seenDocs.get(key);
-    const row = wsListado.addRow({
-      numero: doc?.numero ?? idx + 1,
-      codigo: h.curso?.codigo ?? '',
-      curso: h.curso?.nombre ?? '',
-      ciclo: h.curso?.ciclo ?? ciclo,
-      docente: getNombreDocente(h),
-      ambiente: h.ambiente?.nombre ?? h.ambiente?.codigo ?? '',
-      dia: DIA_LABELS[normalizarDia(h.diaSemana)] ?? h.diaSemana,
-      inicio: h.horaInicio ?? '',
-      fin: h.horaFin ?? '',
-      horas: calcSpanH(h.horaInicio ?? '', h.horaFin ?? ''),
-      grupo: h.grupo?.nombre ?? '',
-      tipo: getComponentLabel(h) || h.tipoComponente || '',
-      estado: h.estado ?? '',
+  let listadoCurrentRow = 2;
+
+  diasRender.forEach(dia => {
+    const horariosDia = horariosOrdenados.filter(x => normalizarDia(x.diaSemana) === dia);
+
+    if (horariosDia.length === 0) return;
+
+    // Add day header row
+    const headerRow = wsListado.getRow(listadoCurrentRow);
+    headerRow.height = 20;
+    mergeAndStyle(wsListado, listadoCurrentRow, 1, listadoCurrentRow, 13, DIA_LABELS[dia], {
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
+      font: { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: borderThin,
     });
 
-    row.height = 18;
-    row.eachCell(cell => {
-      cell.border = borderThin;
-      cell.font = { size: 9 };
-      cell.alignment = { vertical: 'middle', wrapText: true };
+    listadoCurrentRow++;
+
+    // Add the items for this day
+    horariosDia.forEach((h) => {
+      const docId = docenteKey(h);
+      const key = `${docId}||${h.curso?.codigo ?? ''}`;
+      const doc = seenDocs.get(key);
+      const row = wsListado.addRow({
+        numero: doc?.numero ?? '',
+        codigo: h.curso?.codigo ?? '',
+        curso: h.curso?.nombre ?? '',
+        ciclo: h.curso?.ciclo ?? ciclo,
+        docente: getNombreDocente(h),
+        ambiente: h.ambiente?.nombre ?? h.ambiente?.codigo ?? '',
+        dia: '',
+        inicio: h.horaInicio ?? '',
+        fin: h.horaFin ?? '',
+        horas: calcSpanH(h.horaInicio ?? '', h.horaFin ?? ''),
+        grupo: h.grupo?.nombre ?? '',
+        tipo: getComponentLabel(h) || h.tipoComponente || '',
+        estado: h.estado ?? '',
+      });
+
+      row.height = 18;
+      row.eachCell(cell => {
+        cell.border = borderThin;
+        cell.font = { size: 9 };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+      });
+      listadoCurrentRow++;
     });
   });
 
