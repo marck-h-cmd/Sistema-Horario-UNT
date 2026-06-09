@@ -145,13 +145,24 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
             collapsed && 'justify-center'
           )}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-            <GraduationCap className="h-6 w-6 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-gray-200 shadow-md overflow-hidden">
+            <Image
+              src="/logo-unt.png"
+              alt="Logo Universidad Nacional de Trujillo"
+              width={40}
+              height={40}
+              priority
+              className="object-contain"
+            />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-gray-900">UNT</span>
-              <span className="text-xs text-gray-500">Sistemas</span>
+              <span className="text-base font-bold text-[#1a365d] leading-tight">
+                Universidad Nacional de Trujillo
+              </span>
+              <span className="text-xs font-medium text-[#2c5282] leading-tight">
+                Ingeniería de Sistemas
+              </span>
             </div>
           )}
         </Link>

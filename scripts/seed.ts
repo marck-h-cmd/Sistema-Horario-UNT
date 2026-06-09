@@ -391,6 +391,13 @@ async function main() {
   await prisma.horario.deleteMany();
   await prisma.matricula.deleteMany();
   await prisma.estudiante.deleteMany();
+  await prisma.distribucionNoLectiva.deleteMany();
+  await prisma.declaracionNoLectivaItem.deleteMany();
+  await prisma.declaracionNoLectiva.deleteMany();
+  await prisma.incumplimiento.deleteMany();
+  await prisma.comisionServicio.deleteMany();
+  await prisma.becaDocente.deleteMany();
+  await prisma.cargoAdministrativo.deleteMany();
   await prisma.disponibilidadDocente.deleteMany();
   await prisma.restriccionAmbiente.deleteMany();
   await prisma.mantenimientoAmbiente.deleteMany();
