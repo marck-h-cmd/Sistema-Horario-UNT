@@ -302,7 +302,7 @@ export function FormatoHorarioSemanal({
           <Text>T: TEORIA - P: PRACTICA</Text>
           <Text>LU (LUNES); MA (MARTES); MI (MIERCOLES); JU (JUEVES); VI (VIERNES); SA (SABADO); DO (DOMINGO); TIEMPO EN FORMATO DE 24 HORAS.</Text>
           <Text style={{ marginTop: 4 }}>
-            LUGAR: (F01: "CC. Agropecuarias"; F02: "CC. Biológicas"; F03: "CC. Económicas"; F04: "CC. Físicas y Matemáticas"; F05: "CC. Sociales"; F06: "Derecho y Ciencias Políticas"; F07: "Educación y Comunicación"; F08: "Enfermería"; F09: "Estomatología"; F10: "Farmacia y Bioquímica"; F11: "Ingeniería"; F12: "Ingeniería Química"; F13: "Medicina"; F14: "Filial Valle Jequetepeque"; F15: "Filial Huamachuco"; F16: "Filial Santiago de Chuco"; OA: "Oficina Administrativa"; SC: "Salida de Campo").
+            {"LUGAR: (F01: \"CC. Agropecuarias\"; F02: \"CC. Biológicas\"; F03: \"CC. Económicas\"; F04: \"CC. Físicas y Matemáticas\"; F05: \"CC. Sociales\"; F06: \"Derecho y Ciencias Políticas\"; F07: \"Educación y Comunicación\"; F08: \"Enfermería\"; F09: \"Estomatología\"; F10: \"Farmacia y Bioquímica\"; F11: \"Ingeniería\"; F12: \"Ingeniería Química\"; F13: \"Medicina\"; F14: \"Filial Valle Jequetepeque\"; F15: \"Filial Huamachuco\"; F16: \"Filial Santiago de Chuco\"; OA: \"Oficina Administrativa\"; SC: \"Salida de Campo\")."}
           </Text>
         </View>
 
