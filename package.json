@@ -32,7 +32,9 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",
+    "@ai-sdk/groq": "^3.0.40",
     "@ai-sdk/react": "^3.0.201",
+    "@ai-sdk/xai": "^3.0.94",
     "@prisma/client": "^5.14.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

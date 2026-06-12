@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { google } from '@ai-sdk/google';
-import { generateText, tool } from 'ai';
+import { createGroq } from '@ai-sdk/groq';
+import { generateText, stepCountIs } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
@@ -8,6 +8,10 @@ export const maxDuration = 60;
 
 // Limitar historial para no exceder tokens gratuitos
 const MAX_HISTORY_MESSAGES = 6;
+
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
@@ -17,14 +21,36 @@ export async function POST(req: Request) {
     const messages = allMessages.slice(-MAX_HISTORY_MESSAGES);
 
     const result = await generateText({
-      model: google('gemini-2.0-flash-lite'),
-      maxSteps: 3,
-      system: `Eres asistente del Sistema de Horarios de la UNT - Ingeniería de Sistemas. Responde breve y claramente en español. Usa las herramientas para consultar datos reales. Siempre genera texto de respuesta tras usar una herramienta.`,
+      model: groq('llama-3.3-70b-versatile'),
+      stopWhen: stepCountIs(3),
+      onStepFinish: (event) => {
+        console.log('[DEBUG] Step finished:', {
+          text: event.text,
+          finishReason: event.finishReason,
+          toolCalls: event.toolCalls,
+          toolResults: event.toolResults?.map(r => ({
+            toolName: r.toolName,
+            result: typeof r.result === 'object' ? JSON.stringify(r.result).substring(0, 100) : r.result
+          }))
+        });
+      },
+      system: `Eres FelIxA, la asistente virtual del Sistema de Horarios de la UNT - Ingeniería de Sistemas. Responde breve y claramente en español.
+Usa las herramientas para consultar datos reales. Siempre genera texto de respuesta tras usar una herramienta.
+
+IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres de parámetros definidos en su esquema en inglés (camelCase):
+- Para 'buscarAmbientesLibres', debes usar estrictamente los parámetros: 'diaSemana' (debe ser en mayúsculas: 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'), 'horaInicio' (formato 'HH:MM'), 'horaFin' (formato 'HH:MM'). Opcionalmente 'tipoAmbiente' (si el usuario especifica aula o laboratorio). ¡NO uses 'día', 'dia_semana', 'hora_inicio', ni 'hora_fin'!
+- Para 'consultarDocente', debes usar estrictamente los parámetros: 'nombre', 'incluirHorario'.`,
       messages,
       tools: {
-        buscarAmbientesLibres: tool({
+        buscarAmbientesLibres: {
           description: 'Busca ambientes (laboratorios/aulas) libres en un día y rango de horas.',
           parameters: z.object({
+            diaSemana: z.enum(['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO']),
+            horaInicio: z.string().describe('HH:MM'),
+            horaFin: z.string().describe('HH:MM'),
+            tipoAmbiente: z.enum(['AULA', 'LABORATORIO', 'AUDITORIO']).optional(),
+          }),
+          inputSchema: z.object({
             diaSemana: z.enum(['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO']),
             horaInicio: z.string().describe('HH:MM'),
             horaFin: z.string().describe('HH:MM'),
@@ -39,7 +65,10 @@ export async function POST(req: Request) {
                 }
               });
 
-              const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+              const toMin = (t: string) => { 
+                const parts = t.split(':').map(Number);
+                return parts[0] * 60 + (parts[1] || 0); 
+              };
               const s = toMin(horaInicio), e = toMin(horaFin);
 
               const libres = ambientes.filter(a =>
@@ -55,16 +84,21 @@ export async function POST(req: Request) {
               return { error: e.message };
             }
           },
-        }),
+        },
 
-        consultarDocente: tool({
+        consultarDocente: {
           description: 'Busca información o el horario de un docente por nombre o apellidos.',
           parameters: z.object({
             nombre: z.string().describe('Nombre o apellidos del docente'),
             incluirHorario: z.boolean().default(true).describe('Si se debe incluir el horario de clases'),
           }),
+          inputSchema: z.object({
+            nombre: z.string().describe('Nombre o apellidos del docente'),
+            incluirHorario: z.boolean().default(true).describe('Si se debe incluir el horario de clases'),
+          }),
           execute: async ({ nombre, incluirHorario }) => {
             try {
+              console.log('[DEBUG] Tool consultarDocente called with:', { nombre, incluirHorario });
               const docentes = await prisma.docente.findMany({
                 where: {
                   usuario: {
@@ -88,9 +122,12 @@ export async function POST(req: Request) {
                 take: 2
               });
 
-              if (docentes.length === 0) return { encontrado: false, mensaje: `No existe docente con nombre "${nombre}"` };
+              if (docentes.length === 0) {
+                console.log('[DEBUG] Tool consultarDocente: No docentes found');
+                return { encontrado: false, mensaje: `No existe docente con nombre "${nombre}"` };
+              }
 
-              return docentes.map(d => ({
+              const res = docentes.map(d => ({
                 nombre: `${d.usuario.nombre} ${d.usuario.apellidos}`,
                 email: d.usuario.email,
                 categoria: d.categoria,
@@ -105,15 +142,27 @@ export async function POST(req: Request) {
                   estado: h.estado
                 })) : undefined
               }));
+              console.log('[DEBUG] Tool consultarDocente result:', JSON.stringify(res));
+              return res;
             } catch (e: any) {
+              console.error('[DEBUG] Tool consultarDocente error:', e);
               return { error: e.message };
             }
           }
-        }),
+        },
       }
     });
 
-    // Extraer texto del resultado (incluyendo pasos intermedios)
+    console.log('[DEBUG] LLM Result:', {
+      text: result.text,
+      finishReason: result.finishReason,
+      steps: result.steps.map(s => ({
+        text: s.text,
+        toolCalls: s.toolCalls,
+        finishReason: s.finishReason
+      }))
+    });
+
     let finalText = result.text ?? '';
     if (!finalText.trim()) {
       for (let i = result.steps.length - 1; i >= 0; i--) {
@@ -131,13 +180,12 @@ export async function POST(req: Request) {
     return Response.json({ text: finalText });
 
   } catch (error: any) {
-    console.error('[Chat API] Error:', error.message);
+    console.error('[Chat API] Error:', error.stack || error.message);
 
-    // Detectar error de cuota y dar mensaje amigable
     if (error.message?.includes('quota') || error.message?.includes('rate') || error.message?.includes('429')) {
       return Response.json({
         text: '⏳ El servicio de IA está temporalmente limitado por cuota. Por favor espera unos segundos y vuelve a intentarlo.'
-      }, { status: 200 }); // Retornar 200 para que el frontend lo muestre como mensaje normal
+      }, { status: 200 });
     }
 
     return Response.json({ text: `Error: ${error.message}` }, { status: 500 });

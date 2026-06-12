@@ -237,7 +237,7 @@ export function Chatbot() {
           <div className="bg-emerald-600 p-4 text-white flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-2">
               <Bot size={22} />
-              <h3 className="font-semibold text-sm">Asistente UNT</h3>
+              <h3 className="font-semibold text-sm">FelIxA</h3>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -264,7 +264,7 @@ export function Chatbot() {
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Bot size={32} />
                 </div>
-                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">¡Hola! Soy tu asistente.</p>
+                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">¡Hola! Soy FelIxA.</p>
                 <p>Pregúntame sobre <b>horarios de docentes</b> o <b>laboratorios libres</b>.</p>
                 <p className="mt-3 text-xs text-slate-400">Escribe o usa el micrófono para hablar.</p>
               </div>
