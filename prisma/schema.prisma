@@ -201,6 +201,7 @@ model Usuario {
   sesiones      Sesion[]
   notificaciones Notificacion[]
   auditorias    RegistroAuditoria[]
+  chatSesiones  ChatSesion[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -938,4 +939,35 @@ model Matricula {
   @@index([grupoId])
   @@index([periodoId])
   @@map("matriculas")
+}
+
+// ============================================
+// CHATBOT PERSISTENCE
+// ============================================
+
+model ChatSesion {
+  id        String        @id @default(uuid())
+  usuarioId String?       @map("usuario_id")
+  titulo    String?       @db.VarChar(200)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  usuario   Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  mensajes  ChatMensaje[]
+
+  @@index([usuarioId])
+  @@map("chat_sesiones")
+}
+
+model ChatMensaje {
+  id        String     @id @default(uuid())
+  sesionId  String     @map("sesion_id")
+  role      String     @db.VarChar(20) // "user" | "assistant"
+  contenido String     @db.Text
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  sesion    ChatSesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+
+  @@index([sesionId])
+  @@map("chat_mensajes")
 }

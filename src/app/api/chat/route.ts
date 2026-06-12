@@ -13,12 +13,102 @@ const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
+import { TokenService } from '@/services/auth/TokenService';
+
+const tokenService = new TokenService();
+
 export async function POST(req: Request) {
   try {
-    const { messages: allMessages } = await req.json();
+    const { sessionId, content } = await req.json();
 
-    // Tomar solo los últimos N mensajes para reducir tokens enviados
-    const messages = allMessages.slice(-MAX_HISTORY_MESSAGES);
+    if (!content || !content.trim()) {
+      return Response.json({ error: 'El mensaje no puede estar vacío.' }, { status: 400 });
+    }
+
+    let userId: string | null = null;
+
+    // 1. Extraer token de cookies o header Authorization
+    let token: string | null = null;
+    const authHeader = req.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    if (!token) {
+      // Intentar leer cookies
+      const cookieHeader = req.headers.get('cookie');
+      if (cookieHeader) {
+        const cookiesMap = Object.fromEntries(
+          cookieHeader.split(';').map(c => c.trim().split('='))
+        );
+        token = cookiesMap['auth_token'] || null;
+      }
+    }
+
+    if (token) {
+      try {
+        const payload = await tokenService.validateToken(token);
+        userId = payload.userId;
+      } catch (e) {}
+    }
+
+    let session = null;
+
+    if (userId) {
+      if (sessionId) {
+        session = await prisma.chatSesion.findFirst({
+          where: { id: sessionId, usuarioId: userId }
+        });
+      }
+      if (!session) {
+        session = await prisma.chatSesion.findFirst({
+          where: { usuarioId: userId },
+          orderBy: { updatedAt: 'desc' }
+        });
+      }
+      if (!session) {
+        session = await prisma.chatSesion.create({
+          data: {
+            usuarioId: userId,
+            titulo: 'Nueva conversación'
+          }
+        });
+      }
+    } else {
+      if (sessionId) {
+        session = await prisma.chatSesion.findUnique({
+          where: { id: sessionId }
+        });
+      }
+      if (!session) {
+        session = await prisma.chatSesion.create({
+          data: {
+            titulo: 'Conversación de invitado'
+          }
+        });
+      }
+    }
+
+    // 2. Guardar el mensaje del usuario en la base de datos
+    await prisma.chatMensaje.create({
+      data: {
+        sesionId: session.id,
+        role: 'user',
+        contenido: content.trim()
+      }
+    });
+
+    // 3. Obtener el historial reciente de la sesión para el modelo
+    const dbMessages = await prisma.chatMensaje.findMany({
+      where: { sesionId: session.id },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_HISTORY_MESSAGES
+    });
+
+    // Reordenar cronológicamente para el prompt
+    const messages = dbMessages.reverse().map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.contenido
+    }));
 
     const result = await generateText({
       model: groq('llama-3.3-70b-versatile'),
@@ -177,7 +267,26 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
       finalText = 'Lo siento, no pude generar una respuesta. Por favor intenta de nuevo con otra pregunta.';
     }
 
-    return Response.json({ text: finalText });
+    // 4. Guardar la respuesta del chatbot en la base de datos
+    const assistantMessage = await prisma.chatMensaje.create({
+      data: {
+        sesionId: session.id,
+        role: 'assistant',
+        contenido: finalText
+      }
+    });
+
+    // Actualizar updatedAt de la sesión
+    await prisma.chatSesion.update({
+      where: { id: session.id },
+      data: { updatedAt: new Date() }
+    });
+
+    return Response.json({
+      text: finalText,
+      sessionId: session.id,
+      createdAt: assistantMessage.createdAt
+    });
 
   } catch (error: any) {
     console.error('[Chat API] Error:', error.stack || error.message);
