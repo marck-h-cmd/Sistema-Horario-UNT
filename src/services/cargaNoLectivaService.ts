@@ -143,6 +143,9 @@ export class CargaNoLectivaService {
         where: {
           docenteId_periodoId: { docenteId, periodoId },
         },
+        include: {
+          items: true,
+        },
       });
 
       let declaracionId = existente?.id;
@@ -155,10 +158,6 @@ export class CargaNoLectivaService {
             totalHoras: totalHorasDeclaradas,
             observaciones,
           },
-        });
-        // Eliminar items antiguos
-        await tx.declaracionNoLectivaItem.deleteMany({
-          where: { declaracionId: existente.id },
         });
       } else {
         // Crear cabecera
@@ -173,9 +172,37 @@ export class CargaNoLectivaService {
         declaracionId = nueva.id;
       }
 
-      // Crear nuevos items
-      const itemsCreados = [];
+      const itemsExistentes = existente?.items ?? [];
+      const existentesPorTipo = new Map(
+        itemsExistentes.map((item) => [item.tipoActividad, item])
+      );
+      const tiposEntrantes = new Set(items.map((item) => item.tipoActividad));
+      const itemsSincronizados = [];
+
+      // Actualizar o crear items, preservando IDs cuando la actividad ya existe
       for (const item of items) {
+        const itemExistente = existentesPorTipo.get(item.tipoActividad);
+
+        if (itemExistente) {
+          // Si las horas declaradas disminuyeron, se invalida la distribución previa
+          if (itemExistente.horasSemanales > item.horasSemanales) {
+            await tx.distribucionNoLectiva.deleteMany({
+              where: { declaracionItemId: itemExistente.id },
+            });
+          }
+
+          const itemActualizado = await tx.declaracionNoLectivaItem.update({
+            where: { id: itemExistente.id },
+            data: {
+              horasSemanales: item.horasSemanales,
+              descripcion: item.descripcion,
+              metadata: item.metadata || {},
+            },
+          });
+          itemsSincronizados.push(itemActualizado);
+          continue;
+        }
+
         const itemCreado = await tx.declaracionNoLectivaItem.create({
           data: {
             declaracionId: declaracionId!,
@@ -185,7 +212,28 @@ export class CargaNoLectivaService {
             metadata: item.metadata || {},
           },
         });
-        itemsCreados.push(itemCreado);
+        itemsSincronizados.push(itemCreado);
+      }
+
+      // Eliminar actividades removidas de la declaración
+      const itemsEliminados = itemsExistentes.filter(
+        (itemExistente) => !tiposEntrantes.has(itemExistente.tipoActividad)
+      );
+
+      if (itemsEliminados.length > 0) {
+        const idsEliminados = itemsEliminados.map((item) => item.id);
+
+        await tx.distribucionNoLectiva.deleteMany({
+          where: {
+            declaracionItemId: { in: idsEliminados },
+          },
+        });
+
+        await tx.declaracionNoLectivaItem.deleteMany({
+          where: {
+            id: { in: idsEliminados },
+          },
+        });
       }
 
       // Auditoría
@@ -207,7 +255,7 @@ export class CargaNoLectivaService {
       return {
         id: declaracionId,
         totalHoras: totalHorasDeclaradas,
-        items: itemsCreados,
+        items: itemsSincronizados,
       };
     });
 

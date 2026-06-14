@@ -6,6 +6,8 @@ import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
+import { Chatbot } from '@/components/ui/Chatbot';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useRequireAuth();
   const router = useRouter();
@@ -27,5 +29,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <>
+      <DashboardShell>{children}</DashboardShell>
+      <Chatbot />
+    </>
+  );
 }

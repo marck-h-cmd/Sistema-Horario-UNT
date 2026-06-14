@@ -79,37 +79,28 @@ export function CargaHorariaModal({ docenteId, isOpen, onClose }: CargaHorariaMo
     try {
       const filename = `${nombre.replace(/[()#]/g, '').trim().replace(/\s+/g, '_')}.pdf`;
 
-      if (num === 5) {
-        // Horario Semanal (GET request)
-        await downloadFile(
-          '/api/reportes/docente',
-          { docenteId: docenteInfo.id, periodoId: periodo.id },
-          filename
-        );
+      let tipo: 'carga' | 'dj-central' | 'dj-desconcentrada' | 'horario' = 'carga';
+      if (num === 2) tipo = 'dj-central';
+      else if (num === 4) tipo = 'dj-desconcentrada';
+      else if (num === 5) tipo = 'horario';
+
+      const res = await apiPost<Blob>('/api/docente/generate-pdf', {
+        tipo,
+        docenteId: docenteInfo.id,
+        periodoId: periodo.id,
+      });
+
+      if (res.success && res.data) {
+        const blobUrl = window.URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(blobUrl);
       } else {
-        // Formatos 1, 2 Central y 2 Desconcentrada (POST request)
-        let tipo: 'carga' | 'dj-central' | 'dj-desconcentrada' = 'carga';
-        if (num === 2) tipo = 'dj-central';
-        else if (num === 4) tipo = 'dj-desconcentrada';
-
-        const res = await apiPost<Blob>('/api/docente/generate-pdf', {
-          tipo,
-          docenteId: docenteInfo.id,
-          periodoId: periodo.id,
-        });
-
-        if (res.success && res.data) {
-          const blobUrl = window.URL.createObjectURL(res.data);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(blobUrl);
-        } else {
-          throw new Error('No se recibió el archivo PDF del servidor');
-        }
+        throw new Error('No se recibió el archivo PDF del servidor');
       }
       toast.success(`PDF de ${nombre} descargado con éxito`, { id: loadingToastId });
     } catch (error: any) {
