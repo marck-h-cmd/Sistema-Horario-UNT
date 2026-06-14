@@ -19,6 +19,7 @@ import { DiaSemana, Rol } from '@prisma/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useFiltrosHorario } from '@/hooks/useFiltrosHorario';
+import { ExportOptionsModal } from '@/components/horarios/ExportOptionsModal';
 import { exportarHorarioPDF } from '@/utils/exportarHorarioPDF';
 import { exportarHorarioExcel } from '@/utils/exportarHorarioExcel';
 
@@ -150,6 +151,7 @@ export default function HorariosPage() {
   ]);
   const { can, user } = useAuth();
   const puedePublicar = can('PUBLICAR_HORARIOS');
+  const isAdmin = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMINISTRADOR';
   const { periodoSeleccionado, loading: periodoLoading } = usePeriodo();
   const periodoId = periodoSeleccionado?.id ?? '';
 
@@ -197,10 +199,12 @@ export default function HorariosPage() {
   const [ambientesAll, setAmbientesAll] = useState<AmbienteOpt[]>([]);
   const [docentesSearch, setDocentesSearch] = useState('');
 
-  const [diaResaltado, setDiaResaltado] = useState<string | null>(null);
+  const [diasSeleccionados, setDiasSeleccionados] = useState<string[]>([]);
   const [estadoFiltro, setEstadoFiltro] = useState<string>('Todos');
   const [grupoFiltro, setGrupoFiltro] = useState<string>('Todos');
   const [vistaTipo, setVistaTipo] = useState<'General' | 'Por Docente' | 'Por Aula'>('General');
+  const [vistaFormato, setVistaFormato] = useState<'grid' | 'table'>('grid');
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const fetchHorarios = useCallback(async () => {
     if (!filtros.periodoId) {
@@ -554,13 +558,25 @@ export default function HorariosPage() {
     }
   };
 
-  const descargarPdfConfirmados = async () => {
+  const handleExportPDF = async (options: any) => {
     if (!periodoId || horarios.length === 0) return;
     setDownloadingPdf(true);
     try {
       const periodoNombre = periodoSeleccionado?.nombre || 'General';
       const cicloNombre = filtros.ciclo ? `Ciclo ${CICLO_ROMANO[filtros.ciclo] || filtros.ciclo}` : 'Todos los ciclos';
-      await exportarHorarioPDF(horarios, 'HORARIO ACADÉMICO', `${periodoNombre} - ${cicloNombre}`);
+      
+      // Filtrar los horarios por días seleccionados si los hay
+      const horariosExportar = diasSeleccionados.length > 0
+        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
+        : horarios;
+
+      await exportarHorarioPDF(
+        horariosExportar,
+        'HORARIO ACADÉMICO',
+        `${periodoNombre} - ${cicloNombre}`,
+        diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+        options
+      );
       toast.success('PDF exportado');
     } catch (e: any) {
       toast.error('Error al generar PDF: ' + e.message);
@@ -569,12 +585,26 @@ export default function HorariosPage() {
     }
   };
 
-  const handleExportarExcel = async () => {
+  const handleExportExcel = async (options: any) => {
     if (!periodoId || horarios.length === 0) return;
     setDownloadingExcel(true);
     try {
       const titulo = `Horario Académico - ${periodoSeleccionado?.nombre || 'General'}`;
-      await exportarHorarioExcel(horarios, titulo);
+      
+      // Filtrar los horarios por días seleccionados si los hay
+      const horariosExportar = diasSeleccionados.length > 0
+        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
+        : horarios;
+
+      await exportarHorarioExcel(
+        horariosExportar,
+        titulo,
+        '',
+        {
+          diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          ...options
+        }
+      );
       toast.success('Excel exportado');
     } catch (e: any) {
       toast.error('Error al generar Excel: ' + e.message);
@@ -674,9 +704,13 @@ export default function HorariosPage() {
     return res;
   }, [horariosFiltrados]);
 
+  const diasAMostrar = useMemo(() => {
+    return diasSeleccionados.length > 0 ? DIAS.filter(d => diasSeleccionados.includes(d)) : DIAS;
+  }, [diasSeleccionados]);
+
   const totalLanes = useMemo(() => {
-    return DIAS.reduce((sum, d) => sum + (lanesPorDia[d]?.length || 1), 0);
-  }, [lanesPorDia]);
+    return diasAMostrar.reduce((sum, d) => sum + (lanesPorDia[d]?.length || 1), 0);
+  }, [lanesPorDia, diasAMostrar]);
 
   const minTableWidth = useMemo(() => {
     return Math.max(1000, totalLanes * 100 + 160); // 100px por carril, más 80px por cada columna de hora lateral
@@ -718,21 +752,26 @@ export default function HorariosPage() {
         <div className="flex flex-wrap gap-2 items-center">
           <Button
             variant="outline"
-            disabled={downloadingPdf || horariosFiltrados.length === 0}
-            onClick={descargarPdfConfirmados}
-            className="border-[#1a365d] text-[#1a365d] hover:bg-slate-100"
+            onClick={() => setVistaFormato(vistaFormato === 'grid' ? 'table' : 'grid')}
+            className="border-slate-300 text-slate-700 hover:bg-slate-100"
           >
-            <FileDown className="h-4 w-4 mr-2" />
-            Exportar PDF
+            {vistaFormato === 'grid' ? (
+              <TableIcon className="h-4 w-4 mr-2" />
+            ) : (
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              </svg>
+            )}
+            {vistaFormato === 'grid' ? 'Vista Tabla' : 'Vista Grilla'}
           </Button>
           <Button
             variant="outline"
-            disabled={downloadingExcel || horariosFiltrados.length === 0}
-            onClick={handleExportarExcel}
-            className="border-green-600 text-green-600 hover:bg-green-50"
+            disabled={downloadingPdf || horariosFiltrados.length === 0}
+            onClick={() => setExportModalOpen(true)}
+            className="border-[#1a365d] text-[#1a365d] hover:bg-slate-100"
           >
-            <TableIcon className="h-4 w-4 mr-2" />
-            Exportar Excel
+            <FileDown className="h-4 w-4 mr-2" />
+            Exportar
           </Button>
           {puedePublicar && (
             <Button
@@ -860,7 +899,7 @@ export default function HorariosPage() {
                 setEstadoFiltro('Todos');
                 setGrupoFiltro('Todos');
               }} 
-              className="text-sm font-medium text-[#1a365d] hover:underline whitespace-nowrap"
+              className="text-sm font-medium text-[#1a365d] hover:underline whitespace-nowrap dark:text-unt-gold-light dark:hover:text-unt-gold-dark"
             >
               Limpiar filtros
             </button>
@@ -873,10 +912,10 @@ export default function HorariosPage() {
             {DIAS.map(d => (
               <button
                 key={d}
-                onClick={() => setDiaResaltado(diaResaltado === d ? null : d)}
+                onClick={() => setDiasSeleccionados(prev => prev.includes(d) ? prev.filter(dia => dia !== d) : [...prev, d])}
                 className={cn(
                   "px-3 py-1 text-sm font-medium rounded-full transition-colors border",
-                  diaResaltado === d 
+                  diasSeleccionados.includes(d) 
                     ? "bg-[#1a365d] text-white border-[#1a365d]" 
                     : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
                 )}
@@ -884,6 +923,16 @@ export default function HorariosPage() {
                 {DIA_LABEL[d].slice(0, 3)}
               </button>
             ))}
+            {diasSeleccionados.length > 0 && (
+              <button
+                onClick={() => setDiasSeleccionados([])}
+                className="ml-1 px-3 py-1 text-sm font-medium rounded-full transition-colors border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:bg-red-950/40 dark:hover:bg-red-950/60 flex items-center gap-1"
+                title="Quitar todos los filtros de días"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpiar
+              </button>
+            )}
           </div>
           
           <div className="flex flex-wrap gap-6 items-center">
@@ -945,362 +994,433 @@ export default function HorariosPage() {
         </div>
       )}
 
-      {/* GRILLA CON ROWSPAN */}
-      <div className="shadow-lg rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <div className="overflow-x-auto">
+      {vistaFormato === 'grid' ? (
+        <div className="shadow-lg rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="overflow-x-auto">
+            {loadingHor ? (
+              <div className="flex min-h-[400px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#1a365d]" />
+              </div>
+            ) : (
+              <table 
+                style={{ minWidth: `${minTableWidth}px` }}
+                className="w-full text-sm text-left border-collapse table-fixed"
+              >
+                <thead className="bg-[#1a365d] text-white">
+                  <tr>
+                    <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
+                    {diasAMostrar.map(d => {
+                      const lanesCount = lanesPorDia[d]?.length || 1;
+                      const percentWidth = (lanesCount / totalLanes) * 100;
+                      return (
+                        <th 
+                          key={d} 
+                          style={{ width: `${percentWidth}%` }}
+                          className={cn(
+                            "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700"
+                          )}
+                        >
+                          {DIA_LABEL[d]}
+                        </th>
+                      );
+                    })}
+                    <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {HORAS.map((horaNum, rowIndex) => (
+                    <tr 
+                      key={horaNum} 
+                      className={cn(
+                        "group h-16",
+                        rowIndex % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-slate-50/30 dark:bg-slate-700/20"
+                      )}
+                    >
+                      {/* HORA Izquierda */}
+                      <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
+                        {`${horaNum.toString().padStart(2, '0')}:00`}
+                        <br />
+                        <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
+                      </td>
+
+                      {/* Celdas de Días */}
+                      {diasAMostrar.map(dia => {
+                        if (rowIndex > 0) return null; // Solo renderizar el TD en la primera fila (rowSpan={14})
+
+                        const dayClasses = horariosFiltrados.filter(h => h.diaSemana === dia);
+                        const lanes = lanesPorDia[dia] || [[]];
+                        const parseTime = (t: string) => parseInt(t.split(':')[0], 10);
+
+                        return (
+                          <td 
+                            key={dia} 
+                            rowSpan={14}
+                            className={cn(
+                              "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px] overflow-hidden"
+                            )}
+                          >
+                            <div className="absolute inset-0 flex flex-row divide-x divide-slate-200 h-full w-full">
+                              {lanes.map((lane, laneIdx) => {
+                                // Generar bloques y espacios vacíos para esta lane de 7:00 a 21:00 (14 horas)
+                                const laneItems: Array<{
+                                  type: 'class' | 'empty';
+                                  duration: number;
+                                  class?: typeof dayClasses[0];
+                                  startHour: number;
+                                  endHour: number;
+                                }> = [];
+
+                                let currentHour = 7;
+                                const laneClasses = [...lane].sort((a, b) => parseTime(a.horaInicio) - parseTime(b.horaInicio));
+
+                                laneClasses.forEach(c => {
+                                  const start = parseTime(c.horaInicio);
+                                  const end = parseTime(c.horaFin);
+
+                                  if (start > currentHour) {
+                                    laneItems.push({
+                                      type: 'empty',
+                                      duration: start - currentHour,
+                                      startHour: currentHour,
+                                      endHour: start
+                                    });
+                                  }
+                                  laneItems.push({
+                                    type: 'class',
+                                    duration: end - start,
+                                    class: c,
+                                    startHour: start,
+                                    endHour: end
+                                  });
+                                  currentHour = end;
+                                });
+
+                                if (currentHour < 21) {
+                                  laneItems.push({
+                                    type: 'empty',
+                                    duration: 21 - currentHour,
+                                    startHour: currentHour,
+                                    endHour: 21
+                                  });
+                                }
+
+                                return (
+                                  <div 
+                                    key={laneIdx} 
+                                    className="flex flex-col flex-1 min-w-0 h-full justify-between items-stretch"
+                                  >
+
+                                    {laneItems.map((item, itemIdx) => {
+                                      if (item.type === 'class') {
+                                        const h = item.class!;
+                                        const col = getColorForCurso(h.curso.codigo);
+                                        const esLab = h.ambiente.codigo.toUpperCase().includes('LAB') || (h.ambiente as any).tipo === 'LABORATORIO';
+                                        const isBorrador = h.estado === 'BORRADOR';
+
+                                        const laneCount = lanes.length;
+                                        const isCompact = laneCount > 1;
+                                        const isSuperCompact = laneCount >= 3 || item.duration <= 1;
+
+                                        return (
+                                          <div
+                                            key={h.id}
+                                            style={{ flexGrow: item.duration, flexBasis: 0 }}
+                                            className="flex flex-col w-full group relative overflow-hidden"
+                                          >
+                                            {item.duration <= 1 ? (
+                                              <div
+                                                className={cn(
+                                                  "relative flex flex-col justify-between h-full w-full border-l-4 transition-all hover:shadow-inner cursor-pointer flex-1 border-b border-b-black/5 overflow-hidden p-1.5",
+                                                  col.bg, col.border, col.text
+                                                )}
+                                              >
+                                                {/* Fila 1: Código de curso y Tipo */}
+                                                <div className="flex items-center justify-between gap-1 w-full overflow-hidden leading-none mb-0.5">
+                                                  <span className="font-bold text-[10px] truncate leading-none">
+                                                    {h.curso.codigo}
+                                                  </span>
+                                                  <div className="flex items-center gap-1 shrink-0">
+                                                    <span className={cn(
+                                                      "font-bold rounded text-white shadow-sm text-[7.5px] px-1 py-0 leading-none",
+                                                      col.badge
+                                                    )}>
+                                                      {esLab ? 'LAB' : 'TEO'}
+                                                    </span>
+                                                    
+                                                    {(isBorrador || isAdmin) && (
+                                                      <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
+                                                        {isBorrador && (
+                                                          <button
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleConfirmHorario(h.id, h);
+                                                            }}
+                                                            title="Confirmar"
+                                                            className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
+                                                          >
+                                                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                          </button>
+                                                        )}
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditOpen(h);
+                                                          }}
+                                                          title="Editar"
+                                                          className="p-0.5 hover:bg-slate-200 text-slate-700 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                          </svg>
+                                                        </button>
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(h);
+                                                          }}
+                                                          title="Eliminar"
+                                                          className="p-0.5 hover:bg-red-100 text-red-600 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                          </svg>
+                                                        </button>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                {/* Fila 2: Grupo y Ambiente (sin iconos, combinados) */}
+                                                <div className="text-[9px] font-bold opacity-90 truncate leading-none mt-auto pt-1 border-t border-black/5">
+                                                  {h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'} • {h.ambiente.codigo}
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div
+                                                className={cn(
+                                                  "relative flex flex-col h-full w-full border-l-4 transition-all hover:shadow-inner cursor-pointer flex-1 border-b border-b-black/5 overflow-hidden",
+                                                  isSuperCompact ? "p-1.5" : isCompact ? "p-2" : "p-3",
+                                                  col.bg, col.border, col.text
+                                                )}
+                                              >
+                                                <div className={cn("flex justify-between items-start gap-1", isSuperCompact ? "mb-1" : "mb-2")}>
+                                                  <span className={cn(
+                                                    "font-bold rounded text-white shadow-sm shrink-0",
+                                                    isSuperCompact ? "text-[8px] px-1 py-0" : "text-[10px] px-1.5 py-0.5",
+                                                    col.badge
+                                                  )}>
+                                                    {esLab ? 'LAB' : 'TEORÍA'}
+                                                  </span>
+                                                  
+                                                  <div className="flex items-center gap-1">
+                                                    <span className={cn(
+                                                      "font-mono opacity-80 font-semibold whitespace-nowrap bg-white/40 px-1 rounded shrink-0",
+                                                      isSuperCompact ? "text-[7.5px]" : "text-[10px]"
+                                                    )}>
+                                                      {h.horaInicio} - {h.horaFin}
+                                                    </span>
+                                                    
+                                                    {(isBorrador || isAdmin) && (
+                                                      <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
+                                                        {isBorrador && (
+                                                          <button
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleConfirmHorario(h.id, h);
+                                                            }}
+                                                            title="Confirmar"
+                                                            className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
+                                                          >
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                          </button>
+                                                        )}
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditOpen(h);
+                                                          }}
+                                                          title="Editar"
+                                                          className="p-0.5 hover:bg-slate-200 text-slate-700 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                          </svg>
+                                                        </button>
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(h);
+                                                          }}
+                                                          title="Eliminar"
+                                                          className="p-0.5 hover:bg-red-100 text-red-600 rounded transition-colors"
+                                                        >
+                                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                          </svg>
+                                                        </button>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                                
+                                                <div className={cn(
+                                                  "font-bold leading-tight",
+                                                  isSuperCompact ? "text-[10px] mb-0" : isCompact ? "text-xs mb-0.5" : "text-sm mb-0.5"
+                                                )}>
+                                                  {h.curso.codigo}
+                                                </div>
+                                                
+                                                <div 
+                                                  className={cn(
+                                                    "leading-snug opacity-90",
+                                                    isSuperCompact ? "hidden" : isCompact ? "text-[9px] line-clamp-1 mb-1" : "text-[11px] line-clamp-2 mb-2"
+                                                  )} 
+                                                  title={h.curso.nombre}
+                                                >
+                                                  {h.curso.nombre}
+                                                </div>
+                                                
+                                                <div className={cn(
+                                                  "mt-auto flex opacity-85 font-medium pt-1 border-t border-black/5 gap-1 w-full overflow-hidden",
+                                                  isCompact 
+                                                    ? "flex-col items-stretch text-[8px]" 
+                                                    : "flex-row justify-between items-center text-[10px]"
+                                                )}>
+                                                  <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
+                                                    {!isCompact && <Users className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
+                                                    <span className="truncate text-center w-full">{h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'}</span>
+                                                  </div>
+                                                  <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
+                                                    {!isCompact && <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
+                                                    <span className="truncate text-center w-full">{h.ambiente.codigo}</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <div
+                                            key={itemIdx}
+                                            style={{ flexGrow: item.duration, flexBasis: 0 }}
+                                            className="border-b last:border-b-0 border-slate-200/50 w-full hover:bg-slate-50/50 transition-colors flex flex-col justify-center items-center"
+                                          >
+                                            <div className="w-full h-full min-h-[30px] rounded border border-transparent" />
+                                          </div>
+                                        );
+                                      }
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        );
+                      })}
+
+                      {/* HORA Derecha */}
+                      <td className="py-2 px-2 text-center bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
+                        {`${horaNum.toString().padStart(2, '0')}:00`}
+                        <br />
+                        <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-slate-800 text-white font-bold shadow-inner">
+                  <tr>
+                    <td className="py-3 px-4 text-center border-t border-slate-700">TOTALES</td>
+                    {diasAMostrar.map(dia => (
+                      <td key={dia} className="py-3 px-4 text-center border-t border-slate-700 border-r border-slate-700/50">
+                        {getTotalHoras(dia)}h
+                      </td>
+                    ))}
+                    <td className="py-3 px-4 text-center border-t border-slate-700 bg-[#1a365d]">
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-[10px] text-blue-200 font-normal leading-tight uppercase">Semanal</span>
+                        <span className="bg-blue-500 text-white px-2 py-0.5 rounded-md text-sm shadow-sm">{totalSemanal}h</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
+        </div>
+      ) : (
+        // VISTA TABLA (agrupada por días)
+        <div className="shadow-lg rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           {loadingHor ? (
             <div className="flex min-h-[400px] items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-[#1a365d]" />
             </div>
           ) : (
-            <table 
-              style={{ minWidth: `${minTableWidth}px` }}
-              className="w-full text-sm text-left border-collapse table-fixed"
-            >
-              <thead className="bg-[#1a365d] text-white">
-                <tr>
-                  <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
-                  {DIAS.map(d => {
-                    const lanesCount = lanesPorDia[d]?.length || 1;
-                    const percentWidth = (lanesCount / totalLanes) * 100;
-                    return (
-                      <th 
-                        key={d} 
-                        style={{ width: `${percentWidth}%` }}
-                        className={cn(
-                          "py-3 px-2 text-center font-bold tracking-wider border-b border-slate-700",
-                          diaResaltado === d && "bg-blue-800"
+            <div className="space-y-4 p-4">
+              {diasAMostrar.map(dia => {
+                const horariosDia = horariosFiltrados
+                  .filter(h => h.diaSemana === dia)
+                  .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+                
+                return (
+                  <div key={dia} className="space-y-2">
+                    <h3 className="text-lg font-bold bg-[#1a365d] text-white px-4 py-2 rounded-t-lg">
+                      {DIA_LABEL[dia]}
+                    </h3>
+                    <table className="w-full border border-slate-200 rounded-b-lg overflow-hidden">
+                      <thead className="bg-slate-100 dark:bg-slate-900">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 border-b">Hora</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 border-b">Curso</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 border-b">Docente</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 border-b">Ambiente</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 dark:text-slate-300 border-b">Grupo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {horariosDia.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                              No hay horarios para este día
+                            </td>
+                          </tr>
+                        ) : (
+                          horariosDia.map(h => {
+                            const col = getColorForCurso(h.curso.codigo);
+                            return (
+                              <tr 
+                                key={h.id}
+                                className="hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                                onClick={() => handleEditOpen(h)}
+                              >
+                                <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-300 border-b">{h.horaInicio} - {h.horaFin}</td>
+                                <td className="px-4 py-3 text-sm border-b">
+                                  <div className="flex items-center gap-2">
+                                    <span className={cn("w-3 h-3 rounded-full", col.badge)}></span>
+                                    <span className="font-semibold">{h.curso.codigo}</span>
+                                    <span className="text-slate-600 dark:text-slate-400 truncate">{h.curso.nombre}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{Formateadores.nombreUsuario(h.docente.usuario)}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.ambiente.codigo}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.grupo?.nombre || 'Sin grupo'}</td>
+                              </tr>
+                            );
+                          })
                         )}
-                      >
-                        {DIA_LABEL[d]}
-                      </th>
-                    );
-                  })}
-                  <th className="py-3 px-4 text-center font-semibold w-24 border-b border-slate-700">HORA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {HORAS.map((horaNum, rowIndex) => (
-                  <tr 
-                    key={horaNum} 
-                    className={cn(
-                      "group h-16",
-                      rowIndex % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-slate-50/30 dark:bg-slate-700/20"
-                    )}
-                  >
-                    {/* HORA Izquierda */}
-                    <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
-                      {`${horaNum.toString().padStart(2, '0')}:00`}
-                      <br />
-                      <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
-                    </td>
-
-                    {/* Celdas de Días */}
-                    {DIAS.map(dia => {
-                      if (rowIndex > 0) return null; // Solo renderizar el TD en la primera fila (rowSpan={14})
-
-                      const dayClasses = horariosFiltrados.filter(h => h.diaSemana === dia);
-                      const lanes = lanesPorDia[dia] || [[]];
-                      const parseTime = (t: string) => parseInt(t.split(':')[0], 10);
-
-                      return (
-                        <td 
-                          key={dia} 
-                          rowSpan={14}
-                          className={cn(
-                            "p-0 border-r border-b border-slate-200 align-top transition-colors relative h-full min-h-[600px] overflow-hidden",
-                            diaResaltado === dia && "bg-blue-50/30"
-                          )}
-                        >
-                          <div className="absolute inset-0 flex flex-row divide-x divide-slate-200 h-full w-full">
-                            {lanes.map((lane, laneIdx) => {
-                              // Generar bloques y espacios vacíos para esta lane de 7:00 a 21:00 (14 horas)
-                              const laneItems: Array<{
-                                type: 'class' | 'empty';
-                                duration: number;
-                                class?: typeof dayClasses[0];
-                                startHour: number;
-                                endHour: number;
-                              }> = [];
-
-                              let currentHour = 7;
-                              const laneClasses = [...lane].sort((a, b) => parseTime(a.horaInicio) - parseTime(b.horaInicio));
-
-                              laneClasses.forEach(c => {
-                                const start = parseTime(c.horaInicio);
-                                const end = parseTime(c.horaFin);
-
-                                if (start > currentHour) {
-                                  laneItems.push({
-                                    type: 'empty',
-                                    duration: start - currentHour,
-                                    startHour: currentHour,
-                                    endHour: start
-                                  });
-                                }
-                                laneItems.push({
-                                  type: 'class',
-                                  duration: end - start,
-                                  class: c,
-                                  startHour: start,
-                                  endHour: end
-                                });
-                                currentHour = end;
-                              });
-
-                              if (currentHour < 21) {
-                                laneItems.push({
-                                  type: 'empty',
-                                  duration: 21 - currentHour,
-                                  startHour: currentHour,
-                                  endHour: 21
-                                });
-                              }
-
-                              return (
-                                <div 
-                                  key={laneIdx} 
-                                  className="flex flex-col flex-1 min-w-0 h-full justify-between items-stretch"
-                                >
-
-                                  {laneItems.map((item, itemIdx) => {
-                                    if (item.type === 'class') {
-                                      const h = item.class!;
-                                      const col = getColorForCurso(h.curso.codigo);
-                                      const esLab = h.ambiente.codigo.toUpperCase().includes('LAB') || (h.ambiente as any).tipo === 'LABORATORIO';
-                                      const isBorrador = h.estado === 'BORRADOR';
-
-                                      const laneCount = lanes.length;
-                                      const isCompact = laneCount > 1;
-                                      const isSuperCompact = laneCount >= 3 || item.duration <= 1;
-
-                                      return (
-                                        <div
-                                          key={h.id}
-                                          style={{ flexGrow: item.duration, flexBasis: 0 }}
-                                          className="flex flex-col w-full group relative overflow-hidden"
-                                        >
-                                          {item.duration <= 1 ? (
-                                            <div
-                                              className={cn(
-                                                "relative flex flex-col justify-between h-full w-full border-l-4 transition-all hover:shadow-inner cursor-pointer flex-1 border-b border-b-black/5 overflow-hidden p-1.5",
-                                                col.bg, col.border, col.text
-                                              )}
-                                            >
-                                              {/* Fila 1: Código de curso y Tipo */}
-                                              <div className="flex items-center justify-between gap-1 w-full overflow-hidden leading-none mb-0.5">
-                                                <span className="font-bold text-[10px] truncate leading-none">
-                                                  {h.curso.codigo}
-                                                </span>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                  <span className={cn(
-                                                    "font-bold rounded text-white shadow-sm text-[7.5px] px-1 py-0 leading-none",
-                                                    col.badge
-                                                  )}>
-                                                    {esLab ? 'LAB' : 'TEO'}
-                                                  </span>
-                                                  
-                                                  {isBorrador && (
-                                                    <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleConfirmHorario(h.id, h);
-                                                        }}
-                                                        title="Confirmar"
-                                                        className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleEditOpen(h);
-                                                        }}
-                                                        title="Editar"
-                                                        className="p-0.5 hover:bg-slate-200 text-slate-700 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleDelete(h);
-                                                        }}
-                                                        title="Eliminar"
-                                                        className="p-0.5 hover:bg-red-100 text-red-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                      </button>
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              </div>
-
-                                              {/* Fila 2: Grupo y Ambiente (sin iconos, combinados) */}
-                                              <div className="text-[9px] font-bold opacity-90 truncate leading-none mt-auto pt-1 border-t border-black/5">
-                                                {h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'} • {h.ambiente.codigo}
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div
-                                              className={cn(
-                                                "relative flex flex-col h-full w-full border-l-4 transition-all hover:shadow-inner cursor-pointer flex-1 border-b border-b-black/5 overflow-hidden",
-                                                isSuperCompact ? "p-1.5" : isCompact ? "p-2" : "p-3",
-                                                col.bg, col.border, col.text
-                                              )}
-                                            >
-                                              <div className={cn("flex justify-between items-start gap-1", isSuperCompact ? "mb-1" : "mb-2")}>
-                                                <span className={cn(
-                                                  "font-bold rounded text-white shadow-sm shrink-0",
-                                                  isSuperCompact ? "text-[8px] px-1 py-0" : "text-[10px] px-1.5 py-0.5",
-                                                  col.badge
-                                                )}>
-                                                  {esLab ? 'LAB' : 'TEORÍA'}
-                                                </span>
-                                                
-                                                <div className="flex items-center gap-1">
-                                                  <span className={cn(
-                                                    "font-mono opacity-80 font-semibold whitespace-nowrap bg-white/40 px-1 rounded shrink-0",
-                                                    isSuperCompact ? "text-[7.5px]" : "text-[10px]"
-                                                  )}>
-                                                    {h.horaInicio} - {h.horaFin}
-                                                  </span>
-                                                  
-                                                  {isBorrador && (
-                                                    <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleConfirmHorario(h.id, h);
-                                                        }}
-                                                        title="Confirmar"
-                                                        className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleEditOpen(h);
-                                                        }}
-                                                        title="Editar"
-                                                        className="p-0.5 hover:bg-slate-200 text-slate-700 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleDelete(h);
-                                                        }}
-                                                        title="Eliminar"
-                                                        className="p-0.5 hover:bg-red-100 text-red-600 rounded transition-colors"
-                                                      >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                      </button>
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              </div>
-                                              
-                                              <div className={cn(
-                                                "font-bold leading-tight",
-                                                isSuperCompact ? "text-[10px] mb-0" : isCompact ? "text-xs mb-0.5" : "text-sm mb-0.5"
-                                              )}>
-                                                {h.curso.codigo}
-                                              </div>
-                                              
-                                              <div 
-                                                className={cn(
-                                                  "leading-snug opacity-90",
-                                                  isSuperCompact ? "hidden" : isCompact ? "text-[9px] line-clamp-1 mb-1" : "text-[11px] line-clamp-2 mb-2"
-                                                )} 
-                                                title={h.curso.nombre}
-                                              >
-                                                {h.curso.nombre}
-                                              </div>
-                                              
-                                              <div className={cn(
-                                                "mt-auto flex opacity-85 font-medium pt-1 border-t border-black/5 gap-1 w-full overflow-hidden",
-                                                isCompact 
-                                                  ? "flex-col items-stretch text-[8px]" 
-                                                  : "flex-row justify-between items-center text-[10px]"
-                                              )}>
-                                                <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
-                                                  {!isCompact && <Users className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
-                                                  <span className="truncate text-center w-full">{h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
-                                                  {!isCompact && <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
-                                                  <span className="truncate text-center w-full">{h.ambiente.codigo}</span>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    } else {
-                                      return (
-                                        <div
-                                          key={itemIdx}
-                                          style={{ flexGrow: item.duration, flexBasis: 0 }}
-                                          className="border-b last:border-b-0 border-slate-200/50 w-full hover:bg-slate-50/50 transition-colors flex flex-col justify-center items-center"
-                                        >
-                                          <div className="w-full h-full min-h-[30px] rounded border border-transparent" />
-                                        </div>
-                                      );
-                                    }
-                                  })}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      );
-                    })}
-
-                    {/* HORA Derecha */}
-                    <td className="py-2 px-2 text-center bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-sm whitespace-nowrap">
-                      {`${horaNum.toString().padStart(2, '0')}:00`}
-                      <br />
-                      <span className="text-xs opacity-70">{`${(horaNum + 1).toString().padStart(2, '0')}:00`}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-slate-800 text-white font-bold shadow-inner">
-                <tr>
-                  <td className="py-3 px-4 text-center border-t border-slate-700">TOTALES</td>
-                  {DIAS.map(dia => (
-                    <td key={dia} className="py-3 px-4 text-center border-t border-slate-700 border-r border-slate-700/50">
-                      {getTotalHoras(dia)}h
-                    </td>
-                  ))}
-                  <td className="py-3 px-4 text-center border-t border-slate-700 bg-[#1a365d]">
-                    <div className="flex flex-col items-center justify-center">
-                      <span className="text-[10px] text-blue-200 font-normal leading-tight uppercase">Semanal</span>
-                      <span className="bg-blue-500 text-white px-2 py-0.5 rounded-md text-sm shadow-sm">{totalSemanal}h</span>
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-[#1a365d]">Conflictos de validación</h2>
@@ -1595,6 +1715,13 @@ export default function HorariosPage() {
           />
         </DialogContent>
       </Dialog>
+
+      <ExportOptionsModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        onExportPDF={handleExportPDF}
+        onExportExcel={handleExportExcel}
+      />
     </div>
   );
 }

@@ -48,8 +48,7 @@ export const MENU_SECTIONS: MenuSection[] = [
       { nombre: 'Grupos', href: '/dashboard/grupos', icon: Users, permission: 'GESTIONAR_CURSOS' },
       { nombre: 'Carga académica', href: '/dashboard/carga-academica', icon: ClipboardList, permission: 'GESTIONAR_CURSOS' },
       { nombre: 'Carga académica', href: '/dashboard/docente/declaracion-carga', icon: ClipboardList, permission: null },
-      { nombre: 'Formatos de Carga', href: '/dashboard/docente/carga-horaria', icon: ClipboardList, permission: null },
-    ],
+    ]
   },
   {
     titulo: 'Horarios',

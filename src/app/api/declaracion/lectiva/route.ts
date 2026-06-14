@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
       where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
       include: {
         usuario: { select: { nombre: true, apellidos: true } },
+        departamento: {
+          include: {
+            facultad: true,
+          },
+        },
       },
     });
 
@@ -100,6 +105,12 @@ export async function GET(request: NextRequest) {
         categoria: docente.categoria,
         dedicacion: docente.dedicacion,
         horasDedicacion,
+        departamento: docente.departamento ? {
+          nombre: docente.departamento.nombre,
+          facultad: docente.departamento.facultad ? {
+            nombre: docente.departamento.facultad.nombre
+          } : undefined
+        } : undefined,
       },
       periodo: {
         id: periodo.id,

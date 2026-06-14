@@ -1,19 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import { AppProviders } from '@/providers/AppProviders';
 import { ThemeScript } from '@/components/theme/ThemeScript';
 import './globals.css';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-});
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: ['500', '600', '700'],
-});
+// Temporal: usar fuentes de sistema mientras solucionamos la conexión a Google Fonts
+const inter = { variable: '' };
+const plusJakarta = { variable: '' };
 
 export const metadata: Metadata = {
   title: 'Sistema de Gestión de Horarios - UNT',
@@ -35,7 +27,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body
-        className={`${inter.variable} ${plusJakarta.variable} font-sans antialiased bg-[rgb(var(--background))] text-[rgb(var(--foreground))]`}
+        className={`font-sans antialiased bg-[rgb(var(--background))] text-[rgb(var(--foreground))]`}
       >
         <AppProviders>{children}</AppProviders>
       </body>

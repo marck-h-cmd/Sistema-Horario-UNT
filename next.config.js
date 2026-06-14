@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['puppeteer', 'puppeteer-core']
+    serverComponentsExternalPackages: ['puppeteer', 'puppeteer-core', 'zod', 'ai', '@ai-sdk/groq'],
+    serverMinification: false
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

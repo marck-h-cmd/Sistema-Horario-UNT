@@ -48,7 +48,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
 
   useEffect(() => {
     cargarDistribucion();
-  }, [docenteId, periodoId]);
+  }, [docenteId, periodoId, declaracionItems]);
 
   const cargarDistribucion = async () => {
     setLoading(true);
@@ -261,7 +261,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
   const horarioCompleto = useMemo(() => {
     return declaracionItems.every(item => {
       const asignadas = horasAsignadasPorActividad[item.id] || 0;
-      return asignadas >= item.horasSemanales;
+      return asignadas === item.horasSemanales;
     });
   }, [declaracionItems, horasAsignadasPorActividad]);
 
@@ -326,7 +326,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
               <option value="">Seleccione una actividad declarada...</option>
               {declaracionItems.map(item => {
                 const asignadas = horasAsignadasPorActividad[item.id] || 0;
-                if (asignadas >= item.horasSemanales) return null; // Ocultar si ya completó sus horas
+                if (asignadas === item.horasSemanales) return null; // Ocultar si ya no tiene cambios pendientes
                 return (
                   <option key={item.id} value={item.id}>
                     {item.tipoActividad} ({asignadas}/{item.horasSemanales}h)

@@ -1,231 +1,1482 @@
-const COLORES = [
-  '#c6efce','#ffc7ce','#bdd7ee','#e2efda',
-  '#ffff00','#92d050','#dce6f1','#e4dfec',
-  '#fce4d6','#d9d9d9','#fff2cc','#ddebf7','#f8cbad'
-]
+const COLORES_GRILLA = [
+  '#c6efce', '#ffc7ce', '#bdd7ee', '#e2efda',
+  '#ffff00', '#92d050', '#dce6f1', '#e4dfec',
+  '#fce4d6', '#d9d9d9', '#fff2cc', '#ddebf7', '#f8cbad',
+];
 
-const DIAS_GRILLA = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO']
+const COLORES_TABLA = [
+  '#ffffff',
+  '#f0f7ff',
+];
+
+const DIAS_GRILLA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+
+const DIA_LABELS: Record<string, string> = {
+  LUNES: 'LUNES',
+  MARTES: 'MARTES',
+  MIERCOLES: 'MIÉRCOLES',
+  JUEVES: 'JUEVES',
+  VIERNES: 'VIERNES',
+  SABADO: 'SÁBADO',
+};
 
 const FRANJAS = [
-  {ini:'07:00',label:'7-8'},{ini:'08:00',label:'8-9'},
-  {ini:'09:00',label:'9-10'},{ini:'10:00',label:'10-11'},
-  {ini:'11:00',label:'11-12'},{ini:'12:00',label:'12-1'},
-  {ini:'13:00',label:'1-2'},{ini:'14:00',label:'2-3'},
-  {ini:'15:00',label:'3-4'},{ini:'16:00',label:'4-5'},
-  {ini:'17:00',label:'5-6'},{ini:'18:00',label:'6-7'},
-  {ini:'19:00',label:'7-8p'},
-]
+  { ini: '07:00', label: '7-8' },
+  { ini: '08:00', label: '8-9' },
+  { ini: '09:00', label: '9-10' },
+  { ini: '10:00', label: '10-11' },
+  { ini: '11:00', label: '11-12' },
+  { ini: '12:00', label: '12-1' },
+  { ini: '13:00', label: '1-2' },
+  { ini: '14:00', label: '2-3' },
+  { ini: '15:00', label: '3-4' },
+  { ini: '16:00', label: '4-5' },
+  { ini: '17:00', label: '5-6' },
+  { ini: '18:00', label: '6-7' },
+  { ini: '19:00', label: '7-8' },
+  { ini: '20:00', label: '8-9' },
+];
+
+const normalizeTime = (time: string): string => {
+  if (!time) return '00:00';
+
+  const [h, m] = time.split(':').map(Number);
+
+  return `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+};
+
+const timeToMinutes = (time: string): number => {
+  const [h, m] = normalizeTime(time).split(':').map(Number);
+  return h * 60 + m;
+};
+
+const calcSpan = (ini: string, fin: string): number => {
+  const diff = timeToMinutes(fin) - timeToMinutes(ini);
+  return Math.max(Math.ceil(diff / 60), 1);
+};
+
+const formatAmbiente = (name: string): string => {
+  if (!name) return '';
+
+  if (name.toLowerCase().includes('posgrado')) {
+    return `(${name.toLowerCase()})`;
+  }
+
+  return name.replace(/\s*-\s*/, '<br/>');
+};
+
+const normalizarTexto = (texto: string): string => {
+  return (texto ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+};
+
+const normalizarDia = (dia: string): string => {
+  return (dia ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+};
+
+const getNombreDocente = (h: any): string => {
+  const nombre = h.docente?.usuario?.nombre ?? h.docente?.nombre ?? '';
+  const apellidos = h.docente?.usuario?.apellidos ?? h.docente?.apellidos ?? '';
+
+  return `${nombre} ${apellidos}`.trim();
+};
+
+const DEPARTAMENTOS_DOCENTE: Record<string, string> = {
+  [normalizarTexto('Marcelino Torres Villanueva')]: 'Ing. de Sistemas',
+  [normalizarTexto('Alberto Mendoza de los Santos')]: 'Ing. de Sistemas',
+  [normalizarTexto('Paul Cotrina Castellanos')]: 'Ing. de Sistemas',
+  [normalizarTexto('Bertha Urtecho Zavaleta')]: 'CC. Psicológicas',
+  [normalizarTexto('José Luis Ponte Bejarano')]: 'Matemáticas',
+  [normalizarTexto('Jose Luis Ponte Bejarano')]: 'Matemáticas',
+  [normalizarTexto('Jorge Luis Ríos Gonzales')]: 'Lengua Nacional y Literatura',
+  [normalizarTexto('Jorge Luis Rios Gonzales')]: 'Lengua Nacional y Literatura',
+  [normalizarTexto('Segundo Guíbar Obeso')]: 'Matemáticas',
+  [normalizarTexto('Segundo Guibar Obeso')]: 'Matemáticas',
+  [normalizarTexto('Miguel Ipanaque Zapata')]: 'Estadística',
+  [normalizarTexto('Martha Cardoso')]: 'Estadística',
+
+  [normalizarTexto('Zoraida Vidal Melgarejo')]: 'Ing. de Sistemas',
+  [normalizarTexto('Everson David Agreda Gamboa')]: 'Ing. de Sistemas',
+  [normalizarTexto('Juan Carlos Obando Roldán')]: 'Ing. de Sistemas',
+  [normalizarTexto('Juan Carlos Obando Roldan')]: 'Ing. de Sistemas',
+  [normalizarTexto('Marcos Ferrer Reyna')]: 'Matemáticas',
+  [normalizarTexto('Teresita Rojas García')]: 'Estadística',
+  [normalizarTexto('Teresita Rojas Garcia')]: 'Estadística',
+  [normalizarTexto('Juan Carrascal Cabanillas')]: 'Administración',
+  [normalizarTexto('Vilma Méndez Gil')]: 'Física',
+  [normalizarTexto('Vilma Mendez Gil')]: 'Física',
+  [normalizarTexto('Sheyla Laura Escobedo Rodríguez')]: 'CC. Psicológicas',
+  [normalizarTexto('Sheyla Laura Escobedo Rodriguez')]: 'CC. Psicológicas',
+
+  [normalizarTexto('Luis Boy Chavil')]: 'Ing. de Sistemas',
+  [normalizarTexto('Robert Jerry Sánchez Ticona')]: 'Ing. de Sistemas',
+  [normalizarTexto('Robert Jerry Sanchez Ticona')]: 'Ing. de Sistemas',
+  [normalizarTexto('César Arellano Salazar')]: 'Ing. de Sistemas',
+  [normalizarTexto('Cesar Arellano Salazar')]: 'Ing. de Sistemas',
+  [normalizarTexto('Camilo Suárez Rebaza')]: 'Ing. de Sistemas',
+  [normalizarTexto('Camilo Suarez Rebaza')]: 'Ing. de Sistemas',
+  [normalizarTexto('Marcos Baca López')]: 'Ing. Industrial',
+  [normalizarTexto('Marcos Baca Lopez')]: 'Ing. Industrial',
+  [normalizarTexto('Ana Cuadra Mitzugaray')]: 'Contabilidad y Finanzas',
+
+  [normalizarTexto('Juan Pedro Santos Fernández')]: 'Ing. de Sistemas',
+  [normalizarTexto('Juan Pedro Santos Fernandez')]: 'Ing. de Sistemas',
+  [normalizarTexto('Ricardo Mendoza Rivera')]: 'Ing. de Sistemas',
+  [normalizarTexto('Óscar Romel Alcántara Moreno')]: 'Ing. de Sistemas',
+  [normalizarTexto('Oscar Romel Alcantara Moreno')]: 'Ing. de Sistemas',
+  [normalizarTexto('Jhoe Gonzalez Vasquez')]: 'Ing. Industrial',
+  [normalizarTexto('José Gómez Ávila')]: 'Ing. de Sistemas',
+  [normalizarTexto('Jose Gomez Avila')]: 'Ing. de Sistemas',
+};
+
+const getDepartamentoDocente = (h: any): string => {
+  const desdeObjeto =
+    h.docente?.departamento ??
+    h.docente?.departamentoAcademico?.nombre ??
+    h.docente?.departamentoAcademico?.nombreDepartamento ??
+    h.docente?.departamento?.nombre ??
+    h.departamentoAcademico?.nombre ??
+    h.departamento?.nombre ??
+    '';
+
+  if (desdeObjeto) return desdeObjeto;
+
+  const nombreDocente = getNombreDocente(h);
+  return DEPARTAMENTOS_DOCENTE[normalizarTexto(nombreDocente)] ?? '';
+};
+
+const getTipoBloque = (h: any): 'TEORIA' | 'PRACTICA' | 'LABORATORIO' => {
+  const tipo = String(h.tipoComponente ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (tipo.includes('LAB')) return 'LABORATORIO';
+  if (tipo.includes('PRACTICA')) return 'PRACTICA';
+  if (tipo.includes('TEORIA')) return 'TEORIA';
+
+  const ambiente = String(
+    h.ambiente?.nombre ??
+    h.ambiente?.codigo ??
+    h.ambiente ??
+    ''
+  )
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (ambiente.includes('LAB')) return 'LABORATORIO';
+
+  const nombreCurso = String(h.curso?.nombre ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (nombreCurso.includes('PRACTICA')) return 'PRACTICA';
+
+  return 'TEORIA';
+};
+
+const getComponentLabel = (h: any): string => {
+  const tipo = getTipoBloque(h);
+
+  if (tipo === 'PRACTICA') return 'Práctica';
+  if (tipo === 'LABORATORIO') return 'Lab.';
+
+  if (tipo === 'TEORIA' && h.curso?.codigo === 'EG-106B') {
+    return 'Teoría';
+  }
+
+  return '';
+};
+
+const formatearNumero = (valor: number): number | string => {
+  if (Number.isInteger(valor)) return valor;
+  return Number(valor.toFixed(2));
+};
+
+
+type MetadatosCursoPDF = {
+  horasTeoria: number;
+  horasPractica: number;
+  horasLaboratorio: number;
+};
+
+// Metadatos usados SOLO para la tabla superior del PDF.
+// Se trabaja por CÓDIGO de curso porque algunos cursos tienen nombres parecidos,
+// por ejemplo IS-101 y EG-101, pero no tienen la misma distribución T/P/L.
+const METADATOS_CURSO_PDF: Record<string, MetadatosCursoPDF> = {
+  // Ciclo I
+  'IS-101': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-102': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-101': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'EG-102': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-103': { horasTeoria: 1, horasPractica: 4, horasLaboratorio: 0 },
+  'EG-104': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-105': { horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 },
+  'EG-106': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'EG-106B': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo III
+  'IS-301': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-302': { horasTeoria: 2, horasPractica: 1, horasLaboratorio: 2 },
+  'IS-303': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 2 },
+  'MAT-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'EST-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'ADM-301': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'FIS-301': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'PSI-301': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo V
+  'IS-501': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-502': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-503': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-504': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-505': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-506': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IND-501': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'CF-501': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo VII
+  'IS-701': { horasTeoria: 2, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-701B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 3 },
+  'IS-702': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-704': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 0 },
+  'IS-704B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-705': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'IS-706': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-707': { horasTeoria: 1, horasPractica: 1, horasLaboratorio: 3 },
+  'IS-708': { horasTeoria: 1, horasPractica: 2, horasLaboratorio: 2 },
+  'EP-701': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+
+  // Ciclo IX
+  'IS-901': { horasTeoria: 2, horasPractica: 4, horasLaboratorio: 0 },
+  'IS-901B': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-902B': { horasTeoria: 0, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-904': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-905': { horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0 },
+  'IS-906': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+  'IS-907': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-908': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 4 },
+  'IS-909': { horasTeoria: 2, horasPractica: 0, horasLaboratorio: 2 },
+};
+
+const getMetadatosCursoPDF = (h: any): MetadatosCursoPDF => {
+  const codigo = String(h.curso?.codigo ?? '').toUpperCase().trim();
+  const override = METADATOS_CURSO_PDF[codigo];
+
+  if (override) return override;
+
+  return {
+    horasTeoria: Number(h.curso?.horasTeoria ?? 0),
+    horasPractica: Number(h.curso?.horasPractica ?? 0),
+    horasLaboratorio: Number(h.curso?.horasLaboratorio ?? 0),
+  };
+};
 
 export async function exportarHorarioPDF(
   horarios: any[],
   titulo: string,
-  subtitulo: string
-) {
-  // 1. Deduplicar docentes por docenteId
-  const seenDocs = new Map<string, any>()
-  for (const h of horarios) {
-    const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`
-    if (!seenDocs.has(docId)) {
-      // Calcular total de horas reales programadas (sesiones semanales)
-      const totalHorasSemana = horarios
-        .filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId)
-        .reduce((sum, x) => {
-          if (!x.horaInicio || !x.horaFin) return sum
-          const h1 = parseInt(x.horaInicio.split(':')[0])
-          const h2 = parseInt(x.horaFin.split(':')[0])
-          return sum + Math.max(h2 - h1, 0)
-        }, 0)
+  subtitulo: string,
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
+): Promise<void> {
+  const format = options?.format || 'grid';
+  const pageSize = options?.pageSize || 'A4';
+  const orientation = options?.orientation || 'landscape';
+  const margin = options?.margin ?? 8;
+  const printImmediately = options?.printImmediately ?? false;
+  
+  // Elegimos la paleta de colores según el formato
+  const COLORES = format === 'grid' ? COLORES_GRILLA : COLORES_TABLA;
 
-      seenDocs.set(docId, {
-        nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`, // Formato: Nombre Apellidos
+  const diasRender = diasMostrados && diasMostrados.length > 0 
+    ? DIAS_GRILLA.filter(d => diasMostrados.includes(d)) 
+    : DIAS_GRILLA;
+
+  const normalizedHorarios = horarios.map((h, index) => ({
+    ...h,
+    __ordenOriginal: index,
+    diaSemana: normalizarDia(h.diaSemana),
+    horaInicio: normalizeTime(h.horaInicio),
+    horaFin: normalizeTime(h.horaFin),
+  }));
+
+  const seenDocs = new Map<string, any>();
+
+  const getDocId = (h: any): string => {
+    return (
+      h.docenteId ??
+      h.docente?.id ??
+      `${h.docente?.usuario?.apellidos ?? h.docente?.apellidos ?? ''}-${h.docente?.usuario?.nombre ?? h.docente?.nombre ?? ''}`
+    );
+  };
+
+  for (const h of normalizedHorarios) {
+    const docId = getDocId(h);
+    const key = `${docId}||${h.curso.codigo}`;
+
+    if (!seenDocs.has(key)) {
+      const bloquesDocenteCurso = normalizedHorarios.filter(x => {
+        const xDocId = getDocId(x);
+        return xDocId === docId && x.curso.codigo === h.curso.codigo;
+      });
+
+      const metadatosPDF = getMetadatosCursoPDF(h);
+
+      const horasT = Number(metadatosPDF.horasTeoria ?? 0);
+      const horasP = Number(metadatosPDF.horasPractica ?? 0);
+      const horasL = Number(metadatosPDF.horasLaboratorio ?? 0);
+
+      // Cuenta TODOS los grupos reales del curso: A, B, C, etc.
+      // Esto corrige el error del ciclo I, donde los cursos teóricos quedaban con G = 0.
+      const gruposTodos = new Set(
+        bloquesDocenteCurso
+          .map(bloque => String(bloque.grupo?.nombre ?? 'A').trim())
+          .filter(Boolean)
+      );
+
+      const cantidadGruposGeneral = Math.max(gruposTodos.size, 1);
+
+      // Cuenta solo los grupos de laboratorio para calcular correctamente las horas de laboratorio.
+      const gruposLaboratorio = new Set(
+        bloquesDocenteCurso
+          .filter(bloque => getTipoBloque(bloque) === 'LABORATORIO')
+          .map(bloque => String(bloque.grupo?.nombre ?? 'A').trim())
+          .filter(Boolean)
+      );
+
+      const cantidadGruposLab = horasL > 0 ? Math.max(gruposLaboratorio.size, 1) : 0;
+
+      // Total de horas:
+      // Las horas de teoría y práctica se cuentan una vez.
+      // Las horas de laboratorio se multiplican por los grupos de laboratorio cuando corresponde.
+      // Ejemplo ciclo I: IS-101 = 2 teoría + 2 laboratorio * 2 grupos = 6 horas.
+      const totalHoras = horasT + horasP + (horasL > 0 ? horasL * cantidadGruposLab : 0);
+
+      seenDocs.set(key, {
+        nombre: getNombreDocente(h),
         asignatura: h.curso.nombre,
         cursoCodigo: h.curso.codigo || '',
-        horasT: h.curso.horasTeoria ?? 0,
-        horasP: h.curso.horasPractica ?? 0,
-        horasL: h.curso.horasLaboratorio ?? 0,
-        grupos: horarios.filter(x => (x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`) === docId).length,
-        totalHoras: totalHorasSemana,
-        departamento: h.docente.departamento ?? '',
+
+        horasT: formatearNumero(horasT),
+        horasP: formatearNumero(horasP),
+        horasL: formatearNumero(horasL),
+
+        grupos: cantidadGruposGeneral,
+
+        totalHoras: formatearNumero(totalHoras),
+
+        departamento: getDepartamentoDocente(h),
         docId,
-      })
+      });
     }
   }
 
-  // Convertir a array y ordenar por prioridad de código de curso
-  const docentesUnicos = Array.from(seenDocs.values())
+  const docentesUnicos = Array.from(seenDocs.values());
+
   docentesUnicos.sort((a, b) => {
-    const getPrefixPriority = (code: string) => {
-      if (code.startsWith('IS-')) return 1
-      if (code.startsWith('EG-')) return 2
-      return 3
-    }
-    const prioA = getPrefixPriority(a.cursoCodigo)
-    const prioB = getPrefixPriority(b.cursoCodigo)
-    if (prioA !== prioB) return prioA - prioB
-    return a.cursoCodigo.localeCompare(b.cursoCodigo)
-  })
+    const prioridad = (codigo: string) => {
+      if (codigo.startsWith('IS-')) return 1;
+      if (codigo.startsWith('EG-')) return 2;
+      return 3;
+    };
 
-  // Asignar número y color en base al orden prioritario
+    if (prioridad(a.cursoCodigo) !== prioridad(b.cursoCodigo)) {
+      return prioridad(a.cursoCodigo) - prioridad(b.cursoCodigo);
+    }
+
+    return a.cursoCodigo.localeCompare(b.cursoCodigo);
+  });
+
   docentesUnicos.forEach((doc, idx) => {
-    doc.numero = idx + 1
-    doc.color = COLORES[idx % COLORES.length]
-    seenDocs.set(doc.docId, doc)
-  })
+    doc.numero = idx + 1;
+    doc.color = COLORES[idx % COLORES.length];
 
-  // 2. Calcular rowspan y celdas consumidas
-  const calcSpan = (ini: string, fin: string) => {
-    const h1 = parseInt(ini); const h2 = parseInt(fin)
-    return Math.max(h2 - h1, 1)
-  }
-  const consumed = new Set<string>()
-  for (const h of horarios) {
-    if (!h.horaInicio || !h.horaFin) continue
-    const span = calcSpan(h.horaInicio, h.horaFin)
-    const startH = parseInt(h.horaInicio)
-    for (let o = 1; o < span; o++) {
-      consumed.add(`${h.diaSemana}-${String(startH + o).padStart(2,'0')}:00`)
-    }
-  }
+    const key = `${doc.docId}||${doc.cursoCodigo}`;
+    seenDocs.set(key, doc);
+  });
 
-  // 3. Extraer ciclo del subtitulo
-  const cicloMatch = subtitulo.match(/Ciclo\s+([IVX]+|\d+)/i)
-  const ciclo = cicloMatch?.[1] ?? ''
-  const esCicloI = ciclo === 'I' || ciclo === '1' || /Ciclo\s+(I\b|1\b)/i.test(subtitulo)
+  const cicloMatch = subtitulo.match(/CICLO\s*:?\s*([IVX]+|\d+)/i);
+  const ciclo = cicloMatch?.[1] ?? '';
+  const esCicloI = ciclo === 'I' || ciclo === '1';
 
-  // Si es Ciclo I, marcar las horas del Miércoles como consumidas excepto las de inicio (07:00 y 14:00) y almuerzo (13:00)
-  if (esCicloI) {
-    const horasMiercoles = [
-      '08:00', '09:00', '10:00', '11:00', '12:00',
-      '15:00', '16:00', '17:00'
-    ]
-    horasMiercoles.forEach(h => consumed.add(`MIERCOLES-${h}`))
-  }
+  const thStyle = `
+    border:1px solid #000;
+    padding:4px 6px;
+    font-size:10px;
+    background:#1a365d;
+    color:#fff;
+    font-weight:bold;
+    text-align:center;
+    box-sizing:border-box;
+  `;
 
-  // Helper para formatear nombre de ambiente
-  const formatAmbiente = (name: string) => {
-    if (!name) return ''
-    if (name.toLowerCase().includes('posgrado')) {
-      return `(${name.toLowerCase()})`
-    }
-    return name.replace(/\s*-\s*/, '<br/>')
-  }
+  const horaStyle = `
+    border:1px solid #000;
+    padding:2px 2px;
+    font-size:10px;
+    background:#f2f2f2;
+    font-weight:bold;
+    text-align:center;
+    width:38px;
+    min-width:38px;
+    max-width:38px;
+    white-space:nowrap;
+    box-sizing:border-box;
+  `;
 
-  // Helper para etiqueta de componente
-  const getComponentLabel = (h: any) => {
-    if (h.tipoComponente === 'PRACTICA') return ' Práctica'
-    if (h.tipoComponente === 'TEORIA' && h.curso.codigo === 'EG-106B') return ' Teoría'
-    return ''
-  }
+  const celdaBase = `
+    border:1px solid #000;
+    padding:2px 4px;
+    font-size:10px;
+    box-sizing:border-box;
+  `;
 
-  // 4. Construir HTML de tabla superior
-  const filas = Array.from({ length: Math.max(13, docentesUnicos.length) }, (_, i) => {
-    const doc = docentesUnicos[i]
-    const bg = doc?.color ?? 'transparent'
+  const colsMedias = diasRender.map(dia => `<col style="width:calc((100% - 76px) / ${diasRender.length})" />`).join('');
+
+  const colgroupHorario = `
+    <colgroup>
+      <col style="width:38px" />
+      ${colsMedias}
+      <col style="width:38px" />
+    </colgroup>
+  `;
+
+  const totalFilas = Math.max(13, docentesUnicos.length);
+
+  const filas = Array.from({ length: totalFilas }, (_, i) => {
+    const doc = docentesUnicos[i];
+    const bg = doc?.color ?? 'transparent';
+
     const tdDoc = (v: any, extra = '') =>
-      `<td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left;background:${bg};${extra}">${v ?? ''}</td>`
+      `<td style="${celdaBase}text-align:left;background:${bg};${extra}">${v ?? ''}</td>`;
 
-    let leftCell = ''
-    if (i === 0) leftCell = `<td rowspan="3" colspan="2" style="border:1px solid #000;padding:4px;font-size:11px;font-weight:bold;text-align:left;vertical-align:top">Universidad Nacional de Trujillo<br/>Facultad de Ingeniería<br/>Trujillo</td>`
-    else if (i === 3) leftCell = `<td colspan="2" style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left">ESCUELA: <span style="color:#0070c0;font-weight:bold">INGENIERÍA DE SISTEMAS</span></td>`
-    else if (i === 5) leftCell = `<td colspan="2" style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left">CICLO: <span style="color:#0070c0;font-weight:bold">${ciclo}</span>&nbsp;&nbsp;SECCIÓN: <span style="color:#0070c0;font-weight:bold">A</span></td>`
-    else if (i === 7) leftCell = `<td colspan="2" style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left">AÑO ACADÉMICO: <span style="color:#0070c0;font-weight:bold">${new Date().getFullYear()}</span>&nbsp;SEMESTRE: <span style="font-weight:bold">I</span></td>`
-    else if (i === 9) leftCell = `<td colspan="2" style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left">Inicio del Ciclo: <span style="color:#c00000;font-weight:bold">13-04-2026</span></td>`
-    else if (i === 10) leftCell = `<td colspan="2" style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:left">Término del Ciclo: <span style="color:#c00000;font-weight:bold">08-08-2026</span></td>`
-    else if (![1,2].includes(i)) leftCell = `<td colspan="2" style="border:none"></td>`
+    const tdCenter = (v: any) =>
+      `<td style="${celdaBase}text-align:center;background:${bg}">${v ?? ''}</td>`;
 
-    return `<tr>
-      ${leftCell}
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center">${doc ? doc.numero : ''}</td>
-      ${tdDoc(doc?.nombre)}
-      ${tdDoc(doc?.asignatura)}
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center;background:${bg}">${doc?.horasT ?? ''}</td>
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center;background:${bg}">${doc?.horasP ?? ''}</td>
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center;background:${bg}">${doc?.horasL ?? ''}</td>
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center;background:${bg}">${doc?.grupos ?? ''}</td>
-      <td style="border:1px solid #000;padding:2px 4px;font-size:10px;text-align:center;font-weight:bold;background:${bg}">${doc?.totalHoras ?? ''}</td>
-      ${tdDoc(doc?.departamento)}
-    </tr>`
-  }).join('')
+    let leftCell = '';
 
-  // 5. Construir HTML de grilla
-  const thStyle = 'border:1px solid #000;padding:2px 4px;font-size:10px;background:#000;color:#fff;font-weight:bold;text-align:center'
-  const horaStyle = 'border:1px solid #000;padding:2px 4px;font-size:10px;background:#f2f2f2;font-weight:bold;text-align:center;width:38px'
+    if (i === 0) {
+      leftCell = `
+        <td rowspan="3" colspan="2" style="${celdaBase}font-size:11px;font-weight:bold;text-align:center;vertical-align:middle">
+          Universidad Nacional de Trujillo<br/>
+          Facultad de Ingeniería<br/>
+          Trujillo
+        </td>`;
+    } else if (i === 3) {
+      leftCell = `
+        <td colspan="2" style="${celdaBase}text-align:left">
+          ESCUELA: <span style="color:#0070c0;font-weight:bold">INGENIERÍA DE SISTEMAS</span>
+        </td>`;
+    } else if (i === 4) {
+      leftCell = `<td colspan="2" style="border:none"></td>`;
+    } else if (i === 5) {
+      leftCell = `
+        <td colspan="2" style="${celdaBase}text-align:left">
+          CICLO: <span style="color:#0070c0;font-weight:bold">${ciclo}</span>
+          &nbsp;&nbsp;&nbsp;
+          SECCIÓN: <span style="color:#0070c0;font-weight:bold">A</span>
+        </td>`;
+    } else if (i === 6) {
+      leftCell = `<td colspan="2" style="border:none"></td>`;
+    } else if (i === 7) {
+      leftCell = `
+        <td colspan="2" style="${celdaBase}text-align:left">
+          AÑO ACADÉMICO:
+          <span style="color:#0070c0;font-weight:bold">${new Date().getFullYear()}</span>
+          &nbsp;&nbsp;
+          SEMESTRE: <span style="font-weight:bold">I</span>
+        </td>`;
+    } else if (i === 8) {
+      leftCell = `<td colspan="2" style="border:none"></td>`;
+    } else if (i === 9) {
+      leftCell = `
+        <td colspan="2" style="${celdaBase}text-align:left">
+          Inicio del Ciclo:
+          <span style="color:#c00000;font-weight:bold">13-04-2026</span>
+        </td>`;
+    } else if (i === 10) {
+      leftCell = `
+        <td colspan="2" style="${celdaBase}text-align:left">
+          Término del Ciclo:
+          <span style="color:#c00000;font-weight:bold">08-08-2026</span>
+        </td>`;
+    } else if (![1, 2].includes(i)) {
+      leftCell = `<td colspan="2" style="border:none"></td>`;
+    }
 
-  const grillaFilas = FRANJAS.map(({ ini, label }) => {
-    const celdas = DIAS_GRILLA.map(dia => {
-      if (consumed.has(`${dia}-${ini}`)) return ''
-      
-      // Renderizar bloque unificado para Miércoles si es Ciclo I
-      if (dia === 'MIERCOLES' && esCicloI) {
-        if (ini === '07:00') {
-          return `<td rowspan="6" style="border:1px solid #000;background:#bdd7ee;text-align:center;vertical-align:middle;font-size:11px;font-weight:bold">
-            ESTUDIOS<br/>GENERALES
-          </td>`
-        }
-        if (ini === '14:00') {
-          return `<td rowspan="4" style="border:1px solid #000;background:#bdd7ee;text-align:center;vertical-align:middle;font-size:11px;font-weight:bold">
-            ESTUDIOS<br/>GENERALES
-          </td>`
-        }
+    return `
+      <tr>
+        ${leftCell}
+
+        <td style="${celdaBase}text-align:center;font-weight:bold">
+          ${doc ? doc.numero : ''}
+        </td>
+
+        ${tdDoc(doc?.nombre)}
+        ${tdDoc(doc?.asignatura)}
+        ${tdCenter(doc?.horasT ?? '')}
+        ${tdCenter(doc?.horasP ?? '')}
+        ${tdCenter(doc?.horasL ?? '')}
+        ${tdCenter(doc?.grupos ?? '')}
+
+        <td style="${celdaBase}text-align:center;font-weight:bold;background:${bg}">
+          ${doc?.totalHoras ?? ''}
+        </td>
+
+        ${tdDoc(doc?.departamento)}
+      </tr>`;
+  }).join('');
+
+  const ROW_HEIGHT = 30;
+  const START_MINUTES = 7 * 60;
+  const TOTAL_FRANJAS = FRANJAS.length;
+  const GRID_HEIGHT = ROW_HEIGHT * TOTAL_FRANJAS;
+
+  const PRIORIDAD_CARRIL: Record<string, number> = {
+    'FIS-301': 1,
+    'IS-303': 2,
+
+    'IS-902B': 1,
+    'IS-901B': 1,
+    'IS-906': 2,
+  };
+
+  const getDocenteCurso = (h: any) => {
+    const docId = getDocId(h);
+    const key = `${docId}||${h.curso.codigo}`;
+
+    return seenDocs.get(key);
+  };
+
+  const getTopPx = (time: string): number => {
+    const minutes = timeToMinutes(time);
+    return ((minutes - START_MINUTES) / 60) * ROW_HEIGHT;
+  };
+
+  const getHeightPx = (ini: string, fin: string): number => {
+    const diff = timeToMinutes(fin) - timeToMinutes(ini);
+    return Math.max((diff / 60) * ROW_HEIGHT, ROW_HEIGHT);
+  };
+
+  const ordenarBloquesParaCarriles = (a: any, b: any): number => {
+    const aIni = timeToMinutes(a.horaInicio);
+    const bIni = timeToMinutes(b.horaInicio);
+
+    if (aIni !== bIni) return aIni - bIni;
+
+    const aCodigo = String(a.curso?.codigo ?? '').toUpperCase();
+    const bCodigo = String(b.curso?.codigo ?? '').toUpperCase();
+
+    const aPrioridad = PRIORIDAD_CARRIL[aCodigo] ?? 9999;
+    const bPrioridad = PRIORIDAD_CARRIL[bCodigo] ?? 9999;
+
+    if (aPrioridad !== bPrioridad) {
+      return aPrioridad - bPrioridad;
+    }
+
+    const aFin = timeToMinutes(a.horaFin);
+    const bFin = timeToMinutes(b.horaFin);
+
+    if (aFin !== bFin) return bFin - aFin;
+
+    return (a.__ordenOriginal ?? 0) - (b.__ordenOriginal ?? 0);
+  };
+
+  const dividirEnClusters = (bloques: any[]) => {
+    const ordenados = [...bloques].sort(ordenarBloquesParaCarriles);
+
+    const clusters: any[][] = [];
+    let clusterActual: any[] = [];
+    let finCluster = -1;
+
+    for (const h of ordenados) {
+      const ini = timeToMinutes(h.horaInicio);
+      const fin = timeToMinutes(h.horaFin);
+
+      if (clusterActual.length === 0) {
+        clusterActual.push(h);
+        finCluster = fin;
+        continue;
       }
 
-      const h = horarios.find(x => x.diaSemana === dia && x.horaInicio === ini)
-      if (!h) return `<td style="border:1px solid #000;padding:2px;font-size:10px"></td>`
-      
-      const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`
-      const doc = seenDocs.get(docId)
-      const span = calcSpan(h.horaInicio, h.horaFin)
-      const labelComp = getComponentLabel(h)
-      const ambText = formatAmbiente(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '')
-      const amb = `<div style="font-size:9px">${ambText}</div>`
-      
-      return `<td rowspan="${span}" style="border:1px solid #000;padding:4px 2px;font-size:10px;background:${doc?.color ?? '#fff'};text-align:center;vertical-align:middle">
-        <strong style="font-size:16px">${doc?.numero ?? ''}</strong><span style="font-size:10px;font-weight:normal">${labelComp}</span>${amb}
-      </td>`
-    }).join('')
-    return `<tr><td style="${horaStyle}">${label}</td>${celdas}<td style="${horaStyle}">${label}</td></tr>`
-  }).join('')
+      if (ini < finCluster) {
+        clusterActual.push(h);
+        finCluster = Math.max(finCluster, fin);
+      } else {
+        clusters.push(clusterActual);
+        clusterActual = [h];
+        finCluster = fin;
+      }
+    }
 
-  // 6. HTML completo
-  const htmlCompleto = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>${titulo}</title>
-    <style>
-      body{margin:8mm;font-family:Arial,sans-serif;font-size:10px}
-      @page{size:A4 landscape;margin:8mm}
-      table{border-collapse:collapse;width:100%}
-    </style></head><body>
-    <table style="border-collapse:collapse;width:100%;margin-bottom:6px">
-      <thead><tr>
-        <th colspan="2" style="${thStyle};width:30%">DATOS INSTITUCIONALES</th>
-        <th style="${thStyle};width:28px">N°</th>
-        <th style="${thStyle};text-align:left">PROFESOR</th>
-        <th style="${thStyle};text-align:left">ASIGNATURA</th>
-        <th style="${thStyle};width:28px">T</th>
-        <th style="${thStyle};width:28px">P</th>
-        <th style="${thStyle};width:28px">L</th>
-        <th style="${thStyle};width:28px">G</th>
-        <th style="${thStyle};width:38px">T.HORAS</th>
-        <th style="${thStyle};text-align:left">DEPARTAMENTO</th>
-      </tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
-    <table style="border-collapse:collapse;width:100%">
-      <thead><tr>
-        <th style="${thStyle};width:38px">HORA</th>
-        <th style="${thStyle}">LUNES</th><th style="${thStyle}">MARTES</th>
-        <th style="${thStyle}">MIÉRCOLES</th><th style="${thStyle}">JUEVES</th>
-        <th style="${thStyle}">VIERNES</th><th style="${thStyle}">SÁBADO</th>
-        <th style="${thStyle};width:38px">HORA</th>
-      </tr></thead>
-      <tbody>${grillaFilas}</tbody>
-    </table>
-  </body></html>`
+    if (clusterActual.length > 0) {
+      clusters.push(clusterActual);
+    }
 
-  // 7. Abrir ventana e imprimir
-  const win = window.open('', '_blank')
-  if (!win) { alert('Permite ventanas emergentes para exportar PDF'); return }
-  win.document.write(htmlCompleto)
-  win.document.close()
-  win.focus()
-  setTimeout(() => { win.print() }, 600)
+    return clusters;
+  };
+
+  const asignarCarrilesCluster = (cluster: any[]) => {
+    const ordenados = [...cluster].sort(ordenarBloquesParaCarriles);
+
+    const carrilesFin: number[] = [];
+    const ubicados: Array<{
+      h: any;
+      carril: number;
+      cantidadCarriles: number;
+    }> = [];
+
+    for (const h of ordenados) {
+      const inicio = timeToMinutes(h.horaInicio);
+      const fin = timeToMinutes(h.horaFin);
+
+      let carril = carrilesFin.findIndex(finCarril => finCarril <= inicio);
+
+      if (carril === -1) {
+        carril = carrilesFin.length;
+        carrilesFin.push(fin);
+      } else {
+        carrilesFin[carril] = fin;
+      }
+
+      ubicados.push({
+        h,
+        carril,
+        cantidadCarriles: 0,
+      });
+    }
+
+    const cantidadCarriles = Math.max(1, carrilesFin.length);
+
+    return ubicados.map(item => ({
+      ...item,
+      cantidadCarriles,
+    }));
+  };
+
+  const asignarCarrilesPorDia = (dia: string) => {
+    const bloquesDia = normalizedHorarios.filter(
+      h => normalizarDia(h.diaSemana) === normalizarDia(dia)
+    );
+
+    const clusters = dividirEnClusters(bloquesDia);
+
+    return clusters.flatMap(cluster => asignarCarrilesCluster(cluster));
+  };
+
+  const renderBloqueHorario = (
+    h: any,
+    carril: number,
+    cantidadCarriles: number
+  ): string => {
+    const doc = getDocenteCurso(h);
+
+    const top = getTopPx(h.horaInicio);
+    const height = getHeightPx(h.horaInicio, h.horaFin);
+
+    const ancho = 100 / cantidadCarriles;
+    const left = carril * ancho;
+
+    const labelComp = getComponentLabel(h);
+    const ambText = formatAmbiente(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
+
+    const nombreCorto = doc?.asignatura
+      ? doc.asignatura.split(' ').slice(0, 4).join(' ')
+      : '';
+
+    const grupo = h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : '';
+
+    return `
+      <div
+        style="
+          position:absolute;
+          top:${top}px;
+          left:${left}%;
+          width:${ancho}%;
+          height:${height}px;
+          background:${doc?.color ?? '#fff'};
+          border:1px solid #000;
+          text-align:center;
+          overflow:hidden;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          padding:2px 1px;
+          z-index:3;
+        "
+      >
+        <strong style="font-size:14px;line-height:1">${doc?.numero ?? ''}</strong>
+
+        ${
+          labelComp
+            ? `<span style="font-size:8px;font-weight:normal;line-height:1.1">${labelComp}</span>`
+            : ''
+        }
+
+        <div style="font-size:7.5px;margin-top:1px;font-style:italic;line-height:1.15">
+          ${nombreCorto}
+        </div>
+
+        <div style="font-size:7px;margin-top:1px;line-height:1.15">
+          ${ambText}
+        </div>
+
+        ${
+          grupo
+            ? `<div style="font-size:7px;margin-top:2px;line-height:1.1">${grupo}</div>`
+            : ''
+        }
+      </div>
+    `;
+  };
+
+  const renderEstudiosGenerales = (): string => {
+    return `
+      <div
+        style="
+          position:absolute;
+          top:0;
+          left:0;
+          width:100%;
+          height:${ROW_HEIGHT * 6}px;
+          background:#bdd7ee;
+          border:1px solid #000;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          text-align:center;
+          font-size:11px;
+          font-weight:bold;
+          z-index:3;
+        "
+      >
+        ESTUDIOS<br/>GENERALES
+      </div>
+
+      <div
+        style="
+          position:absolute;
+          top:${ROW_HEIGHT * 6}px;
+          left:0;
+          width:100%;
+          height:${ROW_HEIGHT * 7}px;
+          background:#bdd7ee;
+          border:1px solid #000;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          text-align:center;
+          font-size:11px;
+          font-weight:bold;
+          z-index:3;
+        "
+      >
+        ESTUDIOS<br/>GENERALES
+      </div>
+    `;
+  };
+
+  const renderDiaCompleto = (dia: string): string => {
+    let contenido = '';
+
+    if (normalizarDia(dia) === 'MIERCOLES' && esCicloI) {
+      contenido = renderEstudiosGenerales();
+    } else {
+      contenido = asignarCarrilesPorDia(dia)
+        .map(({ h, carril, cantidadCarriles }) =>
+          renderBloqueHorario(h, carril, cantidadCarriles)
+        )
+        .join('');
+    }
+
+    return `
+      <td rowspan="${TOTAL_FRANJAS}"
+          style="
+            ${celdaBase}
+            padding:0;
+            vertical-align:top;
+            position:relative;
+            height:${GRID_HEIGHT}px;
+            overflow:hidden;
+          "
+      >
+        <div
+          style="
+            position:relative;
+            width:100%;
+            height:${GRID_HEIGHT}px;
+            overflow:hidden;
+            background-image:
+              repeating-linear-gradient(
+                to bottom,
+                transparent 0,
+                transparent ${ROW_HEIGHT - 1}px,
+                #000 ${ROW_HEIGHT - 1}px,
+                #000 ${ROW_HEIGHT}px
+              );
+          "
+        >
+          <div
+            style="
+              position:absolute;
+              top:${ROW_HEIGHT * 6}px;
+              left:0;
+              width:100%;
+              border-top:3px solid #000;
+              z-index:1;
+              pointer-events:none;
+            "
+          ></div>
+
+          ${contenido}
+        </div>
+      </td>
+    `;
+  };
+
+  const grillaFilas = FRANJAS.map(({ ini, label }, index) => {
+    const esPrimeroTarde = ini === '13:00';
+    const borderTopExtra = esPrimeroTarde ? 'border-top:3px solid #000;' : '';
+    const horaStyleExtra = `${horaStyle}${borderTopExtra}height:${ROW_HEIGHT}px;`;
+
+    const diasSoloPrimeraFila =
+      index === 0
+        ? diasRender.map(dia => renderDiaCompleto(dia)).join('')
+        : '';
+
+    return `
+      <tr>
+        <td style="${horaStyleExtra}">${label}</td>
+        ${diasSoloPrimeraFila}
+        <td style="${horaStyleExtra}">${label}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Generar HTML para el formato de TABLA (listado por días)
+  const htmlTabla = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${titulo}</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+    }
+
+    body {
+      padding: 8mm;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      box-sizing: border-box;
+    }
+
+    .tabla-listado {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .dia-header {
+      background: #1a365d !important;
+      color: white !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid #000;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .tabla-listado {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <table class="tabla-listado">
+    ${diasRender.map(dia => {
+      const horariosDia = normalizedHorarios.filter(h => normalizarDia(h.diaSemana) === normalizarDia(dia));
+      if (horariosDia.length === 0) return '';
+
+      const filasListado = horariosDia.sort((a, b) => {
+        if (a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
+        return (a.curso?.codigo || '').localeCompare(b.curso?.codigo || '');
+      }).map(h => {
+        const doc = getDocenteCurso(h);
+        const bg = doc?.color ?? 'transparent';
+        return `
+          <tr>
+            <td style="${celdaBase}text-align:center;width:80px;background:${bg}">${h.horaInicio} - ${h.horaFin}</td>
+            <td style="${celdaBase}text-align:center;width:40px;background:${bg}">${doc?.numero ?? ''}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${h.curso?.codigo || ''} ${h.curso?.nombre || ''}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${getNombreDocente(h)}</td>
+            <td style="${celdaBase}text-align:left;background:${bg}">${h.ambiente?.nombre ?? h.ambiente?.codigo ?? ''}</td>
+            <td style="${celdaBase}text-align:center;width:60px;background:${bg}">${h.grupo?.nombre ?? ''}</td>
+            <td style="${celdaBase}text-align:center;width:80px;background:${bg}">${h.estado ?? ''}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <thead>
+          <tr>
+            <th colspan="7" class="dia-header">${DIA_LABELS[dia] ?? dia}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:80px;background:#f2f2f2">HORA</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:40px;background:#f2f2f2">N°</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">ASIGNATURA</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">DOCENTE</td>
+            <td style="${celdaBase}text-align:left;font-weight:bold;background:#f2f2f2">AMBIENTE</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:60px;background:#f2f2f2">GRUPO</td>
+            <td style="${celdaBase}text-align:center;font-weight:bold;width:80px;background:#f2f2f2">ESTADO</td>
+          </tr>
+          ${filasListado}
+        </tbody>
+      `;
+    }).join('')}
+  </table>
+
+</body>
+</html>`;
+
+  // Generar HTML para el formato de GRILLA (original)
+  const htmlGrilla = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${titulo}</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+    }
+
+    body {
+      padding: 8mm;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      box-sizing: border-box;
+    }
+
+    .tabla-superior {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 6px;
+      table-layout: fixed;
+    }
+
+    .tabla-horario {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      page-break-inside: avoid;
+    }
+
+    .tabla-horario th,
+    .tabla-horario td {
+      overflow: hidden;
+      word-break: normal;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .tabla-superior,
+      .tabla-horario {
+        width: 100%;
+        table-layout: fixed;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <table class="tabla-superior">
+    <thead>
+      <tr>
+        <th colspan="2" style="${thStyle}width:30%;text-align:center">
+          DATOS INSTITUCIONALES
+        </th>
+        <th style="${thStyle}width:28px">N°</th>
+        <th style="${thStyle}text-align:left">DOCENTE</th>
+        <th style="${thStyle}text-align:left">ASIGNATURA</th>
+        <th style="${thStyle}width:24px">T</th>
+        <th style="${thStyle}width:24px">P</th>
+        <th style="${thStyle}width:24px">L</th>
+        <th style="${thStyle}width:24px">G</th>
+        <th style="${thStyle}width:44px">T.<br/>HORAS</th>
+        <th style="${thStyle}text-align:left">DEPARTAMENTO</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${filas}
+    </tbody>
+  </table>
+
+  <table class="tabla-horario">
+    ${colgroupHorario}
+
+    <thead>
+      <tr>
+        <th style="${thStyle}width:38px">HORA</th>
+        ${diasRender.map(dia => `<th style="${thStyle}">${DIA_LABELS[dia] ?? dia}</th>`).join('')}
+        <th style="${thStyle}width:38px">HORA</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${grillaFilas}
+    </tbody>
+  </table>
+
+</body>
+</html>`;
+
+  // Generar HTML base con los estilos compartidos
+  const getHtmlBase = (content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${titulo}</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial', sans-serif;
+      font-size: 10px;
+      color: #212529;
+    }
+
+    body {
+      padding: ${margin}mm;
+      padding-bottom: ${margin + 15}mm;
+    }
+
+    /* Encabezado y Pie de página */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 20mm;
+      padding: 5mm ${margin}mm;
+      background: #ffffff;
+      border-bottom: 2px solid #1a365d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .header .left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header .title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a365d;
+    }
+
+    .header .subtitle {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 15mm;
+      padding: 5mm ${margin}mm;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      color: #64748b;
+      z-index: 1000;
+    }
+
+    .page-number {
+      font-weight: bold;
+      color: #1a365d;
+    }
+
+    @page {
+      size: ${pageSize} ${orientation};
+      margin: 25mm ${margin}mm 20mm ${margin}mm;
+      
+      @top-left {
+        content: element(header);
+      }
+      
+      @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: Arial, sans-serif;
+        font-size: 9px;
+        color: #64748b;
+      }
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    th,
+    td {
+      box-sizing: border-box;
+      border: 1px solid #dee2e6;
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #1a365d !important;
+      color: #ffffff !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    td {
+      padding: 6px 8px;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f8fafc !important;
+    }
+
+    .tabla-superior {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+      table-layout: fixed;
+    }
+
+    .tabla-horario {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      page-break-inside: avoid;
+    }
+
+    .tabla-listado {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .tabla-horario th,
+    .tabla-horario td {
+      overflow: hidden;
+      word-break: normal;
+    }
+
+    .hora-col {
+      background-color: #e2e8f0 !important;
+      font-weight: bold;
+      text-align: center;
+      width: 45px;
+    }
+
+    .dia-header {
+      background-color: #1a365d !important;
+      color: white !important;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .col-header {
+      background-color: #f1f5f9 !important;
+      color: #1e293b !important;
+      font-weight: bold;
+    }
+
+    .text-center {
+      text-align: center !important;
+    }
+
+    .text-left {
+      text-align: left !important;
+    }
+
+    .text-right {
+      text-align: right !important;
+    }
+
+    .font-bold {
+      font-weight: bold !important;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .header {
+        position: running(header);
+      }
+      
+      .print-only {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header print-only">
+    <div class="left">
+      <div class="title">${titulo}</div>
+      <div class="subtitle">${subtitulo}</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 10px; font-weight: bold; color: #1a365d;">Universidad Nacional de Trujillo</div>
+      <div style="font-size: 9px;">Facultad de Ingeniería</div>
+    </div>
+  </div>
+
+  <div class="footer print-only">
+    <div>Generado el: ${new Date().toLocaleDateString('es-PE', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })}</div>
+    <div>Escuela Profesional de Ingeniería de Sistemas</div>
+  </div>
+
+${content}
+
+</body>
+</html>
+  `.trim();
+
+  const htmlGrillaFinal = getHtmlBase(`
+  <table class="tabla-superior">
+    <thead>
+      <tr>
+        <th colspan="2" style="${thStyle}width:30%;text-align:center">
+          DATOS INSTITUCIONALES
+        </th>
+        <th style="${thStyle}width:28px">N°</th>
+        <th style="${thStyle}text-align:left">DOCENTE</th>
+        <th style="${thStyle}text-align:left">ASIGNATURA</th>
+        <th style="${thStyle}width:24px">T</th>
+        <th style="${thStyle}width:24px">P</th>
+        <th style="${thStyle}width:24px">L</th>
+        <th style="${thStyle}width:24px">G</th>
+        <th style="${thStyle}width:44px">T.<br/>HORAS</th>
+        <th style="${thStyle}text-align:left">DEPARTAMENTO</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${filas}
+    </tbody>
+  </table>
+
+  <table class="tabla-horario">
+    ${colgroupHorario}
+
+    <thead>
+      <tr>
+        <th style="${thStyle}width:38px">HORA</th>
+        ${diasRender.map(dia => `<th style="${thStyle}">${DIA_LABELS[dia] ?? dia}</th>`).join('')}
+        <th style="${thStyle}width:38px">HORA</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${grillaFilas}
+    </tbody>
+  </table>
+  `);
+
+  const htmlTablaFinal = getHtmlBase(`
+  <div style="margin-bottom: 20px;">
+    <h2 style="color: #1a365d; font-size: 14px; margin-bottom: 15px; border-bottom: 2px solid #1a365d; padding-bottom: 5px;">${titulo}</h2>
+  </div>
+  
+  ${diasRender.map(dia => {
+    const horariosDia = normalizedHorarios.filter(h => normalizarDia(h.diaSemana) === normalizarDia(dia));
+    if (horariosDia.length === 0) return '';
+
+    const filasListado = horariosDia.sort((a, b) => {
+      if (a.horaInicio !== b.horaInicio) return a.horaInicio.localeCompare(b.horaInicio);
+      return (a.curso?.codigo || '').localeCompare(b.curso?.codigo || '');
+    }).map((h, index) => {
+      const doc = getDocenteCurso(h);
+      const bg = doc?.color || (index % 2 === 0 ? '#ffffff' : '#f0f7ff');
+      return `
+        <tr style="background-color: ${bg};">
+          <td style="text-align: center; padding: 8px;">${h.horaInicio} - ${h.horaFin}</td>
+          <td style="text-align: center; padding: 8px;">${doc?.numero ?? ''}</td>
+          <td style="text-align: left; padding: 8px;">${h.curso?.codigo || ''} ${h.curso?.nombre || ''}</td>
+          <td style="text-align: left; padding: 8px;">${getNombreDocente(h)}</td>
+          <td style="text-align: left; padding: 8px;">${h.ambiente?.nombre ?? h.ambiente?.codigo ?? ''}</td>
+          <td style="text-align: center; padding: 8px;">${h.grupo?.nombre ?? ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <table class="tabla-listado" style="margin-bottom: 25px; page-break-inside: avoid;">
+        <thead>
+          <tr>
+            <th colspan="6" class="dia-header">${DIA_LABELS[dia] ?? dia}</th>
+          </tr>
+          <tr>
+            <th style="width: 12%;">HORA</th>
+            <th style="width: 5%;">N°</th>
+            <th style="width: 35%;">ASIGNATURA</th>
+            <th style="width: 25%;">DOCENTE</th>
+            <th style="width: 18%;">AMBIENTE</th>
+            <th style="width: 5%;">GRUPO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasListado}
+        </tbody>
+      </table>
+    `;
+  }).join('')}
+  `);
+
+  const htmlCompleto = format === 'table' ? htmlTablaFinal : htmlGrillaFinal;
+
+  const win = window.open('', '_blank');
+
+  if (!win) {
+    alert('Permite ventanas emergentes para exportar PDF');
+    return;
+  }
+
+  win.document.open();
+  win.document.write(htmlCompleto);
+  win.document.close();
+
+  const imprimir = () => {
+    win.focus();
+
+    setTimeout(() => {
+      if (printImmediately) {
+        win.print();
+      }
+    }, 800);
+  };
+
+  if (win.document.readyState === 'complete') {
+    imprimir();
+  } else {
+    win.onload = imprimir;
+  }
 }
