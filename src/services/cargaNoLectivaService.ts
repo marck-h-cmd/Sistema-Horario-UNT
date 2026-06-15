@@ -98,6 +98,11 @@ export class CargaNoLectivaService {
   ) {
     const docente = await prisma.docente.findUnique({
       where: { id: docenteId },
+      include: {
+        cargos: {
+          where: { activo: true },
+        },
+      },
     });
 
     if (!docente) {
@@ -133,7 +138,7 @@ export class CargaNoLectivaService {
 
     // 3. Validar individualmente cada tipo de actividad
     for (const item of items) {
-      this.validarActividad(item, horasLectivas);
+      this.validarActividad(item, horasLectivas, docente);
     }
 
     // 4. Persistir en transacción
@@ -268,34 +273,34 @@ export class CargaNoLectivaService {
   obtenerReglasValidacion() {
     return {
       PREPARACION_Y_EVALUACION: {
-        descripcion: 'Preparación de clases y evaluación de estudiantes (Exactamente 50% de la carga lectiva asignada)',
+        descripcion: 'TC: Max 50% de carga lectiva. TP: Exactamente 4 horas.',
         maxPercentageOfLectiva: 0.5,
         minHours: 0,
         requiredFields: [],
       },
       CONSEJERIA: {
-        description: 'Tutoría y consejería a estudiantes (máximo 3 horas semanales)',
+        description: 'Tutoría y consejería a estudiantes (máximo 2h, o 3h con excepción de acreditación para TC)',
         maxHours: 3,
-        requiredFields: ['numAlumnos', 'ciclo'],
+        requiredFields: [],
       },
       INVESTIGACION: {
-        description: 'Actividades de investigación científica (máximo 6 horas semanales)',
+        description: 'Actividades de investigación científica (TC: max 6h, TP: max 3h)',
         maxHours: 6,
         requiredFields: ['codigoProyecto'],
       },
       CAPACITACION: {
-        description: 'Capacitación o perfeccionamiento docente (máximo 2 horas semanales)',
+        description: 'Capacitación o perfeccionamiento docente (TC: max 2h, TP: 0h)',
         maxHours: 2,
         requiredFields: [],
       },
       ACTIVIDADES_DE_GOBIERNO: {
-        description: 'Desempeño de cargos de gobierno universitario (máximo 2 horas semanales)',
-        maxHours: 2,
+        description: 'Desempeño de cargos de gobierno universitario (TC: según cargo, TP: 0h)',
+        maxHours: 20,
         requiredFields: ['cargo'],
       },
       ACTIVIDADES_DE_ADMINISTRACION: {
-        description: 'Desempeño de cargos de administración académica (máximo 2 horas semanales)',
-        maxHours: 2,
+        description: 'Desempeño de cargos de administración académica (TC: según cargo, TP: 0h)',
+        maxHours: 20,
         requiredFields: ['cargo'],
       },
       ASESORIA_DE_TESIS: {
@@ -304,13 +309,13 @@ export class CargaNoLectivaService {
         requiredFields: ['resolucion'],
       },
       RESPONSABILIDAD_SOCIAL_UNIVERSITARIA: {
-        description: 'Proyectos de RSU o proyección social (máximo 3 horas semanales)',
+        description: 'Proyectos de RSU o proyección social (máximo 2h, o 3h con excepción de acreditación para TC)',
         maxHours: 3,
-        requiredFields: [],
+        requiredFields: ['proyecto'],
       },
       COMITES_TECNICOS_Y_COMISIONES: {
-        description: 'Trabajo en comités técnicos o comisiones oficiales (máximo 2 horas semanales)',
-        maxHours: 2,
+        description: 'Trabajo en comités técnicos o comisiones oficiales (TC: max 2h a 10h según comisión, TP: 0h)',
+        maxHours: 10,
         requiredFields: ['resolucion'],
       },
     };
@@ -319,52 +324,90 @@ export class CargaNoLectivaService {
   /**
    * Valida un item de actividad no lectiva según el reglamento
    */
-  private validarActividad(item: DeclaracionItemInput, horasLectivas: number) {
+  private validarActividad(item: DeclaracionItemInput, horasLectivas: number, docente: any) {
     const { tipoActividad, horasSemanales, metadata } = item;
 
     if (horasSemanales <= 0) {
       throw new AppError(`Las horas semanales para la actividad ${tipoActividad} deben ser mayores a 0`, 400, 'INVALID_HOURS');
     }
 
+    const esTiempoCompleto = docente.dedicacion === DedicacionDocente.TIEMPO_COMPLETO_40H || docente.dedicacion === DedicacionDocente.DEDICACION_EXCLUSIVA;
+    const esTiempoParcial = docente.dedicacion === DedicacionDocente.TIEMPO_PARCIAL_20H;
+
     switch (tipoActividad) {
       case TipoActividadNoLectiva.PREPARACION_Y_EVALUACION: {
-        const maxPermitido = Math.floor(horasLectivas * 0.5);
-        if (horasSemanales > maxPermitido) {
-          throw new AppError(
-            `Las horas de Preparación y Evaluación (${horasSemanales}h) exceden el límite del 50% de su carga lectiva (${maxPermitido}h para una carga lectiva de ${horasLectivas}h).`,
-            400,
-            'PREPARACION_EXCEDE_LIMITE'
-          );
+        if (esTiempoCompleto) {
+          const maxPermitido = Math.floor(horasLectivas * 0.5);
+          if (horasSemanales > maxPermitido) {
+            throw new AppError(
+              `Las horas de Preparación y Evaluación (${horasSemanales}h) exceden el límite del 50% de su carga lectiva (${maxPermitido}h para una carga lectiva de ${horasLectivas}h).`,
+              400,
+              'PREPARACION_EXCEDE_LIMITE'
+            );
+          }
+        } else if (esTiempoParcial) {
+          if (horasSemanales !== 4) {
+            throw new AppError(
+              `Para docentes a Tiempo Parcial (TP1), las horas de Preparación y Evaluación deben ser exactamente 4 horas (valor actual: ${horasSemanales}h).`,
+              400,
+              'PREPARACION_EXCEDE_LIMITE'
+            );
+          }
         }
         break;
       }
       case TipoActividadNoLectiva.CONSEJERIA: {
-        if (horasSemanales > 3) {
-          throw new AppError('La actividad de Consejería permite un máximo de 3 horas semanales.', 400, 'CONSEJERIA_MAX_HORAS');
+        const excepcionAcreditacion = metadata?.excepcionAcreditacion === true;
+        let maxPermitido = 2;
+        if (esTiempoCompleto && excepcionAcreditacion) {
+          maxPermitido = 3;
+        }
+
+        if (horasSemanales > maxPermitido) {
+          throw new AppError(`La actividad de Consejería permite un máximo de ${maxPermitido} horas semanales${maxPermitido === 3 ? ' (con excepción por acreditación)' : ''}.`, 400, 'CONSEJERIA_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.INVESTIGACION: {
-        if (horasSemanales > 6) {
-          throw new AppError('La actividad de Investigación permite un máximo de 6 horas semanales.', 400, 'INVESTIGACION_MAX_HORAS');
+        const maxPermitido = esTiempoCompleto ? 6 : 3;
+        if (horasSemanales > maxPermitido) {
+          throw new AppError(`La actividad de Investigación permite un máximo de ${maxPermitido} horas semanales para su dedicación.`, 400, 'INVESTIGACION_MAX_HORAS');
         }
         break;
       }
       case TipoActividadNoLectiva.CAPACITACION: {
+        if (esTiempoParcial && horasSemanales > 0) {
+          throw new AppError('Los docentes a Tiempo Parcial no pueden registrar horas en Formación Académica y Capacitación (0 horas).', 400, 'CAPACITACION_MAX_HORAS');
+        }
         if (horasSemanales > 2) {
           throw new AppError('La actividad de Capacitación permite un máximo de 2 horas semanales.', 400, 'CAPACITACION_MAX_HORAS');
         }
         break;
       }
-      case TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO: {
-        if (horasSemanales > 2) {
-          throw new AppError('La actividad de Gobierno permite un máximo de 2 horas semanales.', 400, 'GOBIERNO_MAX_HORAS');
-        }
-        break;
-      }
+      case TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO:
       case TipoActividadNoLectiva.ACTIVIDADES_DE_ADMINISTRACION: {
-        if (horasSemanales > 2) {
-          throw new AppError('La actividad de Administración permite un máximo de 2 horas semanales.', 400, 'ADMINISTRACION_MAX_HORAS');
+        if (esTiempoParcial) {
+          throw new AppError('Los docentes a Tiempo Parcial no pueden registrar horas en Actividades de Gobierno o Administración (0 horas).', 400, 'GOBIERNO_MAX_HORAS');
+        }
+
+        const activeCargo = docente.cargos?.find((c: any) => c.activo);
+        let maxPermitido = 2;
+        
+        if (activeCargo) {
+          const tipoCargo = activeCargo.tipoCargo;
+          if (tipoCargo === 'DECANO' || tipoCargo === 'DIRECTOR_DE_POSTGRADO') {
+            maxPermitido = 20;
+          } else if (tipoCargo === 'DIRECTOR_DE_ESCUELA' || tipoCargo === 'JEFE_DE_DEPARTAMENTO') {
+            maxPermitido = 10;
+          }
+        }
+
+        if (metadata?.esMiembroConsejoFacultad) {
+          maxPermitido = Math.max(maxPermitido, 3);
+        }
+
+        if (horasSemanales > maxPermitido) {
+          throw new AppError(`La actividad de ${tipoActividad === TipoActividadNoLectiva.ACTIVIDADES_DE_GOBIERNO ? 'Gobierno' : 'Administración'} permite un máximo de ${maxPermitido} horas semanales según su cargo.`, 400, 'ADMINISTRACION_MAX_HORAS');
         }
         break;
       }
@@ -372,17 +415,41 @@ export class CargaNoLectivaService {
         if (horasSemanales > 2) {
           throw new AppError('La actividad de Asesoría de Tesis permite un máximo de 2 horas semanales.', 400, 'ASESORIA_MAX_HORAS');
         }
+        if (!metadata?.resolucion) {
+          throw new AppError('Se requiere ingresar el Número de Resolución o Constancia oficial para la Asesoría de Tesis.', 400, 'FALTA_RESOLUCION');
+        }
         break;
       }
       case TipoActividadNoLectiva.RESPONSABILIDAD_SOCIAL_UNIVERSITARIA: {
-        if (horasSemanales > 3) {
-          throw new AppError('La actividad de Responsabilidad Social Universitaria permite un máximo de 3 horas semanales.', 400, 'RSU_MAX_HORAS');
+        const excepcionAcreditacion = metadata?.excepcionAcreditacion === true;
+        let maxPermitido = 2;
+        if (esTiempoCompleto && excepcionAcreditacion) {
+          maxPermitido = 3;
+        }
+
+        if (horasSemanales > maxPermitido) {
+          throw new AppError(`La actividad de Responsabilidad Social Universitaria permite un máximo de ${maxPermitido} horas semanales${maxPermitido === 3 ? ' (con excepción por acreditación)' : ''}.`, 400, 'RSU_MAX_HORAS');
+        }
+        if (!metadata?.proyecto) {
+          throw new AppError('Se requiere ingresar obligatoriamente el código/nombre del proyecto de RSU validado.', 400, 'FALTA_PROYECTO_RSU');
         }
         break;
       }
       case TipoActividadNoLectiva.COMITES_TECNICOS_Y_COMISIONES: {
-        if (horasSemanales > 2) {
-          throw new AppError('La actividad en Comités o Comisiones permite un máximo de 2 horas semanales.', 400, 'COMITES_MAX_HORAS');
+        if (esTiempoParcial) {
+          throw new AppError('Los docentes a Tiempo Parcial no pueden registrar horas en Comités Técnicos o Comisiones (0 horas).', 400, 'COMITES_MAX_HORAS');
+        }
+        
+        let maxPermitido = 2;
+        
+        if (metadata?.esPresidenteCalidad) {
+          maxPermitido = 10;
+        } else if (metadata?.esComisionGeneral) {
+          maxPermitido = 6;
+        }
+
+        if (horasSemanales > maxPermitido) {
+          throw new AppError(`La actividad en Comités o Comisiones permite un máximo de ${maxPermitido} horas semanales según su designación.`, 400, 'COMITES_MAX_HORAS');
         }
         break;
       }
