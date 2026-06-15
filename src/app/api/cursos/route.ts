@@ -13,7 +13,8 @@ const cursoSchema = z.object({
   horasPractica: z.number().int().min(0),
   horasLaboratorio: z.number().int().min(0),
   ciclo: z.number().int().min(1).max(10),
-  planEstudios: z.string().optional(),
+  tipoCurso: z.string().optional(),
+  departamentoId: z.number().int().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || undefined;
     const ciclo = parseInt(searchParams.get('ciclo') || '0');
+    const departamentoId = parseInt(searchParams.get('departamentoId') || '0');
+    const planEstudioId = searchParams.get('planEstudioId') || undefined;
     const activo = searchParams.get('activo') === 'true' ? true : 
                    searchParams.get('activo') === 'false' ? false : undefined;
 
@@ -31,6 +34,8 @@ export async function GET(request: NextRequest) {
       limit,
       search,
       ciclo: ciclo > 0 ? ciclo : undefined,
+      departamentoId: departamentoId > 0 ? departamentoId : undefined,
+      planEstudioId,
       activo,
     });
 

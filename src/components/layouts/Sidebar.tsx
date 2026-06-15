@@ -84,6 +84,14 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
       ],
     },
     {
+      icono: BookOpen,
+      label: 'Plan Estudios',
+      href: '/dashboard/plan-estudios',
+      children: [
+        { icono: BookOpen, label: 'Ver Plan de Estudios', href: '/dashboard/plan-estudios' },
+      ],
+    },
+    {
       icono: Clock,
       label: 'Ventanas',
       href: '/dashboard/horarios/ventanas',

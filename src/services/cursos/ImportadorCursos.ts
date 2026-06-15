@@ -82,7 +82,7 @@ export class ImportadorCursos {
     const horasPractica = parseInt(fila.horasPractica) || 0;
     const horasLaboratorio = parseInt(fila.horasLaboratorio) || 0;
     const ciclo = parseInt(fila.ciclo);
-    const planEstudios = fila.planEstudios?.trim();
+    const tipoCurso = fila.tipoCurso?.trim() || 'OB';
 
     if (!codigo || !nombre || isNaN(creditos) || isNaN(ciclo)) {
       throw new Error('Faltan datos requeridos (código, nombre, créditos, ciclo)');
@@ -99,7 +99,7 @@ export class ImportadorCursos {
           horasPractica,
           horasLaboratorio,
           ciclo,
-          planEstudios,
+          tipoCurso,
         });
         resultado.exitosos++;
         return;
@@ -115,7 +115,7 @@ export class ImportadorCursos {
       horasPractica,
       horasLaboratorio,
       ciclo,
-      planEstudios,
+      tipoCurso,
     });
 
     resultado.exitosos++;

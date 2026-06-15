@@ -7,6 +7,8 @@ export interface CursoFiltros {
   search?: string;
   ciclo?: number;
   activo?: boolean;
+  departamentoId?: number;
+  planEstudioId?: string;
   page?: number;
   limit?: number;
 }
@@ -19,7 +21,8 @@ export interface CursoCreateInput {
   horasPractica: number;
   horasLaboratorio: number;
   ciclo: number;
-  planEstudios?: string;
+  tipoCurso?: string;
+  departamentoId?: number;
 }
 
 export interface CursoUpdateInput extends Partial<CursoCreateInput> {
@@ -49,11 +52,20 @@ export class ServicioCurso {
 
     if (ciclo) where.ciclo = ciclo;
     if (activo !== undefined) where.activo = activo;
+    if (filtros.departamentoId) where.departamentoId = filtros.departamentoId;
+    if (filtros.planEstudioId) {
+      where.planesEstudio = {
+        some: { planEstudioId: filtros.planEstudioId }
+      };
+    }
 
     const [cursos, total] = await Promise.all([
       prisma.curso.findMany({
         where,
         include: {
+          departamento: {
+            select: { id: true, nombre: true }
+          },
           grupos: {
             select: {
               id: true,

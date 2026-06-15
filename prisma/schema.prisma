@@ -260,6 +260,7 @@ model DepartamentoAcademico {
 
   facultad         Facultad @relation(fields: [facultadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   docentes         Docente[]
+  cursos           Curso[]
 
   @@unique([nombre, facultadId])
   @@map("departamentos_academicos")
@@ -397,9 +398,12 @@ model Curso {
   horasPractica   Int
   horasLaboratorio Int    @default(0)
   ciclo           Int
-  planEstudios    String?
+  tipoCurso       String?
+  departamentoId  Int?      @map("id_departamento")
   activo          Boolean   @default(true)
   
+  departamento    DepartamentoAcademico? @relation(fields: [departamentoId], references: [id])
+  planesEstudio   PlanEstudioCurso[]
   grupos          Grupo[]
   cursosDocente   CursoDocente[]
   horarios        Horario[]
@@ -412,6 +416,37 @@ model Curso {
   @@index([ciclo])
   @@index([activo])
   @@map("cursos")
+}
+
+model PlanEstudio {
+  id        String   @id @default(uuid())
+  nombre    String
+  anio      Int
+  activo    Boolean  @default(true)
+  
+  cursos    PlanEstudioCurso[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("planes_estudio")
+}
+
+model PlanEstudioCurso {
+  id             String      @id @default(uuid())
+  planEstudioId  String
+  cursoId        String
+  ciclo          Int?
+  tipoCurso      String?
+  
+  planEstudio    PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  curso          Curso       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([planEstudioId, cursoId])
+  @@map("plan_estudio_cursos")
 }
 
 model Grupo {
