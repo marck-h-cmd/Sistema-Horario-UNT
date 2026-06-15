@@ -19,15 +19,15 @@ import {
 } from '@/components/ui/dialog';
 
 const ACTIVIDADES_ORDENADAS = [
-  { id: 'PREPARACION_Y_EVALUACION', num: 2, name: 'PREPARACIÓN Y EVALUACIÓN', desc: 'Exactamente el 50% (sin redondear) del Trabajo Lectivo', reqMeta: [] as string[], getMax: (lectivas: number) => Math.floor(lectivas * 0.5), isExact: true },
-  { id: 'CONSEJERIA', num: 3, name: 'CONSEJERÍA Y TUTORÍA', desc: 'Señalar número de alumnos y el ciclo académico con los que se desarrolla. (Máx. 3 horas)', reqMeta: ['numAlumnos', 'ciclo'], getMax: () => 3 },
-  { id: 'INVESTIGACION', num: 4, name: 'INVESTIGACIÓN', desc: 'Consignar el nro de inscripción, código, nombre y duración del proyecto. (Máx. 6 horas)', reqMeta: ['codigoProyecto'], getMax: () => 6 },
-  { id: 'CAPACITACION', num: 5, name: 'CAPACITACIÓN', desc: 'Señale lo referente a este rubro en el marco de los planes de cada Facultad (Máx. 2 horas)', reqMeta: [] as string[], getMax: () => 2 },
-  { id: 'ACTIVIDADES_DE_GOBIERNO', num: 6, name: 'ACTIVIDADES DE GOBIERNO', desc: 'Se desempeña cargo indique (Máx. 2 horas)', reqMeta: ['cargo'], getMax: () => 2 },
-  { id: 'ACTIVIDADES_DE_ADMINISTRACION', num: 7, name: 'ACTIVIDADES DE ADMINISTRACIÓN', desc: 'Si desempeña cargo indique (Máx. 2 horas)', reqMeta: ['cargo'], getMax: () => 2 },
-  { id: 'ASESORIA_DE_TESIS', num: 8, name: 'ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL', desc: 'Indicar el número de Resolución Decanal. (Máx. 2 horas)', reqMeta: ['resolucion'], getMax: () => 2 },
-  { id: 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA', num: 9, name: 'RESPONSABILIDAD SOCIAL UNIVERSITARIA', desc: 'Señalar actividad, proyecto o programa a ejecutarse. (Máx. 3 horas)', reqMeta: [] as string[], getMax: () => 3 },
-  { id: 'COMITES_TECNICOS_Y_COMISIONES', num: 10, name: 'COMITÉS TÉCNICOS Y COMISIONES', desc: 'Consignar el número de Resolución autoritativa. (Máx. 2 horas)', reqMeta: ['resolucion'], getMax: () => 2 },
+  { id: 'PREPARACION_Y_EVALUACION', num: 2, name: 'PREPARACIÓN Y EVALUACIÓN', desc: 'TC/DE: Máx. 50% de la carga lectiva. TP1 (20h): Exactamente 4h (requiere al menos 12h lectivas).' },
+  { id: 'CONSEJERIA', num: 3, name: 'CONSEJERÍA Y TUTORÍA', desc: 'Máx. 2h (TC puede llegar a 3h solo con excepción por acreditación).' },
+  { id: 'INVESTIGACION', num: 4, name: 'INVESTIGACIÓN', desc: 'TC/DE: Máx. 6h. TP1 (20h): Máx. 3h. Requiere proyecto VRI (alerta si falta).' },
+  { id: 'CAPACITACION', num: 5, name: 'FORMACIÓN ACADÉMICA Y CAPACITACIÓN', desc: 'TC/DE: Máx. 2h. TP1 (20h): 0h.' },
+  { id: 'ACTIVIDADES_DE_GOBIERNO', num: 6, name: 'ACTIVIDADES DE GOBIERNO / AUTORIDAD', desc: 'Solo TC/DE. Tope depende del cargo administrativo activo.' },
+  { id: 'ACTIVIDADES_DE_ADMINISTRACION', num: 7, name: 'ACTIVIDADES ADMINISTRATIVAS', desc: 'Solo TC/DE. Tope depende del cargo administrativo activo.' },
+  { id: 'ASESORIA_DE_TESIS', num: 8, name: 'ASESORÍA DE TESIS Y EXÁMENES PROFESIONALES', desc: 'Máx. 2h. Requiere N° de Resolución o Constancia.' },
+  { id: 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA', num: 9, name: 'RESPONSABILIDAD SOCIAL UNIVERSITARIA (RSU)', desc: 'Máx. 2h (TC puede llegar a 3h solo con excepción por acreditación). Requiere proyecto RSU.' },
+  { id: 'COMITES_TECNICOS_Y_COMISIONES', num: 10, name: 'COMITÉS TÉCNICOS Y COMISIONES ESPECIALES', desc: 'Solo TC/DE. Presidentes de Calidad/COTECU o Comisiones designadas. Requiere resolución.' },
 ];
 
 interface Periodo {
@@ -83,6 +83,61 @@ export default function CargaAcademicaAdminPage() {
   const [selectedCursoId, setSelectedCursoId] = useState<string>('');
   const [selectedGrupoId, setSelectedGrupoId] = useState<string>('');
   const [selectedComponentes, setSelectedComponentes] = useState<TipoComponente[]>([]);
+
+  const esTiempoCompleto = dataLectiva?.docente?.dedicacion === 'TIEMPO_COMPLETO_40H' || dataLectiva?.docente?.dedicacion === 'DEDICACION_EXCLUSIVA';
+  const esTiempoParcial = dataLectiva?.docente?.dedicacion === 'TIEMPO_PARCIAL_20H';
+  const cargoActivo = Array.isArray(dataLectiva?.docente?.cargosActivos) ? dataLectiva.docente.cargosActivos.find((c: any) => c.activo !== false) : undefined;
+  const tipoCargoActivo = cargoActivo?.tipoCargo as string | undefined;
+
+  const obtenerRestriccionHoras = (actId: string, metadata: any) => {
+    const lectivas = dataLectiva?.totalHorasLectivas ?? 0;
+
+    if (esTiempoParcial) {
+      if (actId === 'PREPARACION_Y_EVALUACION') return { max: 4, exact: 4 };
+      if (actId === 'CONSEJERIA') return { max: 2 };
+      if (actId === 'INVESTIGACION') return { max: 3 };
+      if (actId === 'ASESORIA_DE_TESIS') return { max: 2 };
+      if (actId === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA') return { max: 2 };
+      return { max: 0 };
+    }
+
+    if (actId === 'PREPARACION_Y_EVALUACION') return { max: Math.floor(lectivas * 0.5) };
+    if (actId === 'CONSEJERIA') return { max: metadata?.excepcionAcreditacion === true && esTiempoCompleto ? 3 : 2 };
+    if (actId === 'INVESTIGACION') return { max: esTiempoCompleto ? 6 : 3 };
+    if (actId === 'CAPACITACION') return { max: esTiempoCompleto ? 2 : 0 };
+    if (actId === 'ASESORIA_DE_TESIS') return { max: 2 };
+    if (actId === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA') return { max: metadata?.excepcionAcreditacion === true && esTiempoCompleto ? 3 : 2 };
+    if (actId === 'COMITES_TECNICOS_Y_COMISIONES') {
+      if (metadata?.esPresidenteCalidad) return { max: 10 };
+      if (metadata?.esComisionGeneral) return { max: 6 };
+      return { max: 0 };
+    }
+    if (actId === 'ACTIVIDADES_DE_GOBIERNO' || actId === 'ACTIVIDADES_DE_ADMINISTRACION') {
+      let max = 2;
+      if (tipoCargoActivo === 'DECANO' || tipoCargoActivo === 'DIRECTOR_DE_POSTGRADO') max = 20;
+      else if (tipoCargoActivo === 'DIRECTOR_DE_ESCUELA' || tipoCargoActivo === 'JEFE_DE_DEPARTAMENTO') max = 10;
+      if (metadata?.esMiembroConsejoFacultad) max = Math.max(max, 3);
+      return { max };
+    }
+    return { max: 0 };
+  };
+
+  const validarHorasActividad = (actId: string, rawHoras: any, metadata: any) => {
+    const horas = typeof rawHoras === 'string' && rawHoras === '' ? 0 : Number(rawHoras) || 0;
+    if (horas <= 0) return { ok: true as const };
+
+    const { max, exact } = obtenerRestriccionHoras(actId, metadata);
+    if (actId === 'PREPARACION_Y_EVALUACION' && esTiempoParcial) {
+      const lectivas = dataLectiva?.totalHorasLectivas ?? 0;
+      if (lectivas < 12) return { ok: false as const, mensaje: 'Para TP1, se requiere al menos 12 horas lectivas para declarar Preparación y Evaluación.' };
+      if (exact !== undefined && horas !== exact) return { ok: false as const, mensaje: `Para TP1, Preparación y Evaluación debe ser exactamente ${exact} horas.` };
+    }
+
+    if (exact !== undefined && horas !== exact) return { ok: false as const, mensaje: `La actividad debe ser exactamente ${exact} horas.` };
+    if (max === 0) return { ok: false as const, mensaje: 'Esta actividad no aplica para la dedicación actual.' };
+    if (horas > max) return { ok: false as const, mensaje: `El máximo permitido es ${max} horas.` };
+    return { ok: true as const };
+  };
 
   // 1. Cargar Períodos
   useEffect(() => {
@@ -235,17 +290,13 @@ export default function CargaAcademicaAdminPage() {
 
   const handleFieldChange = (actId: string, field: string, value: any) => {
     if (field === 'horas') {
-      if (value === '') {
+      const cleaned = String(value ?? '').replace(/[^\d]/g, '');
+      if (cleaned === '') {
         setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], horas: '' as any } }));
         return;
       }
-      const numValue = Number(value);
+      const numValue = Number(cleaned);
       if (!Number.isFinite(numValue)) return;
-      const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
-      if (actDef && actDef.getMax) {
-        const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
-        if (numValue > max) toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
-      }
       setFormData(prev => ({ ...prev, [actId]: { ...prev[actId], [field]: Math.max(0, numValue) } }));
       return;
     }
@@ -253,18 +304,9 @@ export default function CargaAcademicaAdminPage() {
   };
 
   const handleHorasBlur = (actId: string) => {
-    const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === actId);
-    if (!actDef || !actDef.getMax) return;
-    const max = actDef.getMax(dataLectiva?.totalHorasLectivas || 0);
     setFormData(prev => {
-      const rawCurrent = prev[actId]?.horas;
-      const current = typeof rawCurrent === 'string' && rawCurrent === '' ? 0 : Number(rawCurrent) || 0;
-      if (current > max) {
-        if (actDef.isExact) toast.error(`${actDef.name} debe ser exactamente ${max} horas.`);
-        else toast.error(`El máximo permitido para ${actDef.name} es ${max} horas.`);
-      } else if (actDef.isExact && current !== max && current !== 0) {
-        toast.error(`${actDef.name} debe ser exactamente ${max} horas.`);
-      }
+      const validacion = validarHorasActividad(actId, prev[actId]?.horas, prev[actId]?.metadata);
+      if (!validacion.ok) toast.error(validacion.mensaje);
       return prev;
     });
   };
@@ -283,18 +325,51 @@ export default function CargaAcademicaAdminPage() {
   const handleGuardarNoLectiva = async () => {
     if (!dataLectiva) return;
     
-    // Validación de máximos por actividad
     for (const [id, data] of Object.entries(formData)) {
-      if (data.horas > 0) {
-        const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === id);
-        if (actDef && actDef.getMax) {
-          const max = actDef.getMax(dataLectiva.totalHorasLectivas);
-          if (data.horas > max) {
-            toast.error(`La actividad "${actDef.name}" excede el máximo permitido de ${max} horas.`);
+      const actDef = ACTIVIDADES_ORDENADAS.find(a => a.id === id);
+      const nombre = actDef?.name ?? id;
+      const horas = typeof data.horas === 'string' && data.horas === '' ? 0 : Number(data.horas) || 0;
+
+      const validacion = validarHorasActividad(id, data.horas, data.metadata);
+      if (!validacion.ok) {
+        toast.error(`${nombre}: ${validacion.mensaje}`);
+        return;
+      }
+
+      if (horas > 0) {
+        if (id === 'ASESORIA_DE_TESIS') {
+          const resolucion = String(data.metadata?.resolucion ?? '').trim();
+          if (!resolucion) {
+            toast.error(`${nombre}: Ingrese el Número de Resolución o Constancia.`);
             return;
           }
-          if (actDef.isExact && data.horas !== max) {
-            toast.error(`La actividad "${actDef.name}" debe ser exactamente ${max} horas.`);
+        }
+
+        if (id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA') {
+          const proyecto = String(data.metadata?.proyecto ?? '').trim();
+          if (!proyecto) {
+            toast.error(`${nombre}: Ingrese el código/nombre del proyecto RSU.`);
+            return;
+          }
+        }
+
+        if (id === 'ACTIVIDADES_DE_GOBIERNO' || id === 'ACTIVIDADES_DE_ADMINISTRACION') {
+          const cargo = String(data.metadata?.cargo ?? '').trim();
+          if (!cargo) {
+            toast.error(`${nombre}: Ingrese el cargo / sustento.`);
+            return;
+          }
+        }
+
+        if (id === 'COMITES_TECNICOS_Y_COMISIONES') {
+          const rol = data.metadata?.esPresidenteCalidad ? 'PRESIDENTE' : data.metadata?.esComisionGeneral ? 'COMISION' : '';
+          if (!rol) {
+            toast.error(`${nombre}: Seleccione el tipo de comisión antes de asignar horas.`);
+            return;
+          }
+          const resolucion = String(data.metadata?.resolucion ?? '').trim();
+          if (!resolucion) {
+            toast.error(`${nombre}: Ingrese el número de Resolución.`);
             return;
           }
         }
@@ -307,16 +382,7 @@ export default function CargaAcademicaAdminPage() {
         tipoActividad: id as TipoActividadNoLectiva,
         horasSemanales: Number(data.horas),
         descripcion: data.descripcion,
-        metadata: (() => {
-          const def = ACTIVIDADES_ORDENADAS.find(a => a.id === id);
-          const meta = { ...(data.metadata || {}) };
-          if (def?.reqMeta?.includes('numAlumnos') && (meta.numAlumnos === undefined || meta.numAlumnos === null || meta.numAlumnos === 0)) meta.numAlumnos = 1;
-          if (def?.reqMeta?.includes('ciclo') && (meta.ciclo === undefined || meta.ciclo === null || meta.ciclo === 0)) meta.ciclo = 1;
-          if (def?.reqMeta?.includes('codigoProyecto') && (!meta.codigoProyecto || String(meta.codigoProyecto).trim() === '')) meta.codigoProyecto = 'N/A';
-          if (def?.reqMeta?.includes('resolucion') && (!meta.resolucion || String(meta.resolucion).trim() === '')) meta.resolucion = 'N/A';
-          if (def?.reqMeta?.includes('cargo') && (!meta.cargo || String(meta.cargo).trim() === '')) meta.cargo = 'N/A';
-          return meta;
-        })()
+        metadata: data.metadata || {},
       }));
 
     setGuardando(true);
@@ -588,6 +654,10 @@ export default function CargaAcademicaAdminPage() {
                   {ACTIVIDADES_ORDENADAS.map((act) => {
                     const data = formData[act.id];
                     if (!data) return null;
+                    const horasNum = typeof data.horas === 'string' && data.horas === '' ? 0 : Number(data.horas) || 0;
+                    const restr = obtenerRestriccionHoras(act.id, data.metadata);
+                    const maxLabel = restr.exact !== undefined ? `Exacto: ${restr.exact}h` : `Máx: ${restr.max}h`;
+                    const inputDeshabilitado = !isEditing || restr.max === 0;
                     return (
                       <div key={act.id} className="border-b border-slate-100 dark:border-slate-800 pb-6 last:border-0 last:pb-0">
                         <div className="flex flex-col lg:flex-row lg:items-start gap-4">
@@ -596,8 +666,8 @@ export default function CargaAcademicaAdminPage() {
                             <p className="text-xs text-slate-500 dark:text-slate-400">{act.desc}</p>
                           </div>
                           <div className="flex-[1.3] flex gap-4 items-start justify-end">
-                            {act.id !== 'PREPARACION_Y_EVALUACION' && (
-                              <div className="flex-1 relative">
+                            <div className="flex-1 space-y-2">
+                              {act.id !== 'PREPARACION_Y_EVALUACION' && (
                                 <textarea 
                                   disabled={!isEditing}
                                   className="w-full min-h-[72px] resize-y bg-yellow-50/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 disabled:opacity-60" 
@@ -605,19 +675,146 @@ export default function CargaAcademicaAdminPage() {
                                   value={data.descripcion} 
                                   onChange={(e) => handleFieldChange(act.id, 'descripcion', e.target.value)} 
                                 />
+                              )}
+
+                              {(act.id === 'CONSEJERIA' || act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA') && esTiempoCompleto && (
+                                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 select-none">
+                                  <input
+                                    type="checkbox"
+                                    disabled={!isEditing}
+                                    checked={data.metadata?.excepcionAcreditacion === true}
+                                    onChange={(e) => handleMetadataChange(act.id, 'excepcionAcreditacion', e.target.checked)}
+                                  />
+                                  Excepción por acreditación (permite hasta 3h)
+                                </label>
+                              )}
+
+                              {(act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
+                                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 select-none">
+                                  <input
+                                    type="checkbox"
+                                    disabled={!isEditing}
+                                    checked={data.metadata?.esMiembroConsejoFacultad === true}
+                                    onChange={(e) => handleMetadataChange(act.id, 'esMiembroConsejoFacultad', e.target.checked)}
+                                  />
+                                  Miembro del Consejo de Facultad (máx. 3h)
+                                </label>
+                              )}
+
+                              {act.id === 'COMITES_TECNICOS_Y_COMISIONES' && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Tipo de comisión</label>
+                                    <select
+                                      disabled={!isEditing}
+                                      value={data.metadata?.esPresidenteCalidad ? 'PRESIDENTE' : data.metadata?.esComisionGeneral ? 'COMISION' : ''}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        handleMetadataChange(act.id, 'esPresidenteCalidad', v === 'PRESIDENTE');
+                                        handleMetadataChange(act.id, 'esComisionGeneral', v === 'COMISION');
+                                      }}
+                                      className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                    >
+                                      <option value="">Seleccione…</option>
+                                      <option value="PRESIDENTE">Presidente Calidad/COTECU</option>
+                                      <option value="COMISION">Comisión Especial</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">N° Resolución</label>
+                                    <input
+                                      disabled={!isEditing}
+                                      type="text"
+                                      className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                      value={data.metadata?.resolucion || ''}
+                                      onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {act.id === 'INVESTIGACION' && (
+                                <div>
+                                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Código / Proyecto (VRI)</label>
+                                  <input
+                                    disabled={!isEditing}
+                                    type="text"
+                                    className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                    value={data.metadata?.codigoProyecto || ''}
+                                    onChange={(e) => handleMetadataChange(act.id, 'codigoProyecto', e.target.value)}
+                                  />
+                                  {horasNum > 0 && !String(data.metadata?.codigoProyecto || '').trim() && (
+                                    <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+                                      Falta el código/proyecto (se recomienda registrarlo).
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {(act.id === 'ASESORIA_DE_TESIS' || act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA' || act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {act.id === 'ASESORIA_DE_TESIS' && (
+                                    <div className="sm:col-span-2">
+                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">N° Resolución / Constancia</label>
+                                      <input
+                                        disabled={!isEditing}
+                                        type="text"
+                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        value={data.metadata?.resolucion || ''}
+                                        onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)}
+                                      />
+                                    </div>
+                                  )}
+                                  {act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA' && (
+                                    <div className="sm:col-span-2">
+                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Proyecto RSU (código/nombre)</label>
+                                      <input
+                                        disabled={!isEditing}
+                                        type="text"
+                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        value={data.metadata?.proyecto || ''}
+                                        onChange={(e) => handleMetadataChange(act.id, 'proyecto', e.target.value)}
+                                      />
+                                    </div>
+                                  )}
+                                  {(act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
+                                    <div className="sm:col-span-2">
+                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Cargo / sustento</label>
+                                      <input
+                                        disabled={!isEditing}
+                                        type="text"
+                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        value={data.metadata?.cargo || ''}
+                                        onChange={(e) => handleMetadataChange(act.id, 'cargo', e.target.value)}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {restr.max === 0 && (
+                                <div className="text-[11px] text-red-600 dark:text-red-400">
+                                  No aplica para la dedicación actual.
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-32 flex-shrink-0">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Horas:</label>
+                                <input 
+                                  disabled={inputDeshabilitado}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-3 text-center font-bold text-slate-800 dark:text-slate-100 disabled:opacity-60" 
+                                  value={data.horas} 
+                                  onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)} 
+                                  onBlur={() => handleHorasBlur(act.id)} 
+                                />
                               </div>
-                            )}
-                            <div className="w-32 flex-shrink-0 flex items-center gap-2">
-                              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Horas:</label>
-                              <input 
-                                disabled={!isEditing}
-                                type="number" 
-                                min="0" 
-                                className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-3 text-center font-bold text-slate-800 dark:text-slate-100 disabled:opacity-60" 
-                                value={data.horas} 
-                                onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)} 
-                                onBlur={() => handleHorasBlur(act.id)} 
-                              />
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 text-right">
+                                {maxLabel}
+                              </div>
                             </div>
                           </div>
                         </div>

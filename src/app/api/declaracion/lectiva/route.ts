@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
       where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
       include: {
         usuario: { select: { nombre: true, apellidos: true } },
+        cargos: {
+          where: { activo: true },
+          select: { tipoCargo: true, activo: true, fechaInicio: true, fechaFin: true, resolucion: true },
+        },
         departamento: {
           include: {
             facultad: true,
@@ -105,6 +109,7 @@ export async function GET(request: NextRequest) {
         categoria: docente.categoria,
         dedicacion: docente.dedicacion,
         horasDedicacion,
+        cargosActivos: docente.cargos ?? [],
         departamento: docente.departamento ? {
           nombre: docente.departamento.nombre,
           facultad: docente.departamento.facultad ? {
