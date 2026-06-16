@@ -397,6 +397,8 @@ async function main() {
   await prisma.incumplimiento.deleteMany();
   await prisma.comisionServicio.deleteMany();
   await prisma.becaDocente.deleteMany();
+  await prisma.planEstudioCurso.deleteMany();
+  await prisma.planEstudio.deleteMany();
   await prisma.cargoAdministrativo.deleteMany();
   await prisma.disponibilidadDocente.deleteMany();
   await prisma.restriccionAmbiente.deleteMany();
@@ -671,6 +673,1008 @@ async function main() {
   }
 
   console.log(`✅ ${cursos.length} cursos dinámicos creados`);
+
+    // ==================== CREACION DE PLAN DE ESTUDIOS Y CURSOS ADICIONALES ====================
+  const planEstudio = await prisma.planEstudio.create({
+    data: {
+      nombre: 'PLAN DE ESTUDIOS DE INGENIERIA DE SISTEMAS 2018',
+      anio: 2018,
+      activo: true,
+    }
+  });
+
+  const parsedCoursesData = [
+  {
+    "codigo": "1939",
+    "ciclo": 1,
+    "tipoCurso": "S",
+    "nombre": "INTRODUCCION A LA INGENIERIA DE SISTEMAS",
+    "t": 3,
+    "p": 2,
+    "l": 0,
+    "c": 2,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2347",
+    "ciclo": 1,
+    "tipoCurso": "S",
+    "nombre": "INTRODUCCION A LA PROGRAMACION",
+    "t": 1,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "1854",
+    "ciclo": 1,
+    "tipoCurso": "OB",
+    "nombre": "DESARROLLO PERSONAL",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "CIENCIAS PSICOLOGICAS FILOSOFIA Y ARTE"
+  },
+  {
+    "codigo": "1855",
+    "ciclo": 1,
+    "tipoCurso": "OB",
+    "nombre": "DESARROLLO DEL PENSAMIENTO LOGICO MATEMATICO",
+    "t": 1,
+    "p": 4,
+    "l": 0,
+    "c": 3,
+    "departamento": "MATEMATICAS"
+  },
+  {
+    "codigo": "1857",
+    "ciclo": 1,
+    "tipoCurso": "OB",
+    "nombre": "LECTURA CRITICA Y REDACCION DE TEXTOS ACADEMICOS",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "LENGUA NACIONAL Y LITERATURA"
+  },
+  {
+    "codigo": "1863",
+    "ciclo": 1,
+    "tipoCurso": "OB",
+    "nombre": "INTRODUCCION AL ANALISIS MATEMATICO",
+    "t": 2,
+    "p": 4,
+    "l": 0,
+    "c": 4,
+    "departamento": "MATEMATICAS"
+  },
+  {
+    "codigo": "1867",
+    "ciclo": 1,
+    "tipoCurso": "OP",
+    "nombre": "ESTADISTICA GENERAL",
+    "t": 2,
+    "p": 4,
+    "l": 0,
+    "c": 4,
+    "departamento": "ESTADISTICA"
+  },
+  {
+    "codigo": "1883",
+    "ciclo": 1,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE TECNICAS DE COMUNICACION EFICAZ",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "COMUNICACION SOCIAL"
+  },
+  {
+    "codigo": "1884",
+    "ciclo": 1,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE MUSICA",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "FILOSOFIA Y ARTE"
+  },
+  {
+    "codigo": "1908",
+    "ciclo": 1,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE LIDERAZGO Y TRABAJO EN EQUIPO",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "CIENCIAS PSICOLOGICAS"
+  },
+  {
+    "codigo": "2055",
+    "ciclo": 1,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE DEPORTE",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "CIENCIAS DE LA EDUCACION"
+  },
+  {
+    "codigo": "2056",
+    "ciclo": 1,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE TEATRO",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "FILOSOFIA Y ARTE"
+  },
+  {
+    "codigo": "2051",
+    "ciclo": 2,
+    "tipoCurso": "S",
+    "nombre": "PROGRAMACION ORIENTADO A OBJETOS I",
+    "t": 2,
+    "p": 0,
+    "l": 4,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "1858",
+    "ciclo": 2,
+    "tipoCurso": "OB",
+    "nombre": "SOCIEDAD CULTURA Y ECOLOGIA",
+    "t": 1,
+    "p": 4,
+    "l": 0,
+    "c": 3,
+    "departamento": "CIENCIAS SOCIALES"
+  },
+  {
+    "codigo": "1859",
+    "ciclo": 2,
+    "tipoCurso": "OB",
+    "nombre": "CULTURA INVESTIGATIVA Y PENSAMIENTO CRITICO",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "CIENCIAS DE LA EDUCACION"
+  },
+  {
+    "codigo": "1860",
+    "ciclo": 2,
+    "tipoCurso": "OB",
+    "nombre": "ETICA, CONVIVENCIA HUMANA Y CIUDADANIA",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "FILOSOFIA Y ARTE CIENCIAS PSICOLOGICAS"
+  },
+  {
+    "codigo": "1861",
+    "ciclo": 2,
+    "tipoCurso": "OB",
+    "nombre": "ANALISIS MATEMATICO",
+    "t": 2,
+    "p": 4,
+    "l": 0,
+    "c": 4,
+    "departamento": "MATEMATICAS"
+  },
+  {
+    "codigo": "1875",
+    "ciclo": 2,
+    "tipoCurso": "OP",
+    "nombre": "FISICA GENERAL",
+    "t": 2,
+    "p": 4,
+    "l": 0,
+    "c": 4,
+    "departamento": "FISICA"
+  },
+  {
+    "codigo": "1888",
+    "ciclo": 2,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE MANEJO DE TIC",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "1889",
+    "ciclo": 2,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE DANZAS FOLCLORICAS",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "FILOSOFIA Y ARTE"
+  },
+  {
+    "codigo": "1890",
+    "ciclo": 2,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE DEPORTE",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "CIENCIAS DE LA EDUCACION"
+  },
+  {
+    "codigo": "2057",
+    "ciclo": 2,
+    "tipoCurso": "EL",
+    "nombre": "TALLER DE MUSICA",
+    "t": 0,
+    "p": 2,
+    "l": 0,
+    "c": 1,
+    "departamento": "FILOSOFIA Y ARTE"
+  },
+  {
+    "codigo": "2140",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "ADMINISTRACION GENERAL",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "ADMINISTRACION"
+  },
+  {
+    "codigo": "2141",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "SISTEMICA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2142",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "ESTADISTICA APLICADA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "ESTADISTICA"
+  },
+  {
+    "codigo": "2143",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "MATEMATICA APLICADA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "MATEMATICAS"
+  },
+  {
+    "codigo": "2144",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "FISICA ELECTRONICA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "FISICA"
+  },
+  {
+    "codigo": "2145",
+    "ciclo": 3,
+    "tipoCurso": "S",
+    "nombre": "PROGRAMACION ORIENTADA A OBJETOS II",
+    "t": 2,
+    "p": 0,
+    "l": 4,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2146",
+    "ciclo": 3,
+    "tipoCurso": "EL",
+    "nombre": "INGENIERIA GRAFICA",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2147",
+    "ciclo": 3,
+    "tipoCurso": "EL",
+    "nombre": "SICOLOGIA ORGANIZACIONAL",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "CIENCIAS PSICOLOGICAS"
+  },
+  {
+    "codigo": "2650",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "ECONOMIA GENERAL",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "ECONOMIA"
+  },
+  {
+    "codigo": "2651",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "DISEÑO WEB",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2652",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "PENSAMIENTO DE DISEÑO",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2653",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "GESTIÓN DE PROCESOS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2654",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "SISTEMAS DIGITALES",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2655",
+    "ciclo": 4,
+    "tipoCurso": "S",
+    "nombre": "ESTRUCTURA DE DATOS ORIENTADO A OBJETOS",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2656",
+    "ciclo": 4,
+    "tipoCurso": "EL",
+    "nombre": "COMPUTACIÓN GRÁFICA Y VISUAL",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2657",
+    "ciclo": 4,
+    "tipoCurso": "EL",
+    "nombre": "PLATAFORMAS TECNOLÓGICAS",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2689",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "CONTABILIDAD GERENCIAL",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "CONTABILIDAD Y FINANZAS"
+  },
+  {
+    "codigo": "2690",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "TECNOLOGIAS WEB",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2691",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "INVESTIGACIÓN DE OPERACIONES",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS INGENIERIA INDUSTRIAL"
+  },
+  {
+    "codigo": "2692",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "INGENIERIA DE DATOS I",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2693",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "ARQUITECTURA Y ORGANIZACIÓN DE COMPUTADORAS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2694",
+    "ciclo": 5,
+    "tipoCurso": "S",
+    "nombre": "SISTEMAS DE INFORMACIÓN",
+    "t": 2,
+    "p": 2,
+    "l": 2,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2695",
+    "ciclo": 5,
+    "tipoCurso": "EL",
+    "nombre": "TELEINFORMÁTICA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "2696",
+    "ciclo": 5,
+    "tipoCurso": "EL",
+    "nombre": "TRANSFORMACIÓN DIGITAL",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3125",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "FINANZAS CORPORATIVAS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "CONTABILIDAD Y FINANZAS"
+  },
+  {
+    "codigo": "3126",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "SISTEMAS INTELIGENTES",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3127",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA ECONÓMICA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA INDUSTRIAL"
+  },
+  {
+    "codigo": "3128",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA DE DATOS II",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3129",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "SISTEMAS OPERATIVOS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3130",
+    "ciclo": 6,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA DE REQUERIMIENTOS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3131",
+    "ciclo": 6,
+    "tipoCurso": "EL",
+    "nombre": "INGENIERÍA AMBIENTAL",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "INGENIERIA QUIMICA INGENIERIA AMBIENTAL"
+  },
+  {
+    "codigo": "3132",
+    "ciclo": 6,
+    "tipoCurso": "EL",
+    "nombre": "GESTIÓN DEL TALENTO HUMANO",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "ADMINISTRACION"
+  },
+  {
+    "codigo": "3444",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "CADENA DE SUMINISTRO",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "INGENIERIA INDUSTRIAL"
+  },
+  {
+    "codigo": "3445",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "GESTIÓN DE SERVICIOS DE TIC",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3446",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "METODOLOGÍA DE LA INVESTIGACIÓN CIENTÍFICA",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3447",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "PLANEAMIENTO ESTRATÉGICO DE LA INFORMACIÓN",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3448",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "REDES Y COMUNICACIONES I",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3449",
+    "ciclo": 7,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA DEL SOFTWARE I",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3450",
+    "ciclo": 7,
+    "tipoCurso": "EL",
+    "nombre": "ADMINISTRACIÓN DE BASE DE DATOS",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "3451",
+    "ciclo": 7,
+    "tipoCurso": "EL",
+    "nombre": "NEGOCIOS ELECTRÓNICOS",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4482",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "MARKETING Y MEDIOS SOCIALES",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4483",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "SEGURIDAD DE LA INFORMACIÓN",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4484",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "INTERNET DE LAS COSAS",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4485",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "INTELIGENCIA DE NEGOCIOS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4486",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "REDES Y COMUNICACIONES II",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4487",
+    "ciclo": 8,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA DEL SOFTWARE II",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4488",
+    "ciclo": 8,
+    "tipoCurso": "EL",
+    "nombre": "DEONTOLOGÍA Y DERECHO INFORMÁTICO",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "DERECHO"
+  },
+  {
+    "codigo": "4489",
+    "ciclo": 8,
+    "tipoCurso": "EL",
+    "nombre": "ARQUITECTURA BASADA EN MICROSERVICIOS",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4490",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "GESTIÓN DE PROYECTOS DE TIC",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4491",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "AUDITORÍA INFORMÁTICA",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4492",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "TESIS I",
+    "t": 2,
+    "p": 2,
+    "l": 2,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4493",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "ANALÍTICA DE NEGOCIOS",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4494",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "COMPUTACIÓN EN LA NUBE",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4495",
+    "ciclo": 9,
+    "tipoCurso": "S",
+    "nombre": "INGENIERÍA WEB",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4496",
+    "ciclo": 9,
+    "tipoCurso": "EL",
+    "nombre": "EMPRENDEDURISMO TECNOLÓGICO",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4497",
+    "ciclo": 9,
+    "tipoCurso": "EL",
+    "nombre": "HACKEO ÉTICO",
+    "t": 2,
+    "p": 0,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4498",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "SISTEMAS DE INFORMACIÓN EMPRESARIAL",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4499",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "GOBIERNO DE TIC",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4501",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "ARQUITECTURA EMPRESARIAL",
+    "t": 1,
+    "p": 2,
+    "l": 2,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4502",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "RESPONSABILIDAD SOCIAL CORPORATIVA",
+    "t": 2,
+    "p": 2,
+    "l": 0,
+    "c": 3,
+    "departamento": "INGENIERIA INDUSTRIAL"
+  },
+  {
+    "codigo": "4503",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "APLICACIONES MÓVILES",
+    "t": 1,
+    "p": 1,
+    "l": 3,
+    "c": 3,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "4504",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "PRÁCTICAS PRE PROFESIONALES",
+    "t": 2,
+    "p": 1,
+    "l": 3,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  },
+  {
+    "codigo": "5265",
+    "ciclo": 10,
+    "tipoCurso": "S",
+    "nombre": "TRABAJO DE INVESTIGACIÓN",
+    "t": 2,
+    "p": 2,
+    "l": 2,
+    "c": 4,
+    "departamento": "INGENIERIA DE SISTEMAS"
+  }
+];
+  const departamentosSet = new Set(parsedCoursesData.map(c => c.departamento));
+  const deptMap: Record<string, number> = {};
+
+  const fac = await prisma.facultad.findFirst({ where: { nombre: 'Facultad de Ingeniería' } });
+  for (const deptName of departamentosSet) {
+    let d = await prisma.departamentoAcademico.findFirst({ where: { nombre: deptName } });
+    if (!d) {
+      d = await prisma.departamentoAcademico.create({
+        data: {
+          nombre: deptName,
+          facultadId: fac!.id,
+        }
+      });
+    }
+    deptMap[deptName] = d.id;
+  }
+
+  const cursosCreadosNuevos = [];
+  for (const cData of parsedCoursesData) {
+    const existingCourse = await prisma.curso.findFirst({ where: { codigo: cData.codigo } });
+    let curso = existingCourse;
+    if (!curso) {
+      curso = await prisma.curso.create({
+        data: {
+          codigo: cData.codigo,
+          nombre: cData.nombre,
+          ciclo: cData.ciclo,
+          tipoCurso: cData.tipoCurso,
+          horasTeoria: cData.t,
+          horasPractica: cData.p,
+          horasLaboratorio: cData.l,
+          creditos: cData.c,
+          departamentoId: deptMap[cData.departamento]
+        }
+      });
+    } else {
+      // Update existing course to have the department just in case
+      curso = await prisma.curso.update({
+        where: { id: curso.id },
+        data: { departamentoId: deptMap[cData.departamento] }
+      });
+    }
+
+    await prisma.planEstudioCurso.create({
+      data: {
+        planEstudioId: planEstudio.id,
+        cursoId: curso.id,
+        ciclo: cData.ciclo,
+        tipoCurso: cData.tipoCurso
+      }
+    });
+
+    cursosCreadosNuevos.push(curso);
+  }
+  console.log('✅ ' + cursosCreadosNuevos.length + ' cursos del plan agregados y vinculados al plan de estudios');
 
   // ==================== ASIGNACIONES CURSO-DOCENTE ====================
   const assignmentsMap = new Map<string, { cursoId: string; docenteId: string; horas: number }>();
