@@ -5,6 +5,7 @@ import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
 import { withAuth } from '@/middleware/auth';
 import { ROLES } from '@/lib/constantes';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 const gestorSeleccion = new GestorSeleccionTemporal();
 const servicioHorario = new ServicioHorario();
@@ -36,11 +37,44 @@ export async function POST(request: NextRequest) {
     // Crear y confirmar horarios para cada celda
     const horariosCreados = [];
     for (const celda of seleccion.celdas) {
+      if (!celda.grupoId) continue;
+
+      // Buscar cursoDocente
+      const cursoDocente = await prisma.cursoDocente.findFirst({
+        where: {
+          docenteId: seleccion.docenteId,
+          planEstudioCursoId: seleccion.cursoId,
+          periodoId: seleccion.periodoId,
+        }
+      });
+
+      if (!cursoDocente) {
+        return createErrorResponse('NOT_FOUND', 'Carga académica (CursoDocente) no encontrada para el docente y curso especificados', 404);
+      }
+
+      // Buscar o crear cursoDocenteGrupo
+      let cdg = await prisma.cursoDocenteGrupo.findFirst({
+        where: {
+          cursoDocenteId: cursoDocente.id,
+          grupoId: celda.grupoId,
+        }
+      });
+
+      if (!cdg) {
+        cdg = await prisma.cursoDocenteGrupo.create({
+          data: {
+            cursoDocenteId: cursoDocente.id,
+            grupoId: celda.grupoId,
+            capacidad: 40,
+          }
+        });
+      }
+
       const horario = await servicioHorario.crear({
         periodoId: seleccion.periodoId,
         cursoId: seleccion.cursoId,
         docenteId: seleccion.docenteId,
-        grupoId: celda.grupoId,
+        cursoDocenteGrupoId: cdg.id,
         ambienteId: celda.ambienteId,
         diaSemana: celda.diaSemana as any,
         horaInicio: celda.horaInicio,

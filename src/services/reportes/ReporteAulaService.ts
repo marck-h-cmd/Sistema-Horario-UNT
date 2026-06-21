@@ -10,11 +10,21 @@ import {
 const horariosInclude = {
   where: { estado: { not: 'CANCELADO' as const } },
   include: {
-    curso: { select: { codigo: true, nombre: true } },
-    docente: {
-      include: { usuario: { select: { nombre: true, apellidos: true } } },
-    },
-    grupo: { select: { nombre: true } },
+    cursoDocenteGrupo: {
+      include: {
+        grupo: { select: { nombre: true } },
+        cursoDocente: {
+          include: {
+            docente: {
+              include: { usuario: { select: { nombre: true, apellidos: true } } }
+            },
+            planEstudioCurso: {
+              include: { curso: { select: { codigo: true, nombre: true } } }
+            }
+          }
+        }
+      }
+    }
   },
   orderBy: [{ diaSemana: 'asc' as const }, { horaInicio: 'asc' as const }],
 };
@@ -47,6 +57,9 @@ export class ReporteAulaService {
           diaSemana: h.diaSemana!,
           horaInicio: h.horaInicio!,
           horaFin: h.horaFin!,
+          curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '—', nombre: '—' },
+          docente: h.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '—', apellidos: '—' } },
+          grupo: h.cursoDocenteGrupo?.grupo || { nombre: '—' }
         })),
     };
 
@@ -81,6 +94,9 @@ export class ReporteAulaService {
           diaSemana: h.diaSemana!,
           horaInicio: h.horaInicio!,
           horaFin: h.horaFin!,
+          curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '—', nombre: '—' },
+          docente: h.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '—', apellidos: '—' } },
+          grupo: h.cursoDocenteGrupo?.grupo || { nombre: '—' }
         })),
     }));
 

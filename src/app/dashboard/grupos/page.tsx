@@ -36,6 +36,7 @@ interface GrupoRow {
   capacidad: number;
   cursoId: string;
   curso: { id: string; codigo: string; nombre: string; ciclo?: number };
+  docenteNombre?: string;
   _count?: { horarios: number };
   activo?: boolean;
 }
@@ -87,11 +88,11 @@ function GruposInner() {
     listParams
   );
 
+  // Modal is only for Edit now
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<GrupoRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    cursoId: '',
     nombre: '',
     capacidad: 40,
     activo: true,
@@ -99,17 +100,11 @@ function GruposInner() {
 
   const resetForm = () => {
     setForm({
-      cursoId: cursoIdFiltro || '',
       nombre: '',
       capacidad: 40,
       activo: true,
     });
     setEditing(null);
-  };
-
-  const openCreate = () => {
-    resetForm();
-    setDialogOpen(true);
   };
 
   const openEdit = useCallback(async (row: GrupoRow) => {
@@ -120,7 +115,6 @@ function GruposInner() {
       const g = res.data;
       if (!g) throw new Error('Grupo no encontrado');
       setForm({
-        cursoId: g.cursoId,
         nombre: g.nombre,
         capacidad: g.capacidad,
         activo: g.activo !== false,
@@ -134,10 +128,6 @@ function GruposInner() {
   }, []);
 
   const handleSave = async () => {
-    if (!form.cursoId) {
-      toast.error('Seleccione un curso');
-      return;
-    }
     if (!form.nombre.trim()) {
       toast.error('Ingrese el nombre del grupo');
       return;
@@ -146,19 +136,11 @@ function GruposInner() {
     try {
       if (editing) {
         await apiPut(`/api/grupos/${editing.id}`, {
-          cursoId: form.cursoId,
           nombre: form.nombre.trim(),
           capacidad: form.capacidad,
           activo: form.activo,
         });
         toast.success('Grupo actualizado');
-      } else {
-        await apiPost('/api/grupos', {
-          cursoId: form.cursoId,
-          nombre: form.nombre.trim(),
-          capacidad: form.capacidad,
-        });
-        toast.success('Grupo creado');
       }
       setDialogOpen(false);
       resetForm();
@@ -193,6 +175,15 @@ function GruposInner() {
     () => [
       { key: 'nombre', header: 'Grupo', cell: (r) => <span className="font-medium text-gray-900 dark:text-slate-100">{r.nombre}</span> },
       { key: 'capacidad', header: 'Capacidad', cell: (r) => r.capacidad },
+      {
+        key: 'docente',
+        header: 'Docente / Asignación',
+        cell: (r) => (
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            {r.docenteNombre || 'Sin Asignar'}
+          </span>
+        ),
+      },
       {
         key: 'curso',
         header: 'Curso',
@@ -251,13 +242,8 @@ function GruposInner() {
     <div>
       <PageHeader
         title="Grupos Académicos"
-        description="Gestión de grupos de estudio y asignación a cursos."
-        actions={
-          <Button onClick={openCreate} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
-            <Plus className="h-4 w-4" />
-            Nuevo grupo
-          </Button>
-        }
+        description="Gestión de grupos de estudio. Los grupos se crean automáticamente al asignar un docente a un curso en el módulo de Carga Académica."
+        actions={null}
       />
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
@@ -341,18 +327,9 @@ function GruposInner() {
       <Dialog open={dialogOpen} onOpenChange={(o) => !o && (setDialogOpen(false), resetForm())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar grupo' : 'Nuevo grupo'}</DialogTitle>
+            <DialogTitle>Editar grupo</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2 max-h-[70vh] overflow-y-auto">
-            <div>
-              <Label htmlFor="modal-curso">Curso</Label>
-              <ComboCurso
-                valor={form.cursoId || undefined}
-                onCambiar={(v) => setForm((f) => ({ ...f, cursoId: v }))}
-                cursos={cursos}
-                placeholder="Seleccione un curso"
-              />
-            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="nombre">Nombre del grupo</Label>
@@ -392,7 +369,7 @@ function GruposInner() {
             </Button>
             <Button
               type="button"
-              disabled={saving || !form.nombre.trim() || !form.cursoId}
+              disabled={saving || !form.nombre.trim()}
               onClick={handleSave}
               className="bg-unt-blue hover:bg-unt-blue/90 text-white"
             >

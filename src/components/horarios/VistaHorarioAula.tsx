@@ -41,7 +41,7 @@ export default function VistaHorarioAula({ ambienteId, periodoId }: Props) {
         (horarios.data?.items ?? []).forEach((h: any) => {
           if (!m[h.dia]) m[h.dia] = {};
           m[h.dia][h.horaInicio] = {
-            cursoNombre: h.curso?.nombre,
+            cursoNombre: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
             docenteApellidos: h.docente?.apellidos ?? '',
             grupoNombre: h.grupo?.nombre,
             estado: h.estado,

@@ -382,43 +382,37 @@ async function main() {
   console.log(`📊 Total registros de grilla analizados: ${parsedSchedules.length}`);
 
   // ==================== LIMPIEZA ====================
-  await prisma.seleccionTemporal.deleteMany();
-  await prisma.envioNotificacion.deleteMany();
-  await prisma.notificacion.deleteMany();
-  await prisma.atencionVentana.deleteMany();
-  await prisma.ventanaAtencion.deleteMany();
-  await prisma.validacionHorario.deleteMany();
-  await prisma.horario.deleteMany();
-  await prisma.matricula.deleteMany();
-  await prisma.estudiante.deleteMany();
-  await prisma.distribucionNoLectiva.deleteMany();
-  await prisma.declaracionNoLectivaItem.deleteMany();
-  await prisma.declaracionNoLectiva.deleteMany();
-  await prisma.incumplimiento.deleteMany();
-  await prisma.comisionServicio.deleteMany();
-  await prisma.becaDocente.deleteMany();
-  await prisma.planEstudioCurso.deleteMany();
-  await prisma.planEstudio.deleteMany();
-  await prisma.cargoAdministrativo.deleteMany();
-  await prisma.disponibilidadDocente.deleteMany();
-  await prisma.restriccionAmbiente.deleteMany();
-  await prisma.mantenimientoAmbiente.deleteMany();
-  await prisma.preferenciasNotificacion.deleteMany();
-  await prisma.cursoDocente.deleteMany();
-  await prisma.grupo.deleteMany();
-  await prisma.curso.deleteMany();
-  await prisma.docente.deleteMany();
-  await prisma.departamentoAcademico.deleteMany();
-  await prisma.facultad.deleteMany();
-  await prisma.sesion.deleteMany();
-  await prisma.usuario.deleteMany();
-  await prisma.configuracionPeriodo.deleteMany();
-  await prisma.diaNoLaborable.deleteMany();
-  await prisma.ambiente.deleteMany();
-  await prisma.periodoAcademico.deleteMany();
-  await prisma.registroAuditoria.deleteMany();
+  console.log('✅ Datos anteriores limpiados (Omitido por force-reset)');
 
-  console.log('✅ Datos anteriores limpiados');
+  // ==================== PERIODO Y PLAN DE ESTUDIOS ====================
+  const periodo = await prisma.periodoAcademico.create({
+    data: {
+      nombre: '2024-I',
+      fechaInicio: new Date('2024-04-01'),
+      fechaFin: new Date('2024-07-31'),
+      estado: 'ACTIVO',
+      activo: true
+    }
+  });
+
+  const planEstudio = await prisma.planEstudio.create({
+    data: {
+      nombre: 'PLAN DE ESTUDIOS DE INGENIERIA DE SISTEMAS 2018',
+      anio: 2018,
+      activo: true,
+    }
+  });
+
+  // ==================== GRUPOS ESTATICOS ====================
+  let gruposEstaticos = await prisma.grupo.findMany();
+  if (gruposEstaticos.length === 0) {
+    const defaultGrupos = [{ nombre: 'A' }, { nombre: 'B' }, { nombre: 'C' }];
+    for (const g of defaultGrupos) {
+      await prisma.grupo.create({ data: g });
+    }
+    gruposEstaticos = await prisma.grupo.findMany();
+  }
+  console.log('✅ Grupos estáticos listos');
 
   // ==================== USUARIOS ADMINISTRATIVOS ====================
   const passwordHash = await bcrypt.hash('unt123456', 12);
@@ -649,39 +643,32 @@ async function main() {
   const cursos: any[] = [];
   for (const [codigo, cursoInfo] of cursosMap) {
     const uniqueGroups = Array.from(uniqueGroupsMap.get(codigo) || new Set(['A']));
-    const gruposData = uniqueGroups.map(g => ({ nombre: g, capacidad: 40 }));
     const metadatos = obtenerMetadatosCurso(cursoInfo.nombre);
     
     const curso = await prisma.curso.create({
       data: {
         codigo: cursoInfo.codigo,
         nombre: cursoInfo.nombre,
+      }
+    });
+    const planCur = await prisma.planEstudioCurso.create({
+      data: {
+        planEstudioId: planEstudio.id,
+        cursoId: curso.id,
         ciclo: cursoInfo.ciclo,
         creditos: metadatos.creditos,
         horasTeoria: metadatos.horasTeoria,
         horasPractica: metadatos.horasPractica,
         horasLaboratorio: metadatos.horasLaboratorio,
-        grupos: {
-          create: gruposData
-        }
-      },
-      include: {
-        grupos: true
+        tipoCurso: 'O'
       }
     });
-    cursos.push(curso);
+    cursos.push({ ...curso, gruposList: uniqueGroups, planEstudioCursoId: planCur.id, ciclo: cursoInfo.ciclo });
   }
 
   console.log(`✅ ${cursos.length} cursos dinámicos creados`);
 
-    // ==================== CREACION DE PLAN DE ESTUDIOS Y CURSOS ADICIONALES ====================
-  const planEstudio = await prisma.planEstudio.create({
-    data: {
-      nombre: 'PLAN DE ESTUDIOS DE INGENIERIA DE SISTEMAS 2018',
-      anio: 2018,
-      activo: true,
-    }
-  });
+    // ==================== CURSOS ADICIONALES ====================
 
   const parsedCoursesData = [
   {
@@ -1646,20 +1633,7 @@ async function main() {
         data: {
           codigo: cData.codigo,
           nombre: cData.nombre,
-          ciclo: cData.ciclo,
-          tipoCurso: cData.tipoCurso,
-          horasTeoria: cData.t,
-          horasPractica: cData.p,
-          horasLaboratorio: cData.l,
-          creditos: cData.c,
-          departamentoId: deptMap[cData.departamento]
         }
-      });
-    } else {
-      // Update existing course to have the department just in case
-      curso = await prisma.curso.update({
-        where: { id: curso.id },
-        data: { departamentoId: deptMap[cData.departamento] }
       });
     }
 
@@ -1668,7 +1642,12 @@ async function main() {
         planEstudioId: planEstudio.id,
         cursoId: curso.id,
         ciclo: cData.ciclo,
-        tipoCurso: cData.tipoCurso
+        tipoCurso: (cData.tipoCurso === 'S' || !['O','E','EG_OB','EG_OP','EG_EL'].includes(cData.tipoCurso) ? 'O' : cData.tipoCurso) as any,
+        horasTeoria: cData.t,
+        horasPractica: cData.p,
+        horasLaboratorio: cData.l,
+        creditos: cData.c,
+        departamentoId: deptMap[cData.departamento]
       }
     });
 
@@ -1677,53 +1656,74 @@ async function main() {
   console.log('✅ ' + cursosCreadosNuevos.length + ' cursos del plan agregados y vinculados al plan de estudios');
 
   // ==================== ASIGNACIONES CURSO-DOCENTE ====================
-  const assignmentsMap = new Map<string, { cursoId: string; docenteId: string; horas: number }>();
+  const assignmentsMap = new Map<string, { planEstudioCursoId: string; docenteId: string; grupos: Set<string>; horas: number }>();
   for (const item of parsedSchedules) {
     const curso = cursos.find(c => c.codigo === item.codigoCurso);
-    const docente = docentes.find(d => cleanStringForMatch(`${d.nombre} ${d.apellidos}`) === cleanStringForMatch(item.docente));
-    if (curso && docente) {
-      const key = `${curso.id}_${docente.id}`;
-      const horas = calcularHoras(item.inicio, item.fin);
+    const docente = docentes.find(d => {
+      const dbName = `${d.nombre} ${d.apellidos}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const itemD = item.docente.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return dbName === itemD;
+    });
+    if (curso && docente && item.grupo) {
+      const key = `${curso.planEstudioCursoId}_${docente.id}`;
+      const inicioArr = item.inicio.split(':');
+      const finArr = item.fin.split(':');
+      const horas = parseInt(finArr[0]) - parseInt(inicioArr[0]);
       if (assignmentsMap.has(key)) {
         assignmentsMap.get(key)!.horas += horas;
+        assignmentsMap.get(key)!.grupos.add(item.grupo);
       } else {
-        assignmentsMap.set(key, { cursoId: curso.id, docenteId: docente.id, horas });
+        assignmentsMap.set(key, { planEstudioCursoId: curso.planEstudioCursoId, docenteId: docente.id, grupos: new Set([item.grupo]), horas });
       }
     }
   }
 
+  const cursoDocentesData: any[] = [];
   let totalAssignments = 0;
-  for (const [_, val] of assignmentsMap) {
-    await prisma.cursoDocente.create({
-      data: {
-        cursoId: val.cursoId,
+  for (const val of Array.from(assignmentsMap.values())) {
+    const cd = await prisma.cursoDocente.upsert({
+      where: {
+        planEstudioCursoId_docenteId_periodoId: {
+          planEstudioCursoId: val.planEstudioCursoId,
+          docenteId: val.docenteId,
+          periodoId: periodo.id
+        }
+      },
+      update: {
+        horasAsignadas: val.horas || 4,
+      },
+      create: {
+        planEstudioCursoId: val.planEstudioCursoId,
+        periodoId: periodo.id,
         docenteId: val.docenteId,
         horasAsignadas: val.horas || 4,
       }
     });
+
+    for (const nombreGrupo of Array.from(val.grupos)) {
+      const gEstatico = gruposEstaticos.find(g => g.nombre === nombreGrupo) || gruposEstaticos[0];
+      const cdg = await prisma.cursoDocenteGrupo.upsert({
+        where: {
+          cursoDocenteId_grupoId: {
+            cursoDocenteId: cd.id,
+            grupoId: gEstatico.id
+          }
+        },
+        update: {},
+        create: {
+          cursoDocenteId: cd.id,
+          grupoId: gEstatico.id,
+          capacidad: 40
+        }
+      });
+      cursoDocentesData.push({...val, id: cd.id, cursoDocenteGrupoId: cdg.id, grupoNombre: nombreGrupo});
+    }
     totalAssignments++;
   }
 
-  console.log(`✅ ${totalAssignments} asignaciones curso-docente dinámicas creadas`);
+  console.log(`✅ ${totalAssignments} asignaciones curso-docente y grupos dinámicas creados`);
 
-  // ==================== PERÍODO ACADÉMICO ====================
-  const periodo = await prisma.periodoAcademico.create({
-    data: {
-      nombre: '2026-I',
-      fechaInicio: new Date('2026-04-13'),
-      fechaFin: new Date('2026-08-08'),
-      estado: EstadoPeriodo.ACTIVO,
-      activo: true,
-      configuraciones: {
-        create: {
-          horasMaxDiariasDocente: 8,
-          horasMaxContinuas: 4,
-          descansoMinEntreHoras: 1,
-          ordenCategorias: ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR', 'CONTRATADO', 'INVITADO']
-        }
-      }
-    }
-  });
+  // ==================== (PERIODO YA CREADO ARRIBA) ====================
 
   console.log('✅ Período académico 2026-I creado');
 
@@ -1750,12 +1750,15 @@ async function main() {
   for (const item of parsedSchedules) {
     const curso = cursos.find(c => c.codigo === item.codigoCurso);
     const docente = docentes.find(d => cleanStringForMatch(`${d.nombre} ${d.apellidos}`) === cleanStringForMatch(item.docente));
-    const grupo = curso?.grupos.find((g: any) => g.nombre === item.grupo);
-    const normEnv = normalizarAmbiente(item.ambiente);
-    const ambiente = ambientes.find(a => a.codigo === normEnv.codigo);
+    const cdgInfo = cursoDocentesData.find(cdd => cdd.planEstudioCursoId === curso?.planEstudioCursoId && cdd.docenteId === docente?.id && cdd.grupoNombre === item.grupo);
+    const ambiente = ambientes.find(a => {
+      const aC = a.codigo.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bC = item.ambiente.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return aC === bC || bC.includes(aC) || aC.includes(bC);
+    });
 
-    if (!curso || !docente || !grupo || !ambiente) {
-      console.warn(`⚠️ Omisión de registro por inconsistencia en: Curso=${item.codigoCurso}, Docente=${item.docente}, Grupo=${item.grupo}, Ambiente=${item.ambiente}`);
+    if (!curso || !docente || !cdgInfo || !ambiente) {
+      // console.warn(`⚠️ Omisión de registro por inconsistencia en: Curso=${item.codigoCurso}, Docente=${item.docente}, Grupo=${item.grupo}, Ambiente=${item.ambiente}`);
       continue;
     }
 
@@ -1763,9 +1766,7 @@ async function main() {
       await prisma.horario.create({
         data: {
           periodoId: periodo.id,
-          cursoId: curso.id,
-          docenteId: docente.id,
-          grupoId: grupo.id,
+          cursoDocenteGrupoId: cdgInfo.cursoDocenteGrupoId,
           ambienteId: ambiente.id,
           diaSemana: mapDia(item.dia),
           horaInicio: mapHora(item.inicio),
@@ -1813,18 +1814,20 @@ async function main() {
     const cursosDelCiclo = cursos.filter(c => c.ciclo === estudiante.ciclo);
 
     for (const curso of cursosDelCiclo) {
-      if (curso.grupos.length > 0) {
-        const grupo = curso.grupos[Math.floor(Math.random() * curso.grupos.length)];
-        await prisma.matricula.create({
-          data: {
-            estudianteId: estudiante.id,
-            cursoId: curso.id,
-            grupoId: grupo.id,
-            periodoId: periodo.id,
-            estado: 'ACTIVO'
-          }
-        });
-        totalMatriculas++;
+      if (curso.gruposList && curso.gruposList.length > 0) {
+        const grupo = curso.gruposList[Math.floor(Math.random() * curso.gruposList.length)];
+        const cd = cursoDocentesData.find(cdd => cdd.planEstudioCursoId === curso.planEstudioCursoId && cdd.grupoNombre === grupo);
+        if (cd) {
+          await prisma.matricula.create({
+            data: {
+              estudianteId: estudiante.id,
+              cursoDocenteGrupoId: cd.cursoDocenteGrupoId,
+              periodoId: periodo.id,
+              estado: 'ACTIVO'
+            }
+          });
+          totalMatriculas++;
+        }
       }
     }
   }

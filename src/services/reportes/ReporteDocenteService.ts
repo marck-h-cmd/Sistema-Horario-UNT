@@ -11,9 +11,7 @@ import {
 const horariosInclude = {
   where: { estado: { not: 'CANCELADO' as const } },
   include: {
-    curso: { select: { codigo: true, nombre: true, creditos: true } },
     ambiente: { select: { codigo: true, nombre: true, tipo: true } },
-    grupo: { select: { nombre: true } },
   },
   orderBy: [{ diaSemana: 'asc' as const }, { horaInicio: 'asc' as const }],
 };
@@ -22,17 +20,51 @@ export class ReporteDocenteService {
   private generadorPDF = new GeneradorPDF();
 
   async generar(docenteId: string, periodoId: string): Promise<Buffer> {
-    const docente = await prisma.docente.findUnique({
+    const docenteDb = await prisma.docente.findUnique({
       where: { id: docenteId },
       include: {
         usuario: { select: { nombre: true, apellidos: true, email: true } },
-        horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
+        cursos: {
+          where: { periodoId },
+          include: {
+            planEstudioCurso: { include: { curso: true } },
+            cursoDocenteGrupos: {
+              include: {
+                grupo: true,
+                horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } }
+              }
+            }
+          }
+        }
       },
-    }) as any;
+    });
 
-    if (!docente) {
+    if (!docenteDb) {
       throw new Error('Docente no encontrado');
     }
+
+    const horariosDelDocente = docenteDb.cursos.flatMap((cd: any) => 
+      (cd.cursoDocenteGrupos ?? []).flatMap((cdg: any) => 
+        (cdg.horarios ?? []).map((h: any) => ({
+          ...h,
+          curso: {
+            ...cd.planEstudioCurso.curso,
+            creditos: cd.planEstudioCurso.creditos
+          },
+          grupo: cdg.grupo,
+          cursoDocenteGrupo: {
+            cursoDocente: {
+              planEstudioCurso: cd.planEstudioCurso
+            }
+          }
+        }))
+      )
+    );
+
+    const docente = {
+      ...docenteDb,
+      horarios: horariosDelDocente
+    } as any;
 
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id: periodoId },
@@ -55,14 +87,46 @@ export class ReporteDocenteService {
       where: { id: periodoId },
     });
 
-    const docentes = await prisma.docente.findMany({
+    const docentesDb = await prisma.docente.findMany({
       where: { usuario: { activo: true } },
       include: {
         usuario: { select: { nombre: true, apellidos: true, email: true } },
-        horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
+        cursos: {
+          where: { periodoId },
+          include: {
+            planEstudioCurso: { include: { curso: true } },
+            cursoDocenteGrupos: {
+              include: {
+                grupo: true,
+                horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } }
+              }
+            }
+          }
+        }
       },
       orderBy: { codigo: 'asc' },
-    }) as any[];
+    });
+
+    const docentes = docentesDb.map(d => ({
+      ...d,
+      horarios: d.cursos.flatMap((cd: any) => 
+        (cd.cursoDocenteGrupos ?? []).flatMap((cdg: any) => 
+          (cdg.horarios ?? []).map((h: any) => ({
+            ...h,
+            curso: {
+              ...cd.planEstudioCurso.curso,
+              creditos: cd.planEstudioCurso.creditos
+            },
+            grupo: cdg.grupo,
+            cursoDocenteGrupo: {
+              cursoDocente: {
+                planEstudioCurso: cd.planEstudioCurso
+              }
+            }
+          }))
+        )
+      )
+    })) as any[];
 
     const conHorario = docentes.filter((d) => d.horarios.length > 0);
     const totalSesiones = docentes.reduce((s, d) => s + d.horarios.length, 0);

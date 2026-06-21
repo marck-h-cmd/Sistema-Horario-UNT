@@ -11,10 +11,18 @@ const horariosInclude = {
   where: { estado: { not: 'CANCELADO' as const } },
   include: {
     ambiente: { select: { codigo: true, tipo: true } },
-    docente: {
-      include: { usuario: { select: { nombre: true, apellidos: true } } },
-    },
-    grupo: { select: { nombre: true } },
+    cursoDocenteGrupo: {
+      include: {
+        grupo: { select: { nombre: true } },
+        cursoDocente: {
+          include: {
+            docente: {
+              include: { usuario: { select: { nombre: true, apellidos: true } } },
+            }
+          }
+        }
+      }
+    }
   },
   orderBy: [{ diaSemana: 'asc' as const }, { horaInicio: 'asc' as const }],
 };
@@ -23,16 +31,38 @@ export class ReporteCursoService {
   private generadorPDF = new GeneradorPDF();
 
   async generar(cursoId: string, periodoId: string): Promise<Buffer> {
-    const curso = await prisma.curso.findUnique({
-      where: { id: cursoId },
+    const planCurso = await prisma.planEstudioCurso.findFirst({
+      where: { cursoId },
       include: {
-        horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
+        curso: true,
+        cursosDocentes: {
+          where: { periodoId },
+          include: {
+            cursoDocenteGrupos: {
+              include: {
+                horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } }
+              }
+            }
+          }
+        }
       },
-    }) as any;
+    });
 
-    if (!curso) {
-      throw new Error('Curso no encontrado');
+    if (!planCurso) {
+      throw new Error('Curso no encontrado en el plan de estudios');
     }
+
+    const horariosDelCurso = planCurso.cursosDocentes.flatMap(cd => cd.cursoDocenteGrupos.flatMap(cdg => cdg.horarios.map(h => ({
+      ...h,
+      grupo: h.cursoDocenteGrupo.grupo,
+      docente: h.cursoDocenteGrupo.cursoDocente.docente
+    }))));
+
+    const curso = {
+      ...planCurso.curso,
+      ciclo: planCurso.ciclo,
+      horarios: horariosDelCurso
+    } as any;
 
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id: periodoId },
@@ -52,13 +82,32 @@ export class ReporteCursoService {
       where: { id: periodoId },
     });
 
-    const cursos = await prisma.curso.findMany({
-      where: { activo: true },
+    const planesCursos = await prisma.planEstudioCurso.findMany({
       include: {
-        horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } },
+        curso: true,
+        cursosDocentes: {
+          where: { periodoId },
+          include: {
+            cursoDocenteGrupos: {
+              include: {
+                horarios: { ...horariosInclude, where: { ...horariosInclude.where, periodoId } }
+              }
+            }
+          }
+        }
       },
-      orderBy: [{ ciclo: 'asc' }, { codigo: 'asc' }],
-    }) as any[];
+      orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
+    });
+
+    const cursos = planesCursos.map(planCurso => ({
+      ...planCurso.curso,
+      ciclo: planCurso.ciclo,
+      horarios: planCurso.cursosDocentes.flatMap(cd => cd.cursoDocenteGrupos.flatMap(cdg => cdg.horarios.map(h => ({
+        ...h,
+        grupo: h.cursoDocenteGrupo.grupo,
+        docente: h.cursoDocenteGrupo.cursoDocente.docente
+      }))))
+    })) as any[];
 
     const conHorario = cursos.filter((c) => c.horarios.length > 0);
     const totalSesiones = cursos.reduce((s, c) => s + c.horarios.length, 0);

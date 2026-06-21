@@ -10,7 +10,8 @@ const asignacionSchema = z.object({
   periodoId: z.string().uuid(),
   docenteId: z.string().uuid(),
   cursoId: z.string().uuid(),
-  grupoId: z.string().uuid(),
+  grupoId: z.string().uuid().optional(),
+  grupoNombre: z.string().optional(),
   componentes: z.array(z.enum(['TEORIA', 'PRACTICA', 'LABORATORIO'])),
 });
 
@@ -28,7 +29,10 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos de asignación inválidos', 400, validation.error.errors);
     }
 
-    const resultado = await service.asignarCargaLectiva(validation.data, user.userId);
+    const resultado = await service.asignarCargaLectiva({
+      ...validation.data,
+      grupoNombre: validation.data.grupoNombre || 'A',
+    }, user.userId);
     return createSuccessResponse(resultado, 'Carga lectiva asignada exitosamente');
   } catch (error: any) {
     if (error.statusCode) {

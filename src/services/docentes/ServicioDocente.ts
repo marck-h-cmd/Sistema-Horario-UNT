@@ -90,7 +90,7 @@ export class ServicioDocente {
           },
           preferenciasNotificacion: true,
           _count: {
-            select: { horarios: true, cursos: true, ventanasAtendidas: true },
+            select: { cursos: true, ventanasAtendidas: true },
           },
         },
         orderBy: { [sortBy]: sortOrder },
@@ -124,8 +124,8 @@ export class ServicioDocente {
         preferenciasNotificacion: true,
         cursos: {
           include: {
-            curso: {
-              select: { id: true, codigo: true, nombre: true, creditos: true, ciclo: true },
+            planEstudioCurso: {
+              select: { id: true, creditos: true, ciclo: true, curso: { select: { id: true, codigo: true, nombre: true } } },
             },
           },
           where: { activo: true },
@@ -134,7 +134,7 @@ export class ServicioDocente {
           orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
         },
         _count: {
-          select: { horarios: true, ventanasAtendidas: true },
+          select: { cursos: true, ventanasAtendidas: true },
         },
       },
     });
@@ -286,7 +286,7 @@ export class ServicioDocente {
 
     const horariosActivos = await prisma.horario.count({
       where: {
-        docenteId: id,
+        cursoDocenteGrupo: { cursoDocente: { docenteId: id } },
         estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
       },
     });
@@ -321,7 +321,7 @@ export class ServicioDocente {
         cursos: {
           where: { activo: true },
           include: {
-            curso: { select: { id: true, codigo: true, nombre: true } },
+            planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } },
           },
         },
       },
@@ -372,10 +372,10 @@ export class ServicioDocente {
 
     const [totalCursos, totalHorarios, horariosPorPeriodo] = await Promise.all([
       prisma.cursoDocente.count({ where: { docenteId, activo: true } }),
-      prisma.horario.count({ where: { docenteId, estado: { not: 'CANCELADO' } } }),
+      prisma.horario.count({ where: { cursoDocenteGrupo: { cursoDocente: { docenteId } }, estado: { not: 'CANCELADO' } } }),
       prisma.horario.groupBy({
         by: ['periodoId'],
-        where: { docenteId },
+        where: { cursoDocenteGrupo: { cursoDocente: { docenteId } } },
         _count: true,
       }),
     ]);
@@ -405,52 +405,55 @@ export class ServicioDocente {
     const cursosDocente = await prisma.cursoDocente.findMany({
       where: { docenteId, activo: true },
       include: {
-        curso: {
+        planEstudioCurso: {
           include: {
-            grupos: {
-              where: { activo: true },
+            curso: true
+          }
+        },
+        cursoDocenteGrupos: {
+          where: { activo: true },
+          include: {
+            grupo: true,
+            matriculas: {
               include: {
-                matriculas: {
-                  include: {
-                    estudiante: {
-                      select: {
-                        id: true,
-                        codigo: true,
-                        nombre: true,
-                        apellidos: true,
-                        email: true,
-                      },
-                    },
+                estudiante: {
+                  select: {
+                    id: true,
+                    codigo: true,
+                    nombre: true,
+                    apellidos: true,
+                    email: true,
                   },
                 },
               },
-              orderBy: { nombre: 'asc' },
             },
           },
+          orderBy: { grupo: { nombre: 'asc' } },
         },
       },
-      orderBy: { curso: { nombre: 'asc' } },
     });
 
     return cursosDocente.map(cd => ({
-      id: cd.curso.id,
-      nombre: cd.curso.nombre,
-      codigo: cd.curso.codigo,
-      ciclo: cd.curso.ciclo,
-      horasTeoria: cd.curso.horasTeoria,
-      horasPractica: cd.curso.horasPractica,
-      horasLaboratorio: cd.curso.horasLaboratorio,
+      id: cd.planEstudioCurso.curso.id,
+      nombre: cd.planEstudioCurso.curso.nombre,
+      codigo: cd.planEstudioCurso.curso.codigo,
+      ciclo: cd.planEstudioCurso.ciclo,
+      horasTeoria: cd.planEstudioCurso.horasTeoria,
+      horasPractica: cd.planEstudioCurso.horasPractica,
+      horasLaboratorio: cd.planEstudioCurso.horasLaboratorio,
       horasAsignadas: cd.horasAsignadas,
-      grupos: cd.curso.grupos.map(g => ({
+      grupos: cd.cursoDocenteGrupos?.map((g: any) => ({
         id: g.id,
-        nombre: g.nombre,
+        nombre: g.grupo.nombre,
         capacidad: g.capacidad,
-        estudiantes: g.matriculas.map(m => ({
-          id: m.estudiante.id,
-          codigo: m.estudiante.codigo,
-          nombreCompleto: `${m.estudiante.nombre} ${m.estudiante.apellidos}`,
-          email: m.estudiante.email,
-        })),
+        estudiantes: g.matriculas
+          ?.map((m: any) => m.estudiante ? ({
+            id: m.estudiante.id,
+            codigo: m.estudiante.codigo,
+            nombreCompleto: `${m.estudiante.nombre} ${m.estudiante.apellidos}`,
+            email: m.estudiante.email,
+          }) : null)
+          .filter(Boolean) || [],
       })),
     }));
   }

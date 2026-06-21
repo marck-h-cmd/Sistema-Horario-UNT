@@ -46,7 +46,7 @@ export async function POST(
     if (periodoActivo) {
       const horariosConfirmados = await prisma.horario.findFirst({
         where: {
-          docenteId,
+          cursoDocenteGrupo: { cursoDocente: { docenteId } },
           periodoId: periodoActivo.id,
           estado: { in: ['CONFIRMADO', 'PUBLICADO'] }
         },

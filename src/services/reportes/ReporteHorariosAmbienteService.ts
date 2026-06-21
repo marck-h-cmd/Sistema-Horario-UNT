@@ -38,21 +38,39 @@ export class ReporteHorariosAmbienteService {
     if (ambienteId) whereAmbiente.id = ambienteId;
     if (tipo) whereAmbiente.tipo = tipo;
 
-    const ambientes = await prisma.ambiente.findMany({
+    const ambientesDb = await prisma.ambiente.findMany({
       where: whereAmbiente,
       include: {
         horarios: {
           where: { periodoId, estado: { not: 'CANCELADO' } },
           include: {
-            curso: { select: { codigo: true, nombre: true } },
-            docente: { select: { codigo: true, usuario: { select: { nombre: true, apellidos: true } } } },
-            grupo: { select: { nombre: true } },
+            cursoDocenteGrupo: {
+              include: {
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: { select: { codigo: true, usuario: { select: { nombre: true, apellidos: true } } } },
+                    planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } }
+                  }
+                }
+              }
+            }
           },
           orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
         },
       },
       orderBy: [{ tipo: 'asc' }, { codigo: 'asc' }],
-    }) as any[];
+    });
+
+    const ambientes = ambientesDb.map(a => ({
+      ...a,
+      horarios: a.horarios?.map(h => ({
+        ...h,
+        curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '-', nombre: '-' },
+        docente: h.cursoDocenteGrupo?.cursoDocente?.docente || { codigo: '-', usuario: { nombre: '-', apellidos: '-' } },
+        grupo: h.cursoDocenteGrupo?.grupo || null
+      })) || []
+    })) as any[];
 
     const ambientesConHorario = ambientes.filter((a) => a.horarios.length > 0);
     const totalSlots = ambientes.reduce((s, a) => s + a.horarios.length, 0);
@@ -128,10 +146,10 @@ export class ReporteHorariosAmbienteService {
     const filas = sortedHorarios.map((h) => [
       NOMBRE_DIA[h.diaSemana] ?? h.diaSemana,
       `${h.horaInicio} – ${h.horaFin}`,
-      `${h.curso.codigo}`,
-      h.curso.nombre,
+      h.curso?.codigo || '—',
+      h.curso?.nombre || '—',
       h.grupo ? `Grupo ${h.grupo.nombre}` : '—',
-      Formateadores.nombreUsuario(h.docente.usuario),
+      Formateadores.nombreUsuario(h.docente?.usuario),
       Formateadores.estadoHorario(h.estado),
     ]);
 

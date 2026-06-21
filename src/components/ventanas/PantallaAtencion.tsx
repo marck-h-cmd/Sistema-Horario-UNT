@@ -783,7 +783,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       : `El ambiente ya está ocupado por ${cruceAmb.curso.codigo} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin})`;
 
     // 4. Límite de horas del curso
-    const cursoCarga = cursosCarga.find((item) => item.curso.id === cursoId);
+    const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === cursoId);
     const horasAsignadas = cursoCarga?.horasAsignadas || 0;
 
     const horasProgramadas = allHorariosDocente
@@ -914,17 +914,17 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
 
   const docenteEnTurno = docenteEnTurnoCola
     ? {
-        nombre: `${docenteEnTurnoCola.docente.usuario.nombre} ${docenteEnTurnoCola.docente.usuario.apellidos}`,
+        nombre: docenteEnTurnoCola.docente?.usuario ? `${docenteEnTurnoCola.docente.usuario.nombre} ${docenteEnTurnoCola.docente.usuario.apellidos}` : 'Docente Desconocido',
         posicion: docenteEnTurnoCola.posicion,
       }
     : null;
 
   const siguienteDocenteAdaptado = siguienteDocente
     ? {
-        id: siguienteDocente.docente.id,
-        nombre: `${siguienteDocente.docente.usuario.nombre} ${siguienteDocente.docente.usuario.apellidos}`,
-        email: siguienteDocente.docente.usuario.email,
-        categoria: siguienteDocente.docente.categoria,
+        id: siguienteDocente.docente?.id || '',
+        nombre: siguienteDocente.docente?.usuario ? `${siguienteDocente.docente.usuario.nombre} ${siguienteDocente.docente.usuario.apellidos}` : 'Docente Desconocido',
+        email: siguienteDocente.docente?.usuario?.email || '',
+        categoria: siguienteDocente.docente?.categoria || '',
         horaLlegada: 'En cola',
         posicionCola: siguienteDocente.posicion,
       }
@@ -935,11 +935,11 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       (n: any) => n.metadata?.atencionId === a.id && n.metadata?.ventanaId === ventanaId
     );
     return {
-      id: a.docente.id,
+      id: a.docente?.id || '',
       atencionId: a.id,
-      nombre: `${a.docente.usuario.nombre} ${a.docente.usuario.apellidos}`,
-      email: a.docente.usuario.email,
-      categoria: a.docente.categoria,
+      nombre: a.docente?.usuario ? `${a.docente.usuario.nombre} ${a.docente.usuario.apellidos}` : 'Docente Desconocido',
+      email: a.docente?.usuario?.email || '',
+      categoria: a.docente?.categoria || '',
       horaLlegada: a.horaLlegada
         ? new Date(a.horaLlegada).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
         : 'En espera',
@@ -947,7 +947,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       estado: a.estado,
       observaciones: justificacion?.metadata || null,
       justificacionConfirmada: justificacion?.estado === 'LEIDA',
-      fechaIngreso: a.docente.fechaIngreso,
+      fechaIngreso: a.docente?.fechaIngreso || null,
     };
   });
 
@@ -1129,10 +1129,12 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   >
                     <option value="">Seleccionar curso...</option>
                     {cursosCarga.map((item) => {
+                      const curso = item.planEstudioCurso?.curso || item.curso;
+                      if (!curso) return null;
                       const horasProgramadas = allHorariosDocente
                         .filter(
                           (h: any) =>
-                            h.cursoId === item.curso.id &&
+                            h.cursoId === curso.id &&
                             h.estado !== 'CANCELADO' &&
                             (!formState.id || h.id !== formState.id) &&
                             h.horaInicio &&
@@ -1147,8 +1149,8 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                         }, 0);
                       const disponible = item.horasAsignadas - horasProgramadas;
                       return (
-                        <option key={item.curso.id} value={item.curso.id}>
-                          {item.curso.codigo} - {item.curso.nombre} (Disponibles: {disponible}h de{' '}
+                        <option key={curso.id} value={curso.id}>
+                          {curso.codigo} - {curso.nombre} (Disponibles: {disponible}h de{' '}
                           {item.horasAsignadas}h)
                         </option>
                       );
@@ -1159,15 +1161,16 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                 {/* Grupo */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Grupo / Sección
+                    Grupo / Sección *
                   </label>
                   <select
                     value={formState.grupoId}
                     onChange={(e) => setFormState({ ...formState, grupoId: e.target.value })}
                     className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent disabled:opacity-50"
                     disabled={!formState.cursoId}
+                    required
                   >
-                    <option value="">Seleccionar grupo (opcional)...</option>
+                    <option value="">Seleccionar grupo...</option>
                     {grupos.map((grupo) => (
                       <option key={grupo.id} value={grupo.id}>
                         Grupo {grupo.nombre} (Cap: {grupo.capacidad})

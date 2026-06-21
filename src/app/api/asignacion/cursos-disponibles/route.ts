@@ -12,12 +12,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const periodoId = searchParams.get('periodoId');
+    const planEstudioId = searchParams.get('planEstudioId') || undefined;
 
     if (!periodoId) {
       return createErrorResponse('MISSING_PERIOD', 'El parámetro periodoId es requerido', 400);
     }
 
-    const cursos = await service.listarCursosDisponibles(periodoId);
+    const cursos = await service.listarCursosDisponibles(periodoId, planEstudioId);
     return createSuccessResponse(cursos);
   } catch (error: any) {
     console.error('Error en GET /api/asignacion/cursos-disponibles:', error);

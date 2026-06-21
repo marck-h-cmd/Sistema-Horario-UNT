@@ -27,40 +27,44 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Construir la consulta de Cursos (similar a ServicioCurso)
-    const where: any = {};
+    const where: any = {
+      planEstudio: { activo: true }
+    };
 
     if (search) {
-      where.OR = [
-        { codigo: { contains: search, mode: 'insensitive' } },
-        { nombre: { contains: search, mode: 'insensitive' } },
-      ];
+      where.curso = {
+        OR: [
+          { codigo: { contains: search, mode: 'insensitive' } },
+          { nombre: { contains: search, mode: 'insensitive' } },
+        ]
+      };
     }
 
     if (ciclo > 0) where.ciclo = ciclo;
     if (departamentoId > 0) where.departamentoId = departamentoId;
     if (planEstudioId) {
-      where.planesEstudio = {
-        some: { planEstudioId }
-      };
+      where.planEstudioId = planEstudioId;
+      delete where.planEstudio;
     }
 
-    const cursosDb = await prisma.curso.findMany({
+    const cursosDb = await prisma.planEstudioCurso.findMany({
       where,
       orderBy: [
         { ciclo: 'asc' },
-        { codigo: 'asc' }
+        { curso: { codigo: 'asc' } }
       ],
       include: {
+        curso: true,
         departamento: true,
       }
     });
 
     // 3. Mapear al formato requerido por el PDF
     const cursosRow = cursosDb.map(c => ({
-      codigo: c.codigo,
+      codigo: c.curso.codigo,
       ciclo: c.ciclo,
       tipoCurso: c.tipoCurso,
-      nombre: c.nombre,
+      nombre: c.curso.nombre,
       horasTeoria: c.horasTeoria,
       horasPractica: c.horasPractica,
       horasLaboratorio: c.horasLaboratorio,

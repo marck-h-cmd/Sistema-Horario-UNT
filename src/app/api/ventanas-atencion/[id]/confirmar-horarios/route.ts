@@ -29,7 +29,7 @@ export async function POST(
     // Buscar horarios en BORRADOR para el docente y período
     const horariosBorrador = await prisma.horario.findMany({
       where: {
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         periodoId,
         estado: 'BORRADOR',
       },
@@ -64,7 +64,7 @@ export async function POST(
 
     const nombreDocente = `${docente.usuario.nombre} ${docente.usuario.apellidos}`;
     const detallesCursos = horariosConfirmados
-      .map(hc => `- ${hc.curso.nombre} (Día: ${hc.diaSemana || 'Desconocido'}, Hora: ${hc.horaInicio || '--:--'} - ${hc.horaFin || '--:--'}, Ambiente: ${hc.ambiente ? hc.ambiente.nombre : 'Sin ambiente'})`)
+      .map(hc => `- ${hc.grupo?.cursoDocente?.planEstudioCurso?.curso?.nombre} (Día: ${hc.diaSemana || 'Desconocido'}, Hora: ${hc.horaInicio || '--:--'} - ${hc.horaFin || '--:--'}, Ambiente: ${hc.ambiente ? hc.ambiente.nombre : 'Sin ambiente'})`)
       .join('\n');
 
     // Enviar notificación consolidada por CORREO

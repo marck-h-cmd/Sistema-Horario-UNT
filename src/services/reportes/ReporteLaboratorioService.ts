@@ -17,23 +17,39 @@ export class ReporteLaboratorioService {
       where: { id: periodoId },
     });
 
-    const laboratorios = await prisma.ambiente.findMany({
+    const laboratoriosDb = await prisma.ambiente.findMany({
       where: { tipo: 'LABORATORIO', activo: true },
       include: {
         horarios: {
           where: { periodoId, estado: { not: 'CANCELADO' } },
           include: {
-            curso: { select: { codigo: true, nombre: true } },
-            docente: {
-              include: { usuario: { select: { nombre: true, apellidos: true } } },
-            },
-            grupo: { select: { nombre: true } },
+            cursoDocenteGrupo: {
+              include: {
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                    planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } }
+                  }
+                }
+              }
+            }
           },
           orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
         },
       },
       orderBy: { codigo: 'asc' },
-    }) as any[];
+    });
+
+    const laboratorios = laboratoriosDb.map(l => ({
+      ...l,
+      horarios: l.horarios.map(h => ({
+        ...h,
+        curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '-', nombre: '-' },
+        docente: h.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } },
+        grupo: h.cursoDocenteGrupo?.grupo || null
+      }))
+    })) as any[];
 
     const totalHorarios = laboratorios.reduce((sum, l) => sum + l.horarios.length, 0);
 
@@ -79,9 +95,9 @@ export class ReporteLaboratorioService {
 
         const filas = horariosDia.map((h: any) => [
           h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : '',
-          h.curso.codigo,
-          h.curso.nombre,
-          Formateadores.nombreUsuario(h.docente.usuario),
+          h.curso?.codigo,
+          h.curso?.nombre,
+          Formateadores.nombreUsuario(h.docente?.usuario),
           h.grupo?.nombre ?? '—',
         ]);
 

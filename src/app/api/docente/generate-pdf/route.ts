@@ -93,16 +93,22 @@ export async function POST(req: NextRequest) {
     // 3. Consultar horarios asignados (activos y no cancelados)
     const horariosDb = await prisma.horario.findMany({
       where: {
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         periodoId,
         estado: { not: 'CANCELADO' },
       },
       include: {
-        curso: true,
-        grupo: true,
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: { planEstudioCurso: { include: { curso: true } } }
+            }
+          }
+        },
         ambiente: true,
       },
-    });
+    }) as any[];
 
     // Agrupar horarios por curso y grupo para calcular carga lectiva
     const parseTime = (t: string) => {
@@ -112,17 +118,18 @@ export async function POST(req: NextRequest) {
 
     const hashCursos: Record<string, any> = {};
     horariosDb.forEach((h) => {
-      const key = `${h.cursoId}-${h.grupoId || 'sin-grupo'}`;
+      const pc = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
+      const key = `${pc?.curso?.id}-${h.cursoDocenteGrupo?.grupoId || 'sin-grupo'}`;
       const duracion = h.horaInicio && h.horaFin ? parseTime(h.horaFin) - parseTime(h.horaInicio) : 2;
 
       if (!hashCursos[key]) {
         hashCursos[key] = {
-          codigo: h.curso.codigo,
-          nombre: h.curso.nombre,
+          codigo: pc?.curso?.codigo,
+          nombre: pc?.curso?.nombre,
           escuela: docenteAdaptado.departamento,
-          ciclo: h.curso.ciclo,
-          seccion: h.grupo?.nombre || 'A',
-          n_alumnos: h.grupo?.capacidad || 35,
+          ciclo: pc?.ciclo,
+          seccion: h.cursoDocenteGrupo?.grupo?.nombre || 'A',
+          n_alumnos: h.cursoDocenteGrupo?.capacidad || 35,
           horas_teoria: 0,
           horas_practica: 0,
           horas_laboratorio: 0,
@@ -264,7 +271,7 @@ export async function POST(req: NextRequest) {
       
       const cargaLectivaHorarioList = Object.values(hashCursos).map((curso: any) => {
         // Encontrar horarios correspondientes a este curso/grupo
-        const hs = horariosDb.filter(h => h.curso.codigo === curso.codigo && (h.grupo?.nombre || 'A') === curso.seccion);
+        const hs = (horariosDb as any[]).filter(h => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo === curso.codigo && (h.cursoDocenteGrupo?.grupo?.nombre || 'A') === curso.seccion);
         
         const hTeoria = hs.filter(h => h.tipoComponente === 'TEORIA');
         const hPractica = hs.filter(h => h.tipoComponente === 'PRACTICA');
@@ -281,7 +288,7 @@ export async function POST(req: NextRequest) {
           horarioStr += 'L: ' + hLab.map(h => `${formatDia(h.diaSemana || '')}(${h.horaInicio}-${h.horaFin})`).join(', ') + '\n';
         }
         
-        const lugares = Array.from(new Set(hs.map(h => h.sede === 'SEDE_CENTRAL' ? 'F11' : 'F14'))).join(', ');
+        const lugares = Array.from(new Set(hs.map(h => h.ambiente?.codigo || 'F11'))).join(', ');
         const aulas = Array.from(new Set(hs.map(h => h.ambiente?.nombre || 'PD'))).join(', ');
         
         return {

@@ -5,8 +5,9 @@ import { TipoComponente, EstadoHorario, DedicacionDocente, Prisma } from '@prism
 export interface AsignacionCargaInput {
   periodoId: string;
   docenteId: string;
-  cursoId: string;
-  grupoId: string;
+  cursoId?: string;
+  planEstudioCursoId?: string;
+  grupoNombre: string;
   componentes: TipoComponente[];
 }
 
@@ -29,69 +30,101 @@ export class CargaLectivaService {
   /**
    * Lista todos los cursos del período con sus grupos y asignaciones de docentes
    */
-  async listarCursosDisponibles(periodoId: string) {
-    const cursos = await prisma.curso.findMany({
-      where: { activo: true },
+  async listarCursosDisponibles(periodoId: string, planEstudioId?: string) {
+    let targetPlanId = planEstudioId;
+    if (!targetPlanId) {
+      const activePlan = await prisma.planEstudio.findFirst({
+        where: { activo: true }
+      });
+      targetPlanId = activePlan?.id;
+    }
+
+    if (!targetPlanId) {
+      return [];
+    }
+
+    const planCursos = await prisma.planEstudioCurso.findMany({
+      where: { planEstudioId: targetPlanId },
       include: {
-        grupos: {
-          where: { activo: true },
-          orderBy: { nombre: 'asc' },
-        },
+        curso: true,
+        cursosDocentes: {
+          where: { periodoId, activo: true },
+          include: {
+            cursoDocenteGrupos: {
+              where: { activo: true },
+              include: { grupo: true },
+              orderBy: { grupo: { nombre: 'asc' } }
+            }
+          }
+        }
       },
-      orderBy: [{ ciclo: 'asc' }, { codigo: 'asc' }],
+      orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
     });
 
     const result = [];
 
-    for (const curso of cursos) {
+    for (const pc of planCursos) {
       const gruposConAsignaciones = [];
 
-      for (const grupo of curso.grupos) {
-        const horarios = await prisma.horario.findMany({
-          where: {
-            periodoId,
-            cursoId: curso.id,
-            grupoId: grupo.id,
-            estado: { not: 'CANCELADO' },
-          },
-          include: {
-            docente: {
-              include: {
-                usuario: { select: { nombre: true, apellidos: true } },
-              },
+      for (const cd of pc.cursosDocentes) {
+        for (const cdg of cd.cursoDocenteGrupos) {
+          const horarios = await prisma.horario.findMany({
+            where: {
+              periodoId,
+              cursoDocenteGrupoId: cdg.id,
+              estado: { not: 'CANCELADO' },
             },
-          },
-        });
+            include: {
+              cursoDocenteGrupo: {
+                include: {
+                  grupo: true,
+                  cursoDocente: {
+                    include: {
+                      docente: {
+                        include: {
+                          usuario: { select: { nombre: true, apellidos: true } },
+                        },
+                      },
+                    }
+                  }
+                }
+              }
+            },
+          });
 
-        const asignaciones = horarios.map((h) => ({
-          horarioId: h.id,
-          docenteId: h.docenteId,
-          docenteNombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
-          componente: h.tipoComponente,
-          horas: this.obtenerHorasComponente(curso, h.tipoComponente),
-          diaSemana: h.diaSemana,
-          horaInicio: h.horaInicio,
-          horaFin: h.horaFin,
-          ambienteId: h.ambienteId,
-          estado: h.estado,
-        }));
+          const asignaciones = horarios.map((h) => ({
+            horarioId: h.id,
+            docenteId: h.cursoDocenteGrupo.cursoDocente.docenteId,
+            docenteNombre: `${h.cursoDocenteGrupo.cursoDocente.docente.usuario.nombre} ${h.cursoDocenteGrupo.cursoDocente.docente.usuario.apellidos}`,
+            componente: h.tipoComponente,
+            horas: this.obtenerHorasComponente(pc, h.tipoComponente),
+            diaSemana: h.diaSemana,
+            horaInicio: h.horaInicio,
+            horaFin: h.horaFin,
+            ambienteId: h.ambienteId,
+            estado: h.estado,
+          }));
 
-        gruposConAsignaciones.push({
-          id: grupo.id,
-          nombre: grupo.nombre,
-          capacidad: grupo.capacidad,
-          asignaciones,
-        });
+          gruposConAsignaciones.push({
+            id: cdg.id,
+            nombre: cdg.grupo.nombre,
+            capacidad: cdg.capacidad,
+            asignaciones,
+          });
+        }
       }
 
       result.push({
-        id: curso.id,
-        codigo: curso.codigo,
-        nombre: curso.nombre,
-        ciclo: curso.ciclo,
-        horasTeoria: curso.horasTeoria,
-        horasPractica: curso.horasPractica,
-        horasLaboratorio: curso.horasLaboratorio,
+        id: pc.cursoId,
+        planEstudioCursoId: pc.id,
+        codigo: pc.curso.codigo,
+        nombre: pc.curso.nombre,
+        ciclo: pc.ciclo,
+        horasTeoria: pc.horasTeoria,
+        horasPractica: pc.horasPractica,
+        horasLaboratorio: pc.horasLaboratorio,
+        creditos: pc.creditos,
+        tipoCurso: pc.tipoCurso,
         grupos: gruposConAsignaciones,
       });
     }
@@ -131,19 +164,30 @@ export class CargaLectivaService {
       const horarios = await prisma.horario.findMany({
         where: {
           periodoId,
-          docenteId: docente.id,
           estado: { not: 'CANCELADO' },
+          cursoDocenteGrupo: {
+            cursoDocente: {
+              docenteId: docente.id,
+              periodoId
+            }
+          }
         },
         include: {
-          curso: {
-            select: { horasTeoria: true, horasPractica: true, horasLaboratorio: true },
-          },
+          cursoDocenteGrupo: {
+            include: {
+              cursoDocente: {
+                include: {
+                  planEstudioCurso: true
+                }
+              }
+            }
+          }
         },
       });
 
       let horasLectivasAsignadas = 0;
       for (const h of horarios) {
-        horasLectivasAsignadas += this.obtenerHorasComponente(h.curso, h.tipoComponente);
+        horasLectivasAsignadas += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
       }
 
       result.push({
@@ -166,27 +210,48 @@ export class CargaLectivaService {
    * Asigna carga lectiva a un docente (asigna componentes específicos en un grupo)
    */
   async asignarCargaLectiva(datos: AsignacionCargaInput, creadorUsuarioId: string) {
-    const { periodoId, docenteId, cursoId, grupoId, componentes } = datos;
+    const { periodoId, docenteId, cursoId, planEstudioCursoId, grupoNombre, componentes } = datos;
 
     if (!componentes || componentes.length === 0) {
       throw new AppError('Debe especificar al menos un componente (TEORIA, PRACTICA o LABORATORIO) para asignar', 400, 'NO_COMPONENTS');
     }
 
-    // 1. Obtener curso, docente y grupo
-    const [curso, docente, grupo] = await Promise.all([
-      prisma.curso.findUnique({ where: { id: cursoId } }),
+    let targetPlanEstudioCursoId = planEstudioCursoId;
+    if (!targetPlanEstudioCursoId && cursoId) {
+      const activePlan = await prisma.planEstudio.findFirst({ where: { activo: true } });
+      if (activePlan) {
+        const pec = await prisma.planEstudioCurso.findUnique({
+          where: {
+            planEstudioId_cursoId: {
+              planEstudioId: activePlan.id,
+              cursoId
+            }
+          }
+        });
+        targetPlanEstudioCursoId = pec?.id;
+      }
+    }
+
+    if (!targetPlanEstudioCursoId) {
+      throw new AppError('No se pudo determinar la versión del plan de estudios del curso', 400, 'CURRICULUM_VERSION_NOT_FOUND');
+    }
+
+    // 1. Obtener planEstudioCurso, docente
+    const [planEstudioCurso, docente] = await Promise.all([
+      prisma.planEstudioCurso.findUnique({
+        where: { id: targetPlanEstudioCursoId },
+        include: { curso: true }
+      }),
       prisma.docente.findUnique({ where: { id: docenteId }, include: { usuario: true } }),
-      prisma.grupo.findUnique({ where: { id: grupoId } }),
     ]);
 
-    if (!curso) throw new AppError('Curso no encontrado', 404, 'CURSO_NOT_FOUND');
+    if (!planEstudioCurso) throw new AppError('Curso en el plan de estudios no encontrado', 404, 'CURSO_PLAN_NOT_FOUND');
     if (!docente) throw new AppError('Docente no encontrado', 404, 'DOCENTE_NOT_FOUND');
-    if (!grupo) throw new AppError('Grupo no encontrado', 404, 'GRUPO_NOT_FOUND');
 
     // 2. Calcular las horas de la nueva asignación
     let horasNuevaAsignacion = 0;
     for (const comp of componentes) {
-      horasNuevaAsignacion += this.obtenerHorasComponente(curso, comp);
+      horasNuevaAsignacion += this.obtenerHorasComponente(planEstudioCurso, comp);
     }
 
     if (horasNuevaAsignacion === 0) {
@@ -198,24 +263,35 @@ export class CargaLectivaService {
     const horariosExistentes = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
         estado: { not: 'CANCELADO' },
-        // Excluir el grupo/curso actual para permitir la actualización de la asignación
-        NOT: {
-          cursoId,
-          grupoId,
-        },
+        cursoDocenteGrupo: {
+          cursoDocente: {
+            docenteId,
+            periodoId,
+            NOT: {
+              planEstudioCursoId: targetPlanEstudioCursoId,
+            }
+          }
+        }
       },
       include: {
-        curso: {
-          select: { horasTeoria: true, horasPractica: true, horasLaboratorio: true },
-        },
+        cursoDocenteGrupo: {
+          include: {
+            cursoDocente: {
+              include: {
+                planEstudioCurso: true
+              }
+            }
+          }
+        }
       },
     });
 
     let horasLectivasAsignadas = 0;
     for (const h of horariosExistentes) {
-      horasLectivasAsignadas += this.obtenerHorasComponente(h.curso, h.tipoComponente);
+      if (h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso) {
+        horasLectivasAsignadas += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+      }
     }
 
     const totalProyectado = horasLectivasAsignadas + horasNuevaAsignacion;
@@ -232,20 +308,33 @@ export class CargaLectivaService {
       const cruceGrupoComponente = await prisma.horario.findFirst({
         where: {
           periodoId,
-          cursoId,
-          grupoId,
           tipoComponente: comp,
           estado: { not: 'CANCELADO' },
-          docenteId: { not: docenteId },
+          cursoDocenteGrupo: {
+            grupo: { nombre: grupoNombre },
+            cursoDocente: {
+              planEstudioCursoId: targetPlanEstudioCursoId,
+              docenteId: { not: docenteId },
+              periodoId
+            }
+          }
         },
         include: {
-          docente: { include: { usuario: true } },
-        },
+          cursoDocenteGrupo: {
+            include: {
+              cursoDocente: {
+                include: {
+                  docente: { include: { usuario: true } }
+                }
+              }
+            }
+          }
+        }
       });
 
       if (cruceGrupoComponente) {
         throw new AppError(
-          `El componente de ${comp} para el grupo ${grupo.nombre} ya está asignado al docente ${cruceGrupoComponente.docente.usuario.nombre} ${cruceGrupoComponente.docente.usuario.apellidos}`,
+          `El componente de ${comp} para el grupo ${grupoNombre} ya está asignado al docente ${cruceGrupoComponente.cursoDocenteGrupo?.cursoDocente.docente.usuario.nombre} ${cruceGrupoComponente.cursoDocenteGrupo?.cursoDocente.docente.usuario.apellidos}`,
           400,
           'COMPONENTE_DUPLICADO'
         );
@@ -254,15 +343,19 @@ export class CargaLectivaService {
 
     const advertencias: string[] = [];
     // 5. Advertir si hay cruce de horarios con clases previamente programadas del docente
-    // (Solo aplica a horarios que ya tienen día y hora configurados)
     const horariosProgramadosDocente = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
         estado: { not: 'CANCELADO' },
         diaSemana: { not: null },
         horaInicio: { not: null },
         horaFin: { not: null },
+        cursoDocenteGrupo: {
+          cursoDocente: {
+            docenteId,
+            periodoId
+          }
+        }
       },
     });
 
@@ -272,13 +365,68 @@ export class CargaLectivaService {
 
     // 6. Transacción: Registrar Horarios en BORRADOR y actualizar CursoDocente
     const result = await prisma.$transaction(async (tx) => {
-      // Eliminar asignaciones previas del docente en este grupo y curso
+      // Find or create CursoDocente
+      let cd = await tx.cursoDocente.findUnique({
+        where: {
+          planEstudioCursoId_docenteId_periodoId: {
+            planEstudioCursoId: targetPlanEstudioCursoId,
+            docenteId,
+            periodoId
+          }
+        }
+      });
+
+      if (!cd) {
+        cd = await tx.cursoDocente.create({
+          data: {
+            planEstudioCursoId: targetPlanEstudioCursoId,
+            docenteId,
+            periodoId,
+            horasAsignadas: 0,
+            activo: true
+          }
+        });
+      } else if (!cd.activo) {
+        cd = await tx.cursoDocente.update({
+          where: { id: cd.id },
+          data: { activo: true }
+        });
+      }
+
+      // Find static Grupo
+      const grupo = await tx.grupo.findUnique({
+        where: { nombre: grupoNombre }
+      });
+
+      if (!grupo) {
+        throw new AppError(`El grupo ${grupoNombre} no existe en el catálogo estático`, 400, 'GRUPO_NOT_FOUND');
+      }
+
+      // Find or create CursoDocenteGrupo
+      let cdg = await tx.cursoDocenteGrupo.findUnique({
+        where: {
+          cursoDocenteId_grupoId: {
+            cursoDocenteId: cd.id,
+            grupoId: grupo.id
+          }
+        }
+      });
+
+      if (!cdg) {
+        cdg = await tx.cursoDocenteGrupo.create({
+          data: {
+            cursoDocenteId: cd.id,
+            grupoId: grupo.id,
+            capacidad: 40 // Default capacity
+          }
+        });
+      }
+
+      // Eliminar asignaciones previas del docente en este grupo
       await tx.horario.deleteMany({
         where: {
           periodoId,
-          cursoId,
-          grupoId,
-          docenteId,
+          cursoDocenteGrupoId: cdg.id,
         },
       });
 
@@ -287,9 +435,7 @@ export class CargaLectivaService {
         const horario = await tx.horario.create({
           data: {
             periodoId,
-            cursoId,
-            docenteId,
-            grupoId,
+            cursoDocenteGrupoId: cdg.id,
             tipoComponente: comp,
             estado: EstadoHorario.BORRADOR,
             creadoPor: creadorUsuarioId,
@@ -301,40 +447,26 @@ export class CargaLectivaService {
       // Calcular total de horas para CursoDocente
       const todosHorariosCursoDocente = await tx.horario.findMany({
         where: {
-          docenteId,
-          cursoId,
+          periodoId,
           estado: { not: 'CANCELADO' },
-        },
-        include: {
-          curso: {
-            select: { horasTeoria: true, horasPractica: true, horasLaboratorio: true },
-          },
+          cursoDocenteGrupo: {
+            cursoDocenteId: cd.id
+          }
         },
       });
 
       let totalHorasCursoDocente = 0;
       for (const h of todosHorariosCursoDocente) {
-        totalHorasCursoDocente += this.obtenerHorasComponente(h.curso, h.tipoComponente);
+        totalHorasCursoDocente += this.obtenerHorasComponente(planEstudioCurso, h.tipoComponente);
       }
 
-      // Upsert CursoDocente
-      await tx.cursoDocente.upsert({
-        where: {
-          cursoId_docenteId: {
-            cursoId,
-            docenteId,
-          },
-        },
-        create: {
-          cursoId,
-          docenteId,
+      // Update CursoDocente
+      await tx.cursoDocente.update({
+        where: { id: cd.id },
+        data: {
           horasAsignadas: totalHorasCursoDocente,
-          activo: true,
-        },
-        update: {
-          horasAsignadas: totalHorasCursoDocente,
-          activo: true,
-        },
+          activo: true
+        }
       });
 
       // Auditoría
@@ -346,8 +478,8 @@ export class CargaLectivaService {
           datos: {
             periodoId,
             docenteId,
-            cursoId,
-            grupoId,
+            planEstudioCursoId: targetPlanEstudioCursoId,
+            grupoNombre,
             componentes,
             totalHoras: horasNuevaAsignacion,
           },
@@ -369,9 +501,18 @@ export class CargaLectivaService {
   async eliminarCargaLectiva(horarioId: string, usuarioId: string) {
     const horario = await prisma.horario.findUnique({
       where: { id: horarioId },
+      include: {
+        cursoDocenteGrupo: {
+          include: {
+            cursoDocente: true
+          }
+        }
+      }
     });
 
     if (!horario) throw new AppError('Asignación no encontrada', 404, 'ASSIGNMENT_NOT_FOUND');
+
+    const cdId = horario.cursoDocenteGrupo.cursoDocenteId;
 
     await prisma.$transaction(async (tx) => {
       // Eliminar el horario
@@ -379,45 +520,46 @@ export class CargaLectivaService {
         where: { id: horarioId },
       });
 
-      // Recalcular horas del docente en el curso
+      // Recalcular horas del docente en el CursoDocente
       const todosHorariosCursoDocente = await tx.horario.findMany({
         where: {
-          docenteId: horario.docenteId,
-          cursoId: horario.cursoId,
+          cursoDocenteGrupo: {
+            cursoDocenteId: cdId
+          },
           estado: { not: 'CANCELADO' },
         },
         include: {
-          curso: {
-            select: { horasTeoria: true, horasPractica: true, horasLaboratorio: true },
-          },
-        },
+          cursoDocenteGrupo: {
+            include: {
+              cursoDocente: {
+                include: {
+                  planEstudioCurso: true
+                }
+              }
+            }
+          }
+        }
       });
 
       let totalHorasCursoDocente = 0;
       for (const h of todosHorariosCursoDocente) {
-        totalHorasCursoDocente += this.obtenerHorasComponente(h.curso, h.tipoComponente);
+        totalHorasCursoDocente += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
       }
 
       if (totalHorasCursoDocente > 0) {
         await tx.cursoDocente.update({
-          where: {
-            cursoId_docenteId: {
-              cursoId: horario.cursoId,
-              docenteId: horario.docenteId,
-            },
-          },
+          where: { id: cdId },
           data: { horasAsignadas: totalHorasCursoDocente },
         });
       } else {
         // Desactivar CursoDocente si ya no tiene horas
         await tx.cursoDocente.update({
-          where: {
-            cursoId_docenteId: {
-              cursoId: horario.cursoId,
-              docenteId: horario.docenteId,
-            },
-          },
+          where: { id: cdId },
           data: { horasAsignadas: 0, activo: false },
+        });
+        await tx.cursoDocenteGrupo.update({
+          where: { id: horario.cursoDocenteGrupoId },
+          data: { activo: false }
         });
       }
 
@@ -429,9 +571,9 @@ export class CargaLectivaService {
           entidad: 'Horario',
           entidadId: horarioId,
           datos: {
-            docenteId: horario.docenteId,
-            cursoId: horario.cursoId,
-            grupoId: horario.grupoId,
+            docenteId: horario.cursoDocenteGrupo.cursoDocente.docenteId,
+            planEstudioCursoId: horario.cursoDocenteGrupo.cursoDocente.planEstudioCursoId,
+            cursoDocenteGrupoId: horario.cursoDocenteGrupoId,
             componente: horario.tipoComponente,
           },
         },

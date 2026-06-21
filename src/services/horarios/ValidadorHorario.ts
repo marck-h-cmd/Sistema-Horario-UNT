@@ -156,7 +156,7 @@ export class ValidadorHorario {
   ) {
     const where: any = {
       periodoId,
-      docenteId,
+      cursoDocenteGrupo: { cursoDocente: { docenteId } },
       diaSemana,
       estado: { notIn: ['CANCELADO' as EstadoHorario] },
       OR: [
@@ -174,15 +174,16 @@ export class ValidadorHorario {
     const cruces = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { nombre: true } },
+        cursoDocenteGrupo: { include: { grupo: true, cursoDocente: { include: { planEstudioCurso: { include: { curso: { select: { nombre: true } } } } } } } },
         ambiente: { select: { nombre: true } },
       },
     });
 
     for (const cruce of cruces) {
+      const curso = cruce.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { nombre: '-' };
       conflictos.push({
         tipo: 'CRUCE_DOCENTE',
-        mensaje: `El docente ya tiene asignado el curso "${cruce.curso.nombre}" en el ambiente "${cruce.ambiente ? cruce.ambiente.nombre : 'Sin ambiente'}" de ${cruce.horaInicio} a ${cruce.horaFin}`,
+        mensaje: `El docente ya tiene asignado el curso "${curso.nombre}" en el ambiente "${cruce.ambiente ? cruce.ambiente.nombre : 'Sin ambiente'}" de ${cruce.horaInicio} a ${cruce.horaFin}`,
         severidad: 'ERROR',
         detalle: { horarioId: cruce.id },
       });
@@ -218,19 +219,26 @@ export class ValidadorHorario {
     const cruces = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { nombre: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { nombre: true } } } }
+              }
+            }
           }
         },
       },
     });
 
     for (const cruce of cruces) {
+      const curso = cruce.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { nombre: '-' };
+      const docente = cruce.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
       conflictos.push({
         tipo: 'CRUCE_AMBIENTE',
-        mensaje: `El ambiente ya está ocupado por el curso "${cruce.curso.nombre}" con el docente ${cruce.docente.usuario.nombre} ${cruce.docente.usuario.apellidos}`,
+        mensaje: `El ambiente ya está ocupado por el curso "${curso.nombre}" con el docente ${docente.usuario.nombre} ${docente.usuario.apellidos}`,
         severidad: 'ERROR',
         detalle: { horarioId: cruce.id },
       });
@@ -246,11 +254,34 @@ export class ValidadorHorario {
     horaFin: string,
     horarioIdExcluir?: string
   ) {
+    const cdg = await prisma.cursoDocenteGrupo.findUnique({
+      where: { id: grupoId },
+      include: {
+        grupo: true,
+        cursoDocente: {
+          include: {
+            planEstudioCurso: true
+          }
+        }
+      }
+    });
+    if (!cdg) return;
+
+    const staticGrupoId = cdg.grupoId;
+    const ciclo = cdg.cursoDocente.planEstudioCurso.ciclo;
+
     const where: any = {
       periodoId,
-      grupoId,
       diaSemana,
       estado: { notIn: ['CANCELADO' as EstadoHorario] },
+      cursoDocenteGrupo: {
+        grupoId: staticGrupoId,
+        cursoDocente: {
+          planEstudioCurso: {
+            ciclo: ciclo
+          }
+        }
+      },
       OR: [
         {
           horaInicio: { lt: horaFin },
@@ -266,14 +297,15 @@ export class ValidadorHorario {
     const cruces = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { nombre: true } },
+        cursoDocenteGrupo: { include: { grupo: true, cursoDocente: { include: { planEstudioCurso: { include: { curso: { select: { nombre: true } } } } } } } },
       },
     });
 
     for (const cruce of cruces) {
+      const curso = cruce.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { nombre: '-' };
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        mensaje: `El grupo ya tiene programado el curso "${cruce.curso.nombre}" en este horario`,
+        mensaje: `El grupo ya tiene programado el curso "${curso.nombre}" en este horario`,
         severidad: 'ERROR',
         detalle: { horarioId: cruce.id },
       });
@@ -334,7 +366,7 @@ export class ValidadorHorario {
     const horariosExistentes = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         diaSemana,
         estado: { not: 'CANCELADO' },
       },
@@ -422,11 +454,12 @@ export class ValidadorHorario {
     grupoId?: string,
     horarioIdExcluir?: string
   ) {
-    const [curso, ambiente] = await Promise.all([
-      prisma.curso.findUnique({
-        where: { id: cursoId },
+    const [planEstudioCurso, ambiente] = await Promise.all([
+      prisma.planEstudioCurso.findFirst({
+        where: { cursoId },
         include: {
-          cursosDocente: {
+          curso: true,
+          cursosDocentes: {
             where: { docenteId },
           },
         },
@@ -437,10 +470,11 @@ export class ValidadorHorario {
       })
     ]);
 
-    if (!curso || !curso.cursosDocente || curso.cursosDocente.length === 0 || !ambiente) return;
+    if (!planEstudioCurso || !planEstudioCurso.cursosDocentes || planEstudioCurso.cursosDocentes.length === 0 || !ambiente) return;
 
+    const curso = planEstudioCurso.curso;
     const esLaboratorio = ambiente.tipo === 'LABORATORIO';
-    const horasRequeridas = esLaboratorio ? curso.horasLaboratorio : (curso.horasTeoria + curso.horasPractica);
+    const horasRequeridas = esLaboratorio ? planEstudioCurso.horasLaboratorio : (planEstudioCurso.horasTeoria + planEstudioCurso.horasPractica);
     
     if (horasRequeridas === 0) {
       if (esLaboratorio) {
@@ -457,10 +491,9 @@ export class ValidadorHorario {
     const horariosAsignados = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
-        cursoId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId, planEstudioCursoId: planEstudioCurso.id } },
         estado: { not: 'CANCELADO' },
-        ...(grupoId ? { grupoId } : {}),
+        ...(grupoId ? { cursoDocenteGrupoId: grupoId } : {}),
         ...(horarioIdExcluir ? { id: { not: horarioIdExcluir } } : {}),
         ambiente: {
           tipo: esLaboratorio ? 'LABORATORIO' : { not: 'LABORATORIO' },
@@ -495,39 +528,40 @@ export class ValidadorHorario {
     horaFin: string,
     horarioIdExcluir?: string
   ) {
-    const carga = await prisma.cursoDocente.findUnique({
+    const carga = await prisma.cursoDocente.findFirst({
       where: {
-        cursoId_docenteId: { cursoId, docenteId },
+        docenteId,
+        planEstudioCurso: { cursoId }
       },
       include: {
-        curso: {
-          select: {
-            nombre: true,
-            codigo: true,
-            horasTeoria: true,
-            horasPractica: true,
-            horasLaboratorio: true,
-          },
-        },
+        planEstudioCurso: {
+          include: {
+            curso: {
+              select: {
+                nombre: true,
+                codigo: true,
+              },
+            },
+          }
+        }
       },
     });
 
-    if (!carga || !carga.curso) return;
+    if (!carga || !carga.planEstudioCurso || !carga.planEstudioCurso.curso) return;
 
     const horasRequeridas =
       carga.horasAsignadas > 0
         ? carga.horasAsignadas
-        : carga.curso.horasTeoria +
-          carga.curso.horasPractica +
-          carga.curso.horasLaboratorio;
+        : carga.planEstudioCurso.horasTeoria +
+          carga.planEstudioCurso.horasPractica +
+          carga.planEstudioCurso.horasLaboratorio;
 
     if (horasRequeridas <= 0) return;
 
     const horarios = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
-        cursoId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId, planEstudioCursoId: carga.planEstudioCurso.id } },
         estado: { not: 'CANCELADO' },
         ...(horarioIdExcluir ? { id: { not: horarioIdExcluir } } : {}),
       },
@@ -542,7 +576,7 @@ export class ValidadorHorario {
 
     const horasNuevas = calcularHorasEntre(horaInicio, horaFin);
     const totalProyectado = horasProgramadas + horasNuevas;
-    const etiqueta = `${carga.curso.codigo} — ${carga.curso.nombre}`;
+    const etiqueta = `${carga.planEstudioCurso.curso.codigo} — ${carga.planEstudioCurso.curso.nombre}`;
 
     if (totalProyectado > horasRequeridas) {
       conflictos.push({
@@ -571,14 +605,11 @@ export class ValidadorHorario {
     }
   }
 
-  /**
-   * Lista desfases de carga horaria docente-curso para un período.
-   */
   async obtenerDesfasesCarga(periodoId: string) {
     const cargas = await prisma.cursoDocente.findMany({
-      where: { activo: true },
+      where: { activo: true, periodoId },
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true } },
+        planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } },
         docente: {
           include: {
             usuario: { select: { nombre: true, apellidos: true } },
@@ -600,8 +631,7 @@ export class ValidadorHorario {
       const horarios = await prisma.horario.findMany({
         where: {
           periodoId,
-          docenteId: carga.docenteId,
-          cursoId: carga.cursoId,
+          cursoDocenteGrupo: { cursoDocenteId: carga.id },
           estado: { not: 'CANCELADO' },
         },
       });
@@ -616,9 +646,9 @@ export class ValidadorHorario {
       if (Math.abs(horasProgramadas - horasRequeridas) > 0.01) {
         desfases.push({
           docenteId: carga.docenteId,
-          cursoId: carga.cursoId,
-          docente: Formateadores.nombreUsuario(carga.docente.usuario),
-          curso: `${carga.curso.codigo} — ${carga.curso.nombre}`,
+          cursoId: carga.planEstudioCurso.curso.id,
+          docente: Formateadores.nombreUsuario(carga.docente.usuario as any),
+          curso: `${carga.planEstudioCurso.curso.codigo} — ${carga.planEstudioCurso.curso.nombre}`,
           horasCarga: horasRequeridas,
           horasProgramadas: Math.round(horasProgramadas * 10) / 10,
           diferencia: Math.round((horasProgramadas - horasRequeridas) * 10) / 10,

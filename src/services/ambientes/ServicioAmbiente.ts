@@ -82,10 +82,23 @@ export class ServicioAmbiente {
         horarios: {
           where: { estado: { not: 'CANCELADO' } },
           include: {
-            curso: { select: { nombre: true, codigo: true } },
-            docente: {
+            cursoDocenteGrupo: {
               include: {
-                usuario: { select: { nombre: true, apellidos: true } },
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: {
+                      include: {
+                        usuario: { select: { nombre: true, apellidos: true } },
+                      },
+                    },
+                    planEstudioCurso: {
+                      include: {
+                        curso: { select: { nombre: true, codigo: true } },
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -94,10 +107,25 @@ export class ServicioAmbiente {
           where: { completado: false },
         },
       },
-    });
+    }) as any;
 
     if (!ambiente) {
       throw new AppError('Ambiente no encontrado', 404, 'AMBIENTE_NOT_FOUND');
+    }
+
+    if (ambiente.horarios) {
+      ambiente.horarios = ambiente.horarios.map((h: any) => {
+        if (h.cursoDocenteGrupo) {
+          return {
+            ...h,
+            grupo: {
+              ...h.cursoDocenteGrupo.grupo,
+              cursoDocente: h.cursoDocenteGrupo.cursoDocente
+            }
+          };
+        }
+        return h;
+      });
     }
 
     return ambiente;
