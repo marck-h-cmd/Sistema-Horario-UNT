@@ -297,6 +297,9 @@ export async function POST(req: NextRequest) {
           lugar: lugares || 'F11',
           aula: aulas || 'PD',
           total: curso.horas_teoria + curso.horas_practica + curso.horas_laboratorio,
+          horasTeoria: curso.horas_teoria,
+          horasPractica: curso.horas_practica,
+          horasLaboratorio: curso.horas_laboratorio,
         };
       });
 

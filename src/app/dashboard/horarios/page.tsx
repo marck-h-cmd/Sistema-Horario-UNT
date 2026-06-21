@@ -20,8 +20,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useFiltrosHorario } from '@/hooks/useFiltrosHorario';
 import { ExportOptionsModal } from '@/components/horarios/ExportOptionsModal';
-import { exportarHorarioPDF } from '@/utils/exportarHorarioPDF';
-import { exportarHorarioExcel } from '@/utils/exportarHorarioExcel';
+import { exportarHorarioPDF, exportarHorariosTodosCiclosPDF } from '@/utils/exportarHorarioPDF';
+import { exportarHorarioExcel, exportarHorariosTodosCiclosExcel } from '@/utils/exportarHorarioExcel';
 
 interface HorarioCell {
   id: string;
@@ -573,13 +573,22 @@ export default function HorariosPage() {
         ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
         : horarios;
 
-      await exportarHorarioPDF(
-        horariosExportar,
-        'HORARIO ACADÉMICO',
-        `${periodoNombre} - ${cicloNombre}`,
-        diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-        options
-      );
+      if (!filtros.ciclo) {
+        await exportarHorariosTodosCiclosPDF(
+          horariosExportar,
+          periodoNombre,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      } else {
+        await exportarHorarioPDF(
+          horariosExportar,
+          'HORARIO ACADÉMICO',
+          `${periodoNombre} - ${cicloNombre}`,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      }
       toast.success('PDF exportado');
     } catch (e: any) {
       toast.error('Error al generar PDF: ' + e.message);
@@ -599,15 +608,26 @@ export default function HorariosPage() {
         ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
         : horarios;
 
-      await exportarHorarioExcel(
-        horariosExportar,
-        titulo,
-        '',
-        {
-          diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-          ...options
-        }
-      );
+      if (!filtros.ciclo) {
+        await exportarHorariosTodosCiclosExcel(
+          horariosExportar,
+          periodoSeleccionado?.nombre || 'General',
+          {
+            diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+            ...options
+          }
+        );
+      } else {
+        await exportarHorarioExcel(
+          horariosExportar,
+          titulo,
+          '',
+          {
+            diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+            ...options
+          }
+        );
+      }
       toast.success('Excel exportado');
     } catch (e: any) {
       toast.error('Error al generar Excel: ' + e.message);

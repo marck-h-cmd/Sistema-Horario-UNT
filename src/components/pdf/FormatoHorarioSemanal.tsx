@@ -102,6 +102,9 @@ export interface CargaLectivaRow {
   lugar: string;
   aula: string;
   total: number;
+  horasTeoria?: number;
+  horasPractica?: number;
+  horasLaboratorio?: number;
 }
 
 export interface CargaNoLectivaRow {
@@ -155,6 +158,11 @@ export function FormatoHorarioSemanal({
   totalHoras,
   fechaRegistro,
 }: FormatoHorarioSemanalProps) {
+  const totalTeoria = cargaLectiva.reduce((acc, c) => acc + (c.horasTeoria || 0), 0);
+  const totalPractica = cargaLectiva.reduce((acc, c) => acc + (c.horasPractica || 0), 0);
+  const totalLaboratorio = cargaLectiva.reduce((acc, c) => acc + (c.horasLaboratorio || 0), 0);
+  const totalLectivas = cargaLectiva.reduce((acc, c) => acc + (c.total || 0), 0);
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -243,14 +251,15 @@ export function FormatoHorarioSemanal({
           )}
           
           <View style={styles.row}>
-            <View style={[styles.cell, { width: '25%' }]}>
-              <Text style={styles.textBold}>T: </Text>
-              <Text style={styles.textBold}>P: </Text>
+            <View style={[styles.cell, { width: '25%', justifyContent: 'center' }]}>
+              <Text style={styles.textBold}>T: {totalTeoria}   P: {totalPractica}   L: {totalLaboratorio}</Text>
             </View>
             <View style={[styles.cell, { width: '45%' }]}><Text></Text></View>
             <View style={[styles.cell, { width: '10%' }]}><Text></Text></View>
             <View style={[styles.cell, { width: '12%' }]}><Text></Text></View>
-            <View style={[styles.cellNoBorder, { width: '8%' }]}><Text></Text></View>
+            <View style={[styles.cellNoBorder, { width: '8%', justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={styles.textBold}>{totalLectivas}</Text>
+            </View>
           </View>
 
           {/* CHNL Header */}

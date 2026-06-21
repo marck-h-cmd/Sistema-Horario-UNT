@@ -51,7 +51,14 @@ export class ServicioHorario {
     const cursoDocente = horario.cursoDocenteGrupo?.cursoDocente;
     return {
       ...horario,
-      curso: cursoDocente?.planEstudioCurso?.curso || null,
+      curso: cursoDocente?.planEstudioCurso?.curso ? {
+        ...cursoDocente.planEstudioCurso.curso,
+        ciclo: cursoDocente.planEstudioCurso.ciclo,
+        horasTeoria: cursoDocente.planEstudioCurso.horasTeoria,
+        horasPractica: cursoDocente.planEstudioCurso.horasPractica,
+        horasLaboratorio: cursoDocente.planEstudioCurso.horasLaboratorio,
+        creditos: cursoDocente.planEstudioCurso.creditos,
+      } : null,
       docente: cursoDocente?.docente || null,
       grupo: horario.cursoDocenteGrupo?.grupo || null,
     };

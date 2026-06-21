@@ -144,19 +144,25 @@ export default function ReportesPage() {
           apiGet<{
             id: string;
             docente: { codigo: string; usuario: { nombre: string; apellidos: string } };
-            curso: { codigo: string; nombre: string };
+            planEstudioCurso: { curso: { codigo: string; nombre: string } };
           }[]>('/api/carga-academica', { limit: 100, page: 1 }),
         ]);
 
         setOpciones({
-          docentes: docentes.data ?? [],
+          docentes: (docentes.data ?? []).map((d) => ({
+            id: d.id,
+            codigo: d.codigo,
+            nombre: d.usuario ? `${d.usuario.apellidos}, ${d.usuario.nombre}` : d.nombre,
+            usuario: d.usuario,
+            departamento: d.departamento,
+          })),
           cursos: cursos.data ?? [],
           ambientes: ambientes.data ?? [],
           periodos: periodos.data ?? [],
           grupos: (grupos.data ?? []).map((g) => ({ id: g.id, nombre: g.nombre, curso: g.curso })),
           'carga-academica': (carga.data ?? []).map((a) => ({
             id: a.id,
-            nombre: `${a.docente.codigo} → ${a.curso.codigo} (${a.docente.usuario.apellidos})`,
+            nombre: `${a.docente.codigo} → ${a.planEstudioCurso.curso.codigo} (${a.docente.usuario.apellidos})`,
           })),
         });
       } catch (e) {
