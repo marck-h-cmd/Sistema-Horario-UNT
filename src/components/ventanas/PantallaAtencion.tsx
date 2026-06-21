@@ -647,9 +647,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const handleEditarBloque = (bloque: any) => {
     setFormState({
       id: bloque.id,
-      cursoId: bloque.cursoId,
-      grupoId: bloque.grupoId || '',
-      ambienteId: bloque.ambienteId,
+      cursoId: bloque.curso?.id || '',
+      grupoId: bloque.cursoDocenteGrupoId || bloque.grupo?.id || '',
+      ambienteId: bloque.ambiente?.id || bloque.ambienteId || '',
       diaSemana: bloque.diaSemana,
       horaInicio: bloque.horaInicio,
       horaFin: bloque.horaFin,
@@ -765,7 +765,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     const docenteOk = !cruceDoc;
     const mensajeDocente = docenteOk
       ? 'Docente libre en este horario'
-      : `El docente ya tiene asignado ${cruceDoc.curso.codigo} (${cruceDoc.horaInicio} - ${cruceDoc.horaFin})`;
+      : `El docente ya tiene asignado ${cruceDoc.curso?.codigo || 'otro curso'} (${cruceDoc.horaInicio} - ${cruceDoc.horaFin})`;
 
     // 3. Cruce de Ambiente
     const cruceAmb = horariosAmbiente.find((h: any) => {
@@ -780,14 +780,14 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     const ambienteOk = !cruceAmb;
     const mensajeAmbiente = ambienteOk
       ? 'Ambiente libre en este horario'
-      : `El ambiente ya está ocupado por ${cruceAmb.curso.codigo} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin})`;
+      : `El ambiente ya está ocupado por ${cruceAmb.curso?.codigo || 'otro curso'} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin})`;
 
     // 4. Límite de horas del curso
     const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === cursoId);
     const horasAsignadas = cursoCarga?.horasAsignadas || 0;
 
     const horasProgramadas = allHorariosDocente
-      .filter((h: any) => h.cursoId === cursoId && h.estado !== 'CANCELADO' && (!id || h.id !== id) && h.horaInicio && h.horaFin)
+      .filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.estado !== 'CANCELADO' && (!id || h.id !== id) && h.horaInicio && h.horaFin)
       .reduce((sum: number, h: any) => {
         const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
         const hFin = parseInt(h.horaFin.split(':')[0], 10);
@@ -839,7 +839,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     });
 
     if (cruces.length > 0) {
-      return { disponible: false, mensaje: `Ocupado (${cruces[0].curso.codigo})` };
+      return { disponible: false, mensaje: `Ocupado (${cruces[0].curso?.codigo || 'Sin código'})` };
     }
     return { disponible: true, mensaje: 'Sí' };
   };
@@ -868,7 +868,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const cursosUnicos = React.useMemo(() => {
     const map = new Map<string, { codigo: string; nombre: string }>();
     allHorariosDocente.forEach((h: any) => {
-      if (h.estado !== 'CANCELADO') {
+      if (h.estado !== 'CANCELADO' && h.curso) {
         map.set(h.curso.codigo, { codigo: h.curso.codigo, nombre: h.curso.nombre });
       }
     });
@@ -1134,7 +1134,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                       const horasProgramadas = allHorariosDocente
                         .filter(
                           (h: any) =>
-                            h.cursoId === curso.id &&
+                            (h.curso?.id === curso.id || h.cursoId === curso.id) &&
                             h.estado !== 'CANCELADO' &&
                             (!formState.id || h.id !== formState.id) &&
                             h.horaInicio &&
@@ -1148,6 +1148,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                           );
                         }, 0);
                       const disponible = item.horasAsignadas - horasProgramadas;
+                      if (disponible <= 0) return null;
                       return (
                         <option key={curso.id} value={curso.id}>
                           {curso.codigo} - {curso.nombre} (Disponibles: {disponible}h de{' '}
@@ -1529,7 +1530,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   ) : (
                     <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                       {horariosBorrador.map((bloque) => {
-                        const col = getColorForCurso(bloque.curso.codigo);
+                        const col = getColorForCurso(bloque.curso?.codigo || 'DEFAULT');
                         return (
                           <div
                             key={bloque.id}
@@ -1538,10 +1539,10 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white shadow-sm ${col.badge}`}>
-                                  {bloque.curso.codigo}
+                                  {bloque.curso?.codigo || 'S/C'}
                                 </span>
                                 <span className="font-bold text-sm text-gray-900 dark:text-slate-100">
-                                  {bloque.curso.nombre}
+                                  {bloque.curso?.nombre || 'Curso Desconocido'}
                                 </span>
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-slate-300 mt-2">
@@ -1552,15 +1553,14 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                 <div className="flex items-center gap-1 col-span-2">
                                   <Building2 className="h-3.5 w-3.5 text-gray-400" />
                                   <span className="truncate">
-                                    Ambiente: {bloque.ambiente.codigo} - {bloque.ambiente.nombre}
+                                    Ambiente: {bloque.ambiente?.codigo || 'Sin código'} - {bloque.ambiente?.nombre || 'Sin nombre'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 font-semibold text-[#1a365d]">
                                   <Clock className="h-3.5 w-3.5" />
                                   <span>
-                                    {bloque.diaSemana.charAt(0) +
-                                      bloque.diaSemana.slice(1).toLowerCase()}{' '}
-                                    {bloque.horaInicio} - {bloque.horaFin}
+                                    {bloque.diaSemana ? (bloque.diaSemana.charAt(0) + bloque.diaSemana.slice(1).toLowerCase()) : 'Sin día'}{' '}
+                                    {bloque.horaInicio || '--:--'} - {bloque.horaFin || '--:--'}
                                   </span>
                                 </div>
                               </div>
@@ -1683,7 +1683,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                         {/* Contenedor flex para múltiples clases en el mismo slot */}
                                         <div className="flex flex-col h-full w-full divide-y divide-black/5">
                                           {startingClasses.map((h: any) => {
-                                            const col = getColorForCurso(h.curso.codigo);
+                                            const col = getColorForCurso(h.curso?.codigo || 'DEFAULT');
                                             const esLab =
                                               h.ambiente?.codigo?.toUpperCase()?.includes('LAB') ||
                                               h.ambiente?.tipo === 'LABORATORIO';
@@ -1739,14 +1739,14 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                                     isCompact ? 'text-[10px]' : 'text-xs mb-0.5'
                                                   )}
                                                 >
-                                                  {h.curso.codigo}
+                                                  {h.curso?.codigo || 'S/C'}
                                                 </div>
                                                 {!isCompact && (
                                                   <div
                                                     className="text-[10px] leading-tight opacity-95 line-clamp-2 mb-1.5"
-                                                    title={h.curso.nombre}
+                                                    title={h.curso?.nombre || ''}
                                                   >
-                                                    {h.curso.nombre}
+                                                    {h.curso?.nombre || 'Curso Desconocido'}
                                                   </div>
                                                 )}
 
