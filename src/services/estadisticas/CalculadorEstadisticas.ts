@@ -11,12 +11,21 @@ export class CalculadorEstadisticas {
         estado: { not: 'CANCELADO' },
       },
       include: {
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } },
-          },
-        },
-        curso: { select: { creditos: true } },
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: {
+                  include: {
+                    usuario: { select: { nombre: true, apellidos: true } },
+                  },
+                },
+                planEstudioCurso: { select: { creditos: true, curso: { select: { codigo: true } } } },
+              }
+            }
+          }
+        }
       },
     });
 
@@ -31,12 +40,14 @@ export class CalculadorEstadisticas {
     }> = {};
 
     for (const h of horarios) {
-      if (!cargaPorDocente[h.docenteId]) {
-        cargaPorDocente[h.docenteId] = {
-          docenteId: h.docenteId,
-          nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
-          codigo: h.docente.codigo,
-          categoria: h.docente.categoria,
+      const docente = h.cursoDocenteGrupo.cursoDocente.docente;
+      const docenteId = docente.id;
+      if (!cargaPorDocente[docenteId]) {
+        cargaPorDocente[docenteId] = {
+          docenteId: docenteId,
+          nombre: `${docente.usuario.nombre} ${docente.usuario.apellidos}`,
+          codigo: docente.codigo,
+          categoria: docente.categoria,
           totalHoras: 0,
           totalCursos: 0,
           horarios: [],
@@ -49,13 +60,13 @@ export class CalculadorEstadisticas {
       const [hfH, hfM] = h.horaFin.split(':').map(Number);
       const horas = (hfH + hfM / 60) - (hiH + hiM / 60);
 
-      cargaPorDocente[h.docenteId].totalHoras += horas;
-      cargaPorDocente[h.docenteId].horarios.push(h);
+      cargaPorDocente[docenteId].totalHoras += horas;
+      cargaPorDocente[docenteId].horarios.push(h);
     }
 
     // Contar cursos únicos por docente
     for (const docente of Object.values(cargaPorDocente)) {
-      const cursosUnicos = new Set(docente.horarios.map(h => h.cursoId));
+      const cursosUnicos = new Set(docente.horarios.map(h => h.cursoDocenteGrupo.cursoDocente.planEstudioCursoId));
       docente.totalCursos = cursosUnicos.size;
     }
 
@@ -156,8 +167,7 @@ export class CalculadorEstadisticas {
       totalCursos,
       totalAmbientes,
       totalHorarios,
-      docentesConHorarios,
-      cursosConHorarios,
+      rawUniqueGrupos,
     ] = await Promise.all([
       prisma.docente.count({ where: { usuario: { activo: true } } }),
       prisma.curso.count({ where: { activo: true } }),
@@ -165,15 +175,37 @@ export class CalculadorEstadisticas {
       prisma.horario.count({
         where: { periodoId, estado: { not: 'CANCELADO' } },
       }),
-      prisma.horario.groupBy({
-        by: ['docenteId'],
+      prisma.horario.findMany({
         where: { periodoId, estado: { not: 'CANCELADO' } },
-      }),
-      prisma.horario.groupBy({
-        by: ['cursoId'],
-        where: { periodoId, estado: { not: 'CANCELADO' } },
+        distinct: ['cursoDocenteGrupoId'],
+        select: {
+          cursoDocenteGrupo: {
+            select: {
+              cursoDocente: {
+                select: {
+                  docenteId: true,
+                  planEstudioCursoId: true,
+                }
+              }
+            }
+          }
+        }
       }),
     ]);
+    
+    // Extraer y contar docentes y cursos únicos
+    const uniqueDocentes = new Set();
+    const uniqueCursos = new Set();
+    
+    for (const item of rawUniqueGrupos) {
+      if (item.cursoDocenteGrupo?.cursoDocente) {
+        uniqueDocentes.add(item.cursoDocenteGrupo.cursoDocente.docenteId);
+        uniqueCursos.add(item.cursoDocenteGrupo.cursoDocente.planEstudioCursoId);
+      }
+    }
+    
+    const docentesConHorariosCount = uniqueDocentes.size;
+    const cursosConHorariosCount = uniqueCursos.size;
 
     // Calcular horas totales
     const horarios = await prisma.horario.findMany({
@@ -192,20 +224,20 @@ export class CalculadorEstadisticas {
 
     return {
       totalDocentes,
-      docentesAsignados: docentesConHorarios.length,
+      docentesAsignados: docentesConHorariosCount,
       porcentajeDocentesAsignados: totalDocentes > 0
-        ? Math.round((docentesConHorarios.length / totalDocentes) * 100)
+        ? Math.round((docentesConHorariosCount / totalDocentes) * 100)
         : 0,
       totalCursos,
-      cursosAsignados: cursosConHorarios.length,
+      cursosAsignados: cursosConHorariosCount,
       porcentajeCursosAsignados: totalCursos > 0
-        ? Math.round((cursosConHorarios.length / totalCursos) * 100)
+        ? Math.round((cursosConHorariosCount / totalCursos) * 100)
         : 0,
       totalAmbientes,
       totalHorarios,
       horasTotales: Math.round(horasTotales * 10) / 10,
-      promedioHorasPorDocente: docentesConHorarios.length > 0
-        ? Math.round((horasTotales / docentesConHorarios.length) * 10) / 10
+      promedioHorasPorDocente: docentesConHorariosCount > 0
+        ? Math.round((horasTotales / docentesConHorariosCount) * 10) / 10
         : 0,
     };
   }

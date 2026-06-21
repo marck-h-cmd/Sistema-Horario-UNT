@@ -55,12 +55,20 @@ export class GestorDisponibilidad {
             ...(diaSemana && { diaSemana }),
           },
           include: {
-            curso: { select: { nombre: true } },
-            docente: {
+            cursoDocenteGrupo: {
               include: {
-                usuario: { select: { nombre: true, apellidos: true } }
+                cursoDocente: {
+                  include: {
+                    planEstudioCurso: { include: { curso: { select: { nombre: true } } } },
+                    docente: {
+                      include: {
+                        usuario: { select: { nombre: true, apellidos: true } }
+                      }
+                    }
+                  }
+                }
               }
-            },
+            }
           },
         },
       },
@@ -71,16 +79,20 @@ export class GestorDisponibilidad {
       codigo: ambiente.codigo,
       nombre: ambiente.nombre,
       tipo: ambiente.tipo,
-      horariosOcupados: ambiente.horarios
-        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
-        .map(h => ({
-          diaSemana: h.diaSemana!,
-          horaInicio: h.horaInicio!,
-          horaFin: h.horaFin!,
-          cursoId: h.cursoId,
-          cursoNombre: h.curso.nombre,
-          docenteNombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
-        })),
+      horariosOcupados: (ambiente.horarios || [])
+        .filter((h: any) => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+        .map((h: any) => {
+          const docente = h.cursoDocenteGrupo?.cursoDocente?.docente;
+          const curso = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso;
+          return {
+            diaSemana: h.diaSemana!,
+            horaInicio: h.horaInicio!,
+            horaFin: h.horaFin!,
+            cursoId: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCursoId,
+            cursoNombre: curso?.nombre,
+            docenteNombre: docente ? `${docente.usuario.nombre} ${docente.usuario.apellidos}` : undefined,
+          };
+        }),
     }));
 
     // Guardar en caché

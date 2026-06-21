@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",
-    "@ai-sdk/groq": "^3.0.40",
+    "@ai-sdk/groq": "^3.0.42",
     "@ai-sdk/react": "^3.0.201",
     "@ai-sdk/xai": "^3.0.94",
     "@prisma/client": "^5.14.0",
@@ -74,6 +74,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-react": "^5.17.0",
     "tailwind-merge": "^3.6.0",
+    "ts-morph": "^28.0.0",
     "uuid": "^9.0.0",
     "ws": "^8.17.0",
     "xss-clean": "^0.1.4",

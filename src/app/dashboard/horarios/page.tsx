@@ -20,8 +20,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useFiltrosHorario } from '@/hooks/useFiltrosHorario';
 import { ExportOptionsModal } from '@/components/horarios/ExportOptionsModal';
-import { exportarHorarioPDF } from '@/utils/exportarHorarioPDF';
-import { exportarHorarioExcel } from '@/utils/exportarHorarioExcel';
+import { exportarHorarioPDF, exportarHorariosTodosCiclosPDF } from '@/utils/exportarHorarioPDF';
+import { exportarHorarioExcel, exportarHorariosTodosCiclosExcel } from '@/utils/exportarHorarioExcel';
 
 interface HorarioCell {
   id: string;
@@ -33,6 +33,8 @@ interface HorarioCell {
   docente: { id: string; usuario: { id: string; nombre: string; apellidos: string } };
   ambiente: { id: string; codigo: string; tipo?: string };
   grupo?: { id: string; nombre: string } | null;
+  cursoDocenteGrupo?: any;
+  cursoDocenteGrupoId?: string;
 }
 
 interface ConflictoDetalle {
@@ -317,7 +319,7 @@ export default function HorariosPage() {
         setGrupos(g);
         setCargaRows(filasCarga);
 
-        const docentesDelCurso = filasCarga.map((row) => row.docente);
+        const docentesDelCurso = filasCarga.map((row) => row.docente).filter(Boolean);
         const uniqueDocentes = Array.from(new Map(docentesDelCurso.map(item => [item.id, item])).values());
         
         setDocentes(uniqueDocentes);
@@ -331,7 +333,7 @@ export default function HorariosPage() {
             docenteId: uniqueDocentes[0]?.id ?? '',
           }));
         } else {
-          const actualCarga = filasCarga.find(r => r.docente.id === form.docenteId);
+          const actualCarga = filasCarga.find(r => r.docente?.id === form.docenteId);
           setHorasCargaDocente(actualCarga?.horasAsignadas ?? null);
         }
       } catch {
@@ -406,7 +408,7 @@ export default function HorariosPage() {
 
     const cruces = horarios.filter(h => {
       if (editingId && h.id === editingId) return false;
-      if (h.ambiente.id !== ambienteId) return false;
+      if (h.ambiente?.id !== ambienteId) return false;
       if (h.diaSemana !== diaSemana) return false;
       
       const hStart = parseTime(h.horaInicio);
@@ -416,7 +418,8 @@ export default function HorariosPage() {
     });
 
     if (cruces.length > 0) {
-      return { disponible: false, mensaje: `Ocupado (${cruces[0].curso.codigo})` };
+      const codigo = cruces[0].curso?.codigo || cruces[0].cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo || '';
+      return { disponible: false, mensaje: `Ocupado (${codigo})` };
     }
     return { disponible: true, mensaje: 'Sí' };
   };
@@ -424,13 +427,13 @@ export default function HorariosPage() {
   const handleEditOpen = (h: HorarioCell) => {
     setEditingId(h.id);
     setForm({
-      cursoId: h.curso.id || '',
-      docenteId: h.docente.id || '',
-      ambienteId: h.ambiente.id || '',
-      grupoId: h.grupo?.id || '',
-      diaSemana: h.diaSemana as DiaSemana,
-      horaInicio: h.horaInicio.slice(0, 5),
-      horaFin: h.horaFin.slice(0, 5),
+      cursoId: h.curso?.id || h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.cursoId || '',
+      docenteId: h.docente?.id || h.cursoDocenteGrupo?.cursoDocente?.docenteId || '',
+      ambienteId: h.ambiente?.id || '',
+      grupoId: h.grupo?.id || h.cursoDocenteGrupoId || '',
+      diaSemana: (h.diaSemana || DiaSemana.LUNES) as DiaSemana,
+      horaInicio: h.horaInicio ? h.horaInicio.slice(0, 5) : '08:00',
+      horaFin: h.horaFin ? h.horaFin.slice(0, 5) : '10:00',
     });
     setCreateOpen(true);
   };
@@ -441,11 +444,11 @@ export default function HorariosPage() {
       await apiDelete(`/api/horarios/${h.id}`);
       toast.success('Horario eliminado correctamente');
       
-      const docenteUsuarioId = h.docente.usuario?.id || '';
+      const docenteUsuarioId = h.docente?.usuario?.id || h.cursoDocenteGrupo?.cursoDocente?.docente?.usuario?.id || '';
       await notificarCambioHorario(
         docenteUsuarioId,
         'Horario Eliminado',
-        `Se ha eliminado el horario del día ${DIA_LABEL[h.diaSemana]} de ${h.horaInicio} a ${h.horaFin} en el ambiente ${h.ambiente.codigo}.`
+        `Se ha eliminado el horario del día ${DIA_LABEL[h.diaSemana]} de ${h.horaInicio} a ${h.horaFin} en el ambiente ${h.ambiente?.codigo || 'Sin ambiente'}.`
       );
       
       fetchHorarios();
@@ -462,11 +465,11 @@ export default function HorariosPage() {
       await apiPost(`/api/horarios/${id}/confirmar`, {});
       toast.success('Horario confirmado correctamente');
       
-      const docenteUsuarioId = h.docente.usuario?.id || '';
+      const docenteUsuarioId = h.docente?.usuario?.id || h.cursoDocenteGrupo?.cursoDocente?.docente?.usuario?.id || '';
       await notificarCambioHorario(
         docenteUsuarioId,
         'Horario Confirmado',
-        `Se ha confirmado tu horario para el curso ${h.curso.nombre} el día ${DIA_LABEL[h.diaSemana]} de ${h.horaInicio} a ${h.horaFin} en el ambiente ${h.ambiente.codigo}.`
+        `Se ha confirmado tu horario para el curso ${h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre} el día ${DIA_LABEL[h.diaSemana]} de ${h.horaInicio} a ${h.horaFin} en el ambiente ${h.ambiente?.codigo || 'Sin ambiente'}.`
       );
       
       fetchHorarios();
@@ -570,13 +573,22 @@ export default function HorariosPage() {
         ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
         : horarios;
 
-      await exportarHorarioPDF(
-        horariosExportar,
-        'HORARIO ACADÉMICO',
-        `${periodoNombre} - ${cicloNombre}`,
-        diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-        options
-      );
+      if (!filtros.ciclo) {
+        await exportarHorariosTodosCiclosPDF(
+          horariosExportar,
+          periodoNombre,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      } else {
+        await exportarHorarioPDF(
+          horariosExportar,
+          'HORARIO ACADÉMICO',
+          `${periodoNombre} - ${cicloNombre}`,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      }
       toast.success('PDF exportado');
     } catch (e: any) {
       toast.error('Error al generar PDF: ' + e.message);
@@ -596,15 +608,26 @@ export default function HorariosPage() {
         ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
         : horarios;
 
-      await exportarHorarioExcel(
-        horariosExportar,
-        titulo,
-        '',
-        {
-          diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-          ...options
-        }
-      );
+      if (!filtros.ciclo) {
+        await exportarHorariosTodosCiclosExcel(
+          horariosExportar,
+          periodoSeleccionado?.nombre || 'General',
+          {
+            diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+            ...options
+          }
+        );
+      } else {
+        await exportarHorarioExcel(
+          horariosExportar,
+          titulo,
+          '',
+          {
+            diasMostrados: diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+            ...options
+          }
+        );
+      }
       toast.success('Excel exportado');
     } catch (e: any) {
       toast.error('Error al generar Excel: ' + e.message);
@@ -638,7 +661,8 @@ export default function HorariosPage() {
         if (h.estado) return h.estado === estadoFiltro;
       }
       if (grupoFiltro !== 'Todos') {
-        return h.grupo?.nombre === grupoFiltro;
+        const nombreGrupo = h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre;
+        return nombreGrupo === grupoFiltro;
       }
       return true;
     });
@@ -659,7 +683,10 @@ export default function HorariosPage() {
   const cursosUnicos = useMemo(() => {
     const map = new Map();
     horariosFiltrados.forEach(h => {
-       if (!map.has(h.curso.codigo)) map.set(h.curso.codigo, h.curso);
+       const curso = h.curso || h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso;
+       if (curso?.codigo && !map.has(curso.codigo)) {
+         map.set(curso.codigo, curso);
+       }
     });
     return Array.from(map.values());
   }, [horariosFiltrados]);
@@ -1113,8 +1140,8 @@ export default function HorariosPage() {
                                     {laneItems.map((item, itemIdx) => {
                                       if (item.type === 'class') {
                                         const h = item.class!;
-                                        const col = getColorForCurso(h.curso.codigo);
-                                        const esLab = h.ambiente.codigo.toUpperCase().includes('LAB') || (h.ambiente as any).tipo === 'LABORATORIO';
+                                        const col = getColorForCurso(h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo);
+                                        const esLab = h.ambiente?.codigo?.toUpperCase().includes('LAB') || h.ambiente?.tipo === 'LABORATORIO';
                                         const isBorrador = h.estado === 'BORRADOR';
 
                                         const laneCount = lanes.length;
@@ -1137,7 +1164,7 @@ export default function HorariosPage() {
                                                 {/* Fila 1: Código de curso y Tipo */}
                                                 <div className="flex items-center justify-between gap-1 w-full overflow-hidden leading-none mb-0.5">
                                                   <span className="font-bold text-[10px] truncate leading-none">
-                                                    {h.curso.codigo}
+                                                    {h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo}
                                                   </span>
                                                   <div className="flex items-center gap-1 shrink-0">
                                                     <span className={cn(
@@ -1194,7 +1221,7 @@ export default function HorariosPage() {
 
                                                 {/* Fila 2: Grupo y Ambiente (sin iconos, combinados) */}
                                                 <div className="text-[9px] font-bold opacity-90 truncate leading-none mt-auto pt-1 border-t border-black/5">
-                                                  {h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'} • {h.ambiente.codigo}
+                                                  {(h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre) ? `Gr. ${h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre}` : 'Sin Gr.'} • {h.ambiente?.codigo || '—'}
                                                 </div>
                                               </div>
                                             ) : (
@@ -1271,7 +1298,7 @@ export default function HorariosPage() {
                                                   "font-bold leading-tight",
                                                   isSuperCompact ? "text-[10px] mb-0" : isCompact ? "text-xs mb-0.5" : "text-sm mb-0.5"
                                                 )}>
-                                                  {h.curso.codigo}
+                                                  {h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo}
                                                 </div>
                                                 
                                                 <div 
@@ -1279,9 +1306,9 @@ export default function HorariosPage() {
                                                     "leading-snug opacity-90",
                                                     isSuperCompact ? "hidden" : isCompact ? "text-[9px] line-clamp-1 mb-1" : "text-[11px] line-clamp-2 mb-2"
                                                   )} 
-                                                  title={h.curso.nombre}
+                                                  title={h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre}
                                                 >
-                                                  {h.curso.nombre}
+                                                  {h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre}
                                                 </div>
                                                 
                                                 <div className={cn(
@@ -1292,11 +1319,11 @@ export default function HorariosPage() {
                                                 )}>
                                                   <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
                                                     {!isCompact && <Users className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
-                                                    <span className="truncate text-center w-full">{h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : 'Sin Gr.'}</span>
+                                                    <span className="truncate text-center w-full">{(h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre) ? `Gr. ${h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre}` : 'Sin Gr.'}</span>
                                                   </div>
                                                   <div className="flex items-center gap-0.5 bg-white/40 px-1 py-0.5 rounded truncate max-w-full justify-center">
                                                     {!isCompact && <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />}
-                                                    <span className="truncate text-center w-full">{h.ambiente.codigo}</span>
+                                                    <span className="truncate text-center w-full">{h.ambiente?.codigo || '—'}</span>
                                                   </div>
                                                 </div>
                                               </div>
@@ -1364,7 +1391,11 @@ export default function HorariosPage() {
               {diasAMostrar.map(dia => {
                 const horariosDia = horariosFiltrados
                   .filter(h => h.diaSemana === dia)
-                  .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+                  .sort((a, b) => {
+                    const timeA = a.horaInicio || '';
+                    const timeB = b.horaInicio || '';
+                    return timeA.localeCompare(timeB);
+                  });
                 
                 return (
                   <div key={dia} className="space-y-2">
@@ -1390,7 +1421,7 @@ export default function HorariosPage() {
                           </tr>
                         ) : (
                           horariosDia.map(h => {
-                            const col = getColorForCurso(h.curso.codigo);
+                            const col = getColorForCurso(h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo);
                             return (
                               <tr 
                                 key={h.id}
@@ -1401,13 +1432,13 @@ export default function HorariosPage() {
                                 <td className="px-4 py-3 text-sm border-b">
                                   <div className="flex items-center gap-2">
                                     <span className={cn("w-3 h-3 rounded-full", col.badge)}></span>
-                                    <span className="font-semibold">{h.curso.codigo}</span>
-                                    <span className="text-slate-600 dark:text-slate-400 truncate">{h.curso.nombre}</span>
+                                    <span className="font-semibold">{h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo}</span>
+                                    <span className="text-slate-600 dark:text-slate-400 truncate">{h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre}</span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{Formateadores.nombreUsuario(h.docente.usuario)}</td>
-                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.ambiente.codigo}</td>
-                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.grupo?.nombre || 'Sin grupo'}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.docente?.usuario ? Formateadores.nombreUsuario(h.docente.usuario) : 'Sin docente'}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.ambiente?.codigo || '—'}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 border-b">{h.grupo?.nombre || h.cursoDocenteGrupo?.grupo?.nombre || 'Sin grupo'}</td>
                               </tr>
                             );
                           })

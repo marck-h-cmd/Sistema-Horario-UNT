@@ -36,7 +36,7 @@ export function ExportOptionsModal({
   const [pageSize, setPageSize] = useState<'A4' | 'Letter' | 'Legal'>('A4');
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [margin, setMargin] = useState<number>(8);
-  const [printImmediately, setPrintImmediately] = useState<boolean>(false);
+  const [printImmediately, setPrintImmediately] = useState<boolean>(true);
   const [format, setFormat] = useState<'table' | 'grid'>('grid');
 
   const handleExportPDF = () => {

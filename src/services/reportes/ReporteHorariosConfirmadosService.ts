@@ -17,21 +17,34 @@ export class ReporteHorariosConfirmadosService {
       throw new Error('Período no encontrado');
     }
 
-    const horarios = await prisma.horario.findMany({
+    const horariosDb = await prisma.horario.findMany({
       where: {
         periodoId,
         estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
       },
       include: {
-        curso: { select: { codigo: true, nombre: true } },
-        docente: {
-          include: { usuario: { select: { nombre: true, apellidos: true } } },
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } }
+              }
+            }
+          }
         },
         ambiente: { select: { codigo: true, nombre: true, tipo: true } },
-        grupo: { select: { nombre: true } },
       },
       orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
-    }) as any[];
+    });
+
+    const horarios = horariosDb.map(h => ({
+      ...h,
+      curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '-', nombre: '-' },
+      docente: h.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } },
+      grupo: h.cursoDocenteGrupo?.grupo || null
+    })) as any[];
 
     let totalHoras = 0;
     const filas = horarios.map((h) => {
@@ -40,9 +53,9 @@ export class ReporteHorariosConfirmadosService {
       return [
         h.diaSemana ? UtilidadesFecha.nombreDia(h.diaSemana) : '',
         h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : '',
-        h.curso.codigo,
-        h.curso.nombre,
-        Formateadores.nombreUsuario(h.docente.usuario),
+        h.curso?.codigo,
+        h.curso?.nombre,
+        Formateadores.nombreUsuario(h.docente?.usuario),
         h.ambiente?.codigo || '',
         h.ambiente ? Formateadores.tipoAmbiente(h.ambiente.tipo) : '',
         h.grupo?.nombre ?? '—',

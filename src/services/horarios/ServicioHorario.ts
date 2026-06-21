@@ -11,7 +11,7 @@ export interface CrearHorarioDTO {
   periodoId: string;
   cursoId: string;
   docenteId: string;
-  grupoId?: string;
+  cursoDocenteGrupoId?: string;
   ambienteId: string;
   diaSemana: DiaSemana;
   horaInicio: string;
@@ -46,29 +46,51 @@ export class ServicioHorario {
     this.validadorConflictos = new ValidadorConflictos();
   }
 
+  private mapHorario(horario: any) {
+    if (!horario) return null;
+    const cursoDocente = horario.cursoDocenteGrupo?.cursoDocente;
+    return {
+      ...horario,
+      curso: cursoDocente?.planEstudioCurso?.curso ? {
+        ...cursoDocente.planEstudioCurso.curso,
+        ciclo: cursoDocente.planEstudioCurso.ciclo,
+        horasTeoria: cursoDocente.planEstudioCurso.horasTeoria,
+        horasPractica: cursoDocente.planEstudioCurso.horasPractica,
+        horasLaboratorio: cursoDocente.planEstudioCurso.horasLaboratorio,
+        creditos: cursoDocente.planEstudioCurso.creditos,
+      } : null,
+      docente: cursoDocente?.docente || null,
+      grupo: horario.cursoDocenteGrupo?.grupo || null,
+    };
+  }
+
   async listar(filtros: FiltrosHorario, paginacion: PaginacionParams) {
     const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = paginacion;
     const where: Prisma.HorarioWhereInput = {};
 
     if (filtros.periodoId) where.periodoId = filtros.periodoId;
-    if (filtros.docenteId) where.docenteId = filtros.docenteId;
-    if (filtros.cursoId) where.cursoId = filtros.cursoId;
+    if (filtros.docenteId) where.cursoDocenteGrupo = { cursoDocente: { docenteId: filtros.docenteId } };
+    if (filtros.cursoId) where.cursoDocenteGrupo = { ...where.cursoDocenteGrupo, cursoDocente: { ...((where.cursoDocenteGrupo as any)?.cursoDocente || {}), planEstudioCurso: { cursoId: filtros.cursoId } } };
     if (filtros.ambienteId) where.ambienteId = filtros.ambienteId;
     if (filtros.diaSemana) where.diaSemana = filtros.diaSemana;
     if (filtros.estado) where.estado = filtros.estado;
-    if (filtros.ciclo) where.curso = { ciclo: filtros.ciclo };
+    if (filtros.ciclo) where.cursoDocenteGrupo = { ...where.cursoDocenteGrupo, cursoDocente: { ...((where.cursoDocenteGrupo as any)?.cursoDocente || {}), planEstudioCurso: { ciclo: filtros.ciclo } } };
 
     const [horarios, total] = await Promise.all([
       prisma.horario.findMany({
         where,
         include: {
-          curso: { select: { id: true, codigo: true, nombre: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
-          docente: {
+          cursoDocenteGrupo: {
             include: {
-              usuario: { select: { id: true, nombre: true, apellidos: true } }
+              grupo: true,
+              cursoDocente: {
+                include: {
+                  docente: { include: { usuario: { select: { id: true, nombre: true, apellidos: true } } } },
+                  planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+                }
+              }
             }
           },
-          grupo: { select: { id: true, nombre: true } },
           ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
           periodo: { select: { id: true, nombre: true } },
         },
@@ -80,7 +102,7 @@ export class ServicioHorario {
     ]);
 
     return {
-      data: horarios,
+      data: horarios.map(h => this.mapHorario(h)),
       meta: {
         page,
         limit,
@@ -94,13 +116,17 @@ export class ServicioHorario {
     const horario = await prisma.horario.findUnique({
       where: { id },
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true, creditos: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { id: true, nombre: true, apellidos: true, email: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { id: true, nombre: true, apellidos: true, email: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
           }
         },
-        grupo: true,
         ambiente: true,
         periodo: true,
         validaciones: true,
@@ -111,7 +137,7 @@ export class ServicioHorario {
       throw new AppError('Horario no encontrado', 404, 'HORARIO_NOT_FOUND');
     }
 
-    return horario;
+    return this.mapHorario(horario);
   }
 
   async crear(datos: CrearHorarioDTO, usuarioId: string) {
@@ -126,25 +152,29 @@ export class ServicioHorario {
       throw new AppError('El período no está activo', 400, 'PERIODO_NOT_ACTIVE');
     }
 
-    // Validar que el curso exista
-    const curso = await prisma.curso.findUnique({
-      where: { id: datos.cursoId },
-    });
-    if (!curso) {
-      throw new AppError('Curso no encontrado', 404, 'CURSO_NOT_FOUND');
+    // Validar que el grupo exista y pertenezca al curso
+    let cursoDocenteGrupo = null;
+    if (datos.cursoDocenteGrupoId) {
+      cursoDocenteGrupo = await prisma.cursoDocenteGrupo.findUnique({
+        where: { id: datos.cursoDocenteGrupoId },
+        include: {
+          cursoDocente: {
+            include: {
+              planEstudioCurso: true
+            }
+          }
+        }
+      });
+      if (!cursoDocenteGrupo || cursoDocenteGrupo.cursoDocente.planEstudioCurso.cursoId !== datos.cursoId) {
+        throw new AppError('Grupo no encontrado o no pertenece al curso', 404, 'GRUPO_NOT_FOUND');
+      }
+    } else {
+      throw new AppError('El grupoId es requerido para el nuevo esquema de horarios', 400, 'GRUPO_REQUIRED');
     }
 
-    // Validar que el docente exista y tenga asignado el curso
-    const cursoDocente = await prisma.cursoDocente.findUnique({
-      where: {
-        cursoId_docenteId: {
-          cursoId: datos.cursoId,
-          docenteId: datos.docenteId,
-        },
-      },
-    });
-    if (!cursoDocente) {
-      throw new AppError('El docente no tiene asignado este curso', 400, 'DOCENTE_NO_ASIGNADO');
+    // Validar que el docente asignado al grupo coincida
+    if (cursoDocenteGrupo.cursoDocente.docenteId !== datos.docenteId) {
+      throw new AppError('El docente no está asignado a este grupo', 400, 'DOCENTE_NO_ASIGNADO');
     }
 
     // Validar que el ambiente exista y esté activo
@@ -165,7 +195,7 @@ export class ServicioHorario {
       datos.docenteId,
       datos.cursoId,
       datos.ambienteId,
-      datos.grupoId,
+      datos.cursoDocenteGrupoId,
       datos.diaSemana,
       datos.horaInicio,
       datos.horaFin
@@ -176,7 +206,7 @@ export class ServicioHorario {
       docenteId: datos.docenteId,
       cursoId: datos.cursoId,
       ambienteId: datos.ambienteId,
-      grupoId: datos.grupoId,
+      grupoId: datos.cursoDocenteGrupoId,
       diaSemana: datos.diaSemana,
       horaInicio: datos.horaInicio,
       horaFin: datos.horaFin,
@@ -197,37 +227,39 @@ export class ServicioHorario {
 
 
 
-    // Validar el grupo si se proporciona
-    if (datos.grupoId) {
-      const grupo = await prisma.grupo.findFirst({
-        where: { id: datos.grupoId, cursoId: datos.cursoId },
-      });
-      if (!grupo) {
-        throw new AppError('Grupo no encontrado o no pertenece al curso', 404, 'GRUPO_NOT_FOUND');
-      }
-    }
+
 
     const docente = await prisma.docente.findUnique({
       where: { id: datos.docenteId },
       select: { usuarioId: true },
     });
 
-    // Crear el horario
+    const dataToCreate: any = {
+      periodoId: datos.periodoId,
+      ambienteId: datos.ambienteId,
+      cursoDocenteGrupoId: datos.cursoDocenteGrupoId,
+      diaSemana: datos.diaSemana,
+      horaInicio: datos.horaInicio,
+      horaFin: datos.horaFin,
+      estado: 'BORRADOR',
+      creadoPor: usuarioId,
+      fechaCreacion: new Date(),
+    };
+
     const horario = await prisma.horario.create({
-      data: {
-        ...datos,
-        estado: 'BORRADOR',
-        creadoPor: usuarioId,
-        fechaCreacion: new Date(),
-      },
+      data: dataToCreate,
       include: {
-        curso: true,
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: true } }
+              }
+            }
           }
         },
-        grupo: true,
         ambiente: true,
         periodo: true,
       },
@@ -252,7 +284,7 @@ export class ServicioHorario {
       }
     }
 
-    return horario;
+    return this.mapHorario(horario);
   }
 
   async confirmar(id: string, usuarioId: string) {
@@ -274,10 +306,15 @@ export class ServicioHorario {
         fechaConfirmacion: new Date(),
       },
       include: {
-        curso: true,
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { id: true, nombre: true, apellidos: true, email: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { id: true, nombre: true, apellidos: true, email: true } } } },
+                planEstudioCurso: { include: { curso: true } }
+              }
+            }
           }
         },
         ambiente: true,
@@ -287,15 +324,15 @@ export class ServicioHorario {
     // Enviar notificación al docente
     try {
       await this.gestorNotificaciones.enviarNotificacion({
-        usuarioId: horarioConfirmado.docente.usuarioId,
+        usuarioId: horarioConfirmado.cursoDocenteGrupo.cursoDocente.docente.usuarioId,
         tipo: 'CONFIRMACION_HORARIO',
         titulo: 'Horario Confirmado',
-        mensaje: `Se ha confirmado tu horario para el curso ${horarioConfirmado.curso.nombre} el día ${horarioConfirmado.diaSemana || 'Desconocido'} de ${horarioConfirmado.horaInicio || '--:--'} a ${horarioConfirmado.horaFin || '--:--'} en el ambiente ${horarioConfirmado.ambiente ? horarioConfirmado.ambiente.nombre : 'Sin ambiente'}.`,
+        mensaje: `Se ha confirmado tu horario para el curso ${horarioConfirmado.cursoDocenteGrupo.cursoDocente.planEstudioCurso.curso.nombre} el día ${horarioConfirmado.diaSemana || 'Desconocido'} de ${horarioConfirmado.horaInicio || '--:--'} a ${horarioConfirmado.horaFin || '--:--'} en el ambiente ${horarioConfirmado.ambiente ? horarioConfirmado.ambiente.nombre : 'Sin ambiente'}.`,
         prioridad: 'ALTA',
         canal: 'SISTEMA',
         metadata: {
           horarioId: horarioConfirmado.id,
-          cursoId: horarioConfirmado.cursoId,
+          cursoId: horarioConfirmado.cursoDocenteGrupo.cursoDocente.planEstudioCurso.cursoId,
         },
       });
     } catch (error) {
@@ -303,7 +340,7 @@ export class ServicioHorario {
       // No lanzamos error para no revertir la confirmación del horario
     }
 
-    return horarioConfirmado;
+    return this.mapHorario(horarioConfirmado);
   }
 
   async actualizar(id: string, datos: Partial<CrearHorarioDTO>) {
@@ -316,23 +353,31 @@ export class ServicioHorario {
     const horarioActualizado = await prisma.horario.update({
       where: { id },
       data: {
-        ...datos,
+        ambienteId: datos.ambienteId,
+        cursoDocenteGrupoId: datos.cursoDocenteGrupoId,
+        diaSemana: datos.diaSemana,
+        horaInicio: datos.horaInicio,
+        horaFin: datos.horaFin,
         estado: 'BORRADOR', // Resetear estado al editar
       },
       include: {
-        curso: true,
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: true } }
+              }
+            }
           }
         },
-        grupo: true,
         ambiente: true,
         periodo: true,
       },
     });
 
-    return horarioActualizado;
+    return this.mapHorario(horarioActualizado);
   }
 
   async eliminar(id: string) {
@@ -352,13 +397,22 @@ export class ServicioHorario {
   async obtenerPorDocente(docenteId: string, periodoId: string) {
     const horarios = await prisma.horario.findMany({
       where: {
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         periodoId,
         estado: { not: 'CANCELADO' },
       },
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true, creditos: true } },
-        grupo: { select: { id: true, nombre: true } },
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
+          }
+        },
         ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
       },
       orderBy: [
@@ -367,7 +421,7 @@ export class ServicioHorario {
       ],
     });
 
-    return horarios;
+    return horarios.map(h => this.mapHorario(h));
   }
 
   async obtenerPorAmbiente(ambienteId: string, periodoId: string) {
@@ -378,13 +432,17 @@ export class ServicioHorario {
         estado: { not: 'CANCELADO' },
       },
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } }
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
           }
         },
-        grupo: { select: { id: true, nombre: true } },
       },
       orderBy: [
         { diaSemana: 'asc' },
@@ -392,6 +450,6 @@ export class ServicioHorario {
       ],
     });
 
-    return horarios;
+    return horarios.map(h => this.mapHorario(h));
   }
 }

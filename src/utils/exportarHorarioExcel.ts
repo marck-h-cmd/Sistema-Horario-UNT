@@ -570,14 +570,16 @@ const dividirColumnas = (
   return result;
 };
 
-export async function exportarHorarioExcel(
+export async function appendHorarioToExcelWorkbook(
+  workbook: ExcelJS.Workbook,
+  sheetName: string,
   horarios: HorarioCalendarItem[],
   titulo: string,
   subtitulo = '',
-  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[], format?: 'table' | 'grid' } = {}
+  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[], format?: 'table' | 'grid', includeListSheet?: boolean } = {}
 ): Promise<void> {
   console.log('exportarHorarioExcel options:', opciones);
-  const { format = 'grid' } = opciones;
+  const { format = 'grid', includeListSheet = true } = opciones;
   console.log('exportarHorarioExcel format:', format);
   
   // Elegimos la paleta de colores según el formato
@@ -602,11 +604,7 @@ export async function exportarHorarioExcel(
     horaInicio: normalizeTime(h.horaInicio),
     horaFin: normalizeTime(h.horaFin)
   }));
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Sistema de Horarios UNT';
-  workbook.created = new Date();
-
-  const ws = workbook.addWorksheet('Horario Oficial');
+  const ws = workbook.addWorksheet(sheetName);
   ws.properties.defaultRowHeight = 15;
   ws.views = [{ showGridLines: false }];
   ws.pageSetup = {
@@ -1204,6 +1202,7 @@ export async function exportarHorarioExcel(
     ws.pageSetup.printTitlesRow = '1:1';
   }
 
+  if (includeListSheet) {
   // ─────────────────────────────────────────────
   // 5. Hoja 2: listado detallado
   // ─────────────────────────────────────────────
@@ -1308,17 +1307,71 @@ export async function exportarHorarioExcel(
     to: `M${wsListado.rowCount}`,
   };
 
+  }
+
   // ─────────────────────────────────────────────
   // 6. Descargar archivo
-  // ─────────────────────────────────────────────
+  // Movido a la función wrapper
+}
+
+export async function exportarHorarioExcel(
+  horarios: HorarioCalendarItem[],
+  titulo: string,
+  subtitulo = '',
+  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[], format?: 'table' | 'grid' } = {}
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Sistema de Horarios UNT';
+  workbook.created = new Date();
+
+  await appendHorarioToExcelWorkbook(workbook, 'Horario Oficial', horarios, titulo, subtitulo, opciones);
+
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
+  const ciclo = extraerCiclo(horarios, titulo, subtitulo);
   const nombreArchivo = `horario_academico_unt_${ciclo ? `ciclo_${ciclo}_` : ''}${new Date()
     .toISOString()
     .slice(0, 10)}.xlsx`;
 
+  saveAs(blob, nombreArchivo);
+}
+
+export async function exportarHorariosTodosCiclosExcel(
+  horarios: HorarioCalendarItem[],
+  periodoNombre: string,
+  opciones: { mostrarEstudiosGeneralesMiercoles?: boolean, diasMostrados?: string[], format?: 'table' | 'grid' } = {}
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Sistema de Horarios UNT';
+  workbook.created = new Date();
+
+  const ciclosUnicos = Array.from(new Set(horarios.map(h => normalizarCiclo(h.curso?.ciclo)).filter(Boolean)));
+  const order = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  ciclosUnicos.sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    return a.localeCompare(b);
+  });
+
+  if (ciclosUnicos.length === 0) {
+    await appendHorarioToExcelWorkbook(workbook, 'Horario', horarios, 'HORARIO ACADÉMICO', periodoNombre, { ...opciones, includeListSheet: false });
+  } else {
+    for (const ciclo of ciclosUnicos) {
+      const horariosCiclo = horarios.filter(h => normalizarCiclo(h.curso?.ciclo) === ciclo);
+      if (horariosCiclo.length === 0) continue;
+      await appendHorarioToExcelWorkbook(workbook, `Ciclo ${ciclo}`, horariosCiclo, 'HORARIO ACADÉMICO', `${periodoNombre} - Ciclo ${ciclo}`, { ...opciones, includeListSheet: false });
+    }
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const sanitize = (name: string) => name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const nombreArchivo = `Horarios_x_ciclos_${sanitize(periodoNombre)}_${new Date().toISOString().slice(0, 10)}.xlsx`;
   saveAs(blob, nombreArchivo);
 }

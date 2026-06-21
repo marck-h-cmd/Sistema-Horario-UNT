@@ -189,7 +189,7 @@ export class ValidadorConflictos {
   ): Promise<ConflictoHorario[]> {
     const where: any = {
       periodoId,
-      docenteId,
+      cursoDocenteGrupo: { cursoDocente: { docenteId } },
       diaSemana,
       estado: { notIn: ['CANCELADO' as EstadoHorario] },
       // Condición de solapamiento: (horaInicio < horaFinOtro) AND (horaFin > horaInicioOtro)
@@ -205,37 +205,45 @@ export class ValidadorConflictos {
     const horariosConflicto = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true } },
-        ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } },
-          },
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
+          }
         },
-        grupo: { select: { id: true, nombre: true } },
+        ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
       },
     });
 
-    return horariosConflicto.map(hc => ({
-      tipo: 'CRUCE_DOCENTE' as TipoConflicto,
-      severidad: 'ERROR' as SeveridadConflicto,
-      mensaje: `El docente "${horarioActual.docenteNombre}" ya tiene asignado el curso "${hc.curso.nombre}" en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin}. No puede estar en dos lugares al mismo tiempo.`,
-      horarioActual,
-      horarioConflicto: {
-        id: hc.id,
-        cursoNombre: hc.curso.nombre,
-        docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
-        ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
-        diaSemana: hc.diaSemana!,
-        horaInicio: hc.horaInicio!,
-        horaFin: hc.horaFin!,
-      },
-      metadata: {
-        horarioConflictoId: hc.id,
-        cursoCodigo: hc.curso.codigo,
-        ambienteCodigo: hc.ambiente ? hc.ambiente.codigo : undefined,
-      },
-    }));
+    return horariosConflicto.map(hc => {
+      const curso = hc.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { id: '-', codigo: '-', nombre: '-' };
+      const docente = hc.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
+      return {
+        tipo: 'CRUCE_DOCENTE' as TipoConflicto,
+        severidad: 'ERROR' as SeveridadConflicto,
+        mensaje: `El docente "${horarioActual.docenteNombre}" ya tiene asignado el curso "${curso.nombre}" en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin}. No puede estar en dos lugares al mismo tiempo.`,
+        horarioActual,
+        horarioConflicto: {
+          id: hc.id,
+          cursoNombre: curso.nombre,
+          docenteNombre: `${docente.usuario.nombre} ${docente.usuario.apellidos}`,
+          ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
+          diaSemana: hc.diaSemana!,
+          horaInicio: hc.horaInicio!,
+          horaFin: hc.horaFin!,
+        },
+        metadata: {
+          horarioConflictoId: hc.id,
+          cursoCodigo: curso.codigo,
+          ambienteCodigo: hc.ambiente ? hc.ambiente.codigo : undefined,
+        },
+      };
+    });
   }
 
   /**
@@ -267,18 +275,25 @@ export class ValidadorConflictos {
     const horariosConflicto = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true } },
-        ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } },
-          },
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
+          }
         },
-        grupo: { select: { id: true, nombre: true } },
+        ambiente: { select: { id: true, codigo: true, nombre: true, tipo: true } },
       },
     });
 
     return horariosConflicto.map(hc => {
+      const curso = hc.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { id: '-', codigo: '-', nombre: '-' };
+      const docente = hc.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
+      
       const tipoAmbiente = hc.ambiente ? hc.ambiente.tipo : 'AULA';
       const tipoConflicto: TipoConflicto = 
         tipoAmbiente === 'LABORATORIO' ? 'CRUCE_LABORATORIO' : 'CRUCE_AULA';
@@ -300,12 +315,12 @@ export class ValidadorConflictos {
       return {
         tipo: tipoConflicto,
         severidad: 'ERROR' as SeveridadConflicto,
-        mensaje: `${caso}El ${descAmbiente} ya está ocupado por ${hc.curso.codigo} de ${hc.horaInicio} a ${hc.horaFin}`,
+        mensaje: `${caso}El ${descAmbiente} ya está ocupado por ${curso.codigo} de ${hc.horaInicio} a ${hc.horaFin}`,
         horarioActual,
         horarioConflicto: {
           id: hc.id,
-          cursoNombre: hc.curso.nombre,
-          docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
+          cursoNombre: curso.nombre,
+          docenteNombre: `${docente.usuario.nombre} ${docente.usuario.apellidos}`,
           ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
           diaSemana: hc.diaSemana!,
           horaInicio: hc.horaInicio!,
@@ -313,7 +328,7 @@ export class ValidadorConflictos {
         },
         metadata: {
           horarioConflictoId: hc.id,
-          cursoCodigo: hc.curso.codigo,
+          cursoCodigo: curso.codigo,
           tipoAmbiente: tipoAmbiente,
         },
       };
@@ -333,11 +348,34 @@ export class ValidadorConflictos {
     horarioActual: ConflictoHorario['horarioActual'],
     horarioIdExcluir?: string
   ): Promise<ConflictoHorario[]> {
+    const cdg = await prisma.cursoDocenteGrupo.findUnique({
+      where: { id: grupoId },
+      include: {
+        grupo: true,
+        cursoDocente: {
+          include: {
+            planEstudioCurso: true
+          }
+        }
+      }
+    });
+    if (!cdg) return [];
+
+    const staticGrupoId = cdg.grupoId;
+    const ciclo = cdg.cursoDocente.planEstudioCurso.ciclo;
+
     const where: any = {
       periodoId,
-      grupoId,
       diaSemana,
       estado: { notIn: ['CANCELADO' as EstadoHorario] },
+      cursoDocenteGrupo: {
+        grupoId: staticGrupoId,
+        cursoDocente: {
+          planEstudioCurso: {
+            ciclo: ciclo
+          }
+        }
+      },
       horaInicio: { lt: horaFin },
       horaFin: { gt: horaInicio },
     };
@@ -349,37 +387,46 @@ export class ValidadorConflictos {
     const horariosConflicto = await prisma.horario.findMany({
       where,
       include: {
-        curso: { select: { id: true, codigo: true, nombre: true } },
-        ambiente: { select: { id: true, codigo: true, nombre: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } },
-          },
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
+          }
         },
-        grupo: { select: { id: true, nombre: true } },
+        ambiente: { select: { id: true, codigo: true, nombre: true } },
       },
     });
 
-    return horariosConflicto.map(hc => ({
-      tipo: 'CRUCE_GRUPO' as TipoConflicto,
-      severidad: 'ERROR' as SeveridadConflicto,
-      mensaje: `El grupo "${hc.grupo?.nombre || 'Desconocido'}" ya tiene programado el curso "${hc.curso.nombre}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin} en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}".`,
-      horarioActual,
-      horarioConflicto: {
-        id: hc.id,
-        cursoNombre: hc.curso.nombre,
-        docenteNombre: `${hc.docente.usuario.nombre} ${hc.docente.usuario.apellidos}`,
-        ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
-        diaSemana: hc.diaSemana!,
-        horaInicio: hc.horaInicio!,
-        horaFin: hc.horaFin!,
-      },
-      metadata: {
-        horarioConflictoId: hc.id,
-        cursoCodigo: hc.curso.codigo,
-        grupoNombre: hc.grupo?.nombre,
-      },
-    }));
+    return horariosConflicto.map(hc => {
+      const curso = hc.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { id: '-', codigo: '-', nombre: '-' };
+      const docente = hc.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
+      
+      return {
+        tipo: 'CRUCE_GRUPO' as TipoConflicto,
+        severidad: 'ERROR' as SeveridadConflicto,
+        mensaje: `El grupo "${hc.cursoDocenteGrupo?.grupo?.nombre || 'Desconocido'}" ya tiene programado el curso "${curso.nombre}" el día ${this.traducirDia(diaSemana)} de ${hc.horaInicio} a ${hc.horaFin} en el ambiente "${hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente'}".`,
+        horarioActual,
+        horarioConflicto: {
+          id: hc.id,
+          cursoNombre: curso.nombre,
+          docenteNombre: `${docente.usuario.nombre} ${docente.usuario.apellidos}`,
+          ambienteNombre: hc.ambiente ? `${hc.ambiente.codigo} - ${hc.ambiente.nombre}` : 'Sin ambiente',
+          diaSemana: hc.diaSemana!,
+          horaInicio: hc.horaInicio!,
+          horaFin: hc.horaFin!,
+        },
+        metadata: {
+          horarioConflictoId: hc.id,
+          cursoCodigo: curso.codigo,
+          grupoNombre: hc.cursoDocenteGrupo?.grupo?.nombre,
+        },
+      };
+    });
   }
 
   /**
@@ -395,7 +442,7 @@ export class ValidadorConflictos {
   ): Promise<boolean> {
     const where: any = {
       periodoId,
-      docenteId,
+      cursoDocenteGrupo: { cursoDocente: { docenteId } },
       diaSemana,
       estado: { notIn: ['CANCELADO' as EstadoHorario] },
       horaInicio: { lt: horaFin },
@@ -449,17 +496,22 @@ export class ValidadorConflictos {
     const horarios = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         estado: { notIn: ['CANCELADO' as EstadoHorario] },
       },
       include: {
-        curso: { select: { nombre: true } },
-        ambiente: { select: { nombre: true, tipo: true } },
-        docente: {
+        cursoDocenteGrupo: {
           include: {
-            usuario: { select: { nombre: true, apellidos: true } },
-          },
+            grupo: true,
+            cursoDocente: {
+              include: {
+                docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } }
+              }
+            }
+          }
         },
+        ambiente: { select: { nombre: true, tipo: true } },
       },
       orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
     });
@@ -477,6 +529,11 @@ export class ValidadorConflictos {
       for (let j = i + 1; j < horariosValidos.length; j++) {
         const h1 = horariosValidos[i];
         const h2 = horariosValidos[j];
+        
+        const curso1 = h1.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { nombre: '-' };
+        const docente1 = h1.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
+        const curso2 = h2.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { nombre: '-' };
+        const docente2 = h2.cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
 
         if (h1.diaSemana === h2.diaSemana) {
           // Verificar solapamiento
@@ -484,11 +541,11 @@ export class ValidadorConflictos {
             conflictos.push({
               tipo: 'CRUCE_DOCENTE',
               severidad: 'ERROR',
-              mensaje: `Conflicto: "${h1.curso.nombre}" (${h1.horaInicio}-${h1.horaFin}) se solapa con "${h2.curso.nombre}" (${h2.horaInicio}-${h2.horaFin}) el día ${this.traducirDia(h1.diaSemana)}`,
+              mensaje: `Conflicto: "${curso1.nombre}" (${h1.horaInicio}-${h1.horaFin}) se solapa con "${curso2.nombre}" (${h2.horaInicio}-${h2.horaFin}) el día ${this.traducirDia(h1.diaSemana)}`,
               horarioActual: {
                 id: h1.id,
-                cursoNombre: h1.curso.nombre,
-                docenteNombre: `${h1.docente.usuario.nombre} ${h1.docente.usuario.apellidos}`,
+                cursoNombre: curso1.nombre,
+                docenteNombre: `${docente1.usuario.nombre} ${docente1.usuario.apellidos}`,
                 ambienteNombre: h1.ambiente?.nombre || 'Sin ambiente',
                 diaSemana: h1.diaSemana,
                 horaInicio: h1.horaInicio,
@@ -496,8 +553,8 @@ export class ValidadorConflictos {
               },
               horarioConflicto: {
                 id: h2.id,
-                cursoNombre: h2.curso.nombre,
-                docenteNombre: `${h2.docente.usuario.nombre} ${h2.docente.usuario.apellidos}`,
+                cursoNombre: curso2.nombre,
+                docenteNombre: `${docente2.usuario.nombre} ${docente2.usuario.apellidos}`,
                 ambienteNombre: h2.ambiente?.nombre || 'Sin ambiente',
                 diaSemana: h2.diaSemana,
                 horaInicio: h2.horaInicio,

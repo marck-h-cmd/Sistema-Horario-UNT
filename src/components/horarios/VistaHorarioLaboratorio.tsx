@@ -33,7 +33,7 @@ export default function VistaHorarioLaboratorio({ laboratorioId, periodoId }: Pr
         (horarios.data?.items ?? []).forEach((h: any) => {
           if (!m[h.dia]) m[h.dia] = {};
           m[h.dia][h.horaInicio] = {
-            cursoNombre: h.curso?.nombre,
+            cursoNombre: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
             docenteApellidos: h.docente?.apellidos ?? '',
             estado: h.estado,
             esPractica: h.esPractica,

@@ -30,25 +30,29 @@ export async function GET(request: NextRequest) {
     const horarios = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId: docente.id,
+        cursoDocenteGrupo: { cursoDocente: { docenteId: docente.id } },
         estado: { not: 'CANCELADO' },
         diaSemana: { not: null },
         horaInicio: { not: null },
         horaFin: { not: null },
       },
       include: {
-        curso: { select: { codigo: true, nombre: true } },
-        grupo: { select: { nombre: true } },
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: { include: { planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } } } }
+          }
+        },
         ambiente: { select: { nombre: true } },
       },
     });
 
-    const items = horarios.map(h => ({
+    const items = (horarios as any[]).map(h => ({
       id: h.id,
       tipo: 'LECTIVA',
-      cursoCodigo: h.curso.codigo,
-      cursoNombre: h.curso.nombre,
-      grupoNombre: h.grupo?.nombre || null,
+      cursoCodigo: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo || '',
+      cursoNombre: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre || '',
+      grupoNombre: h.cursoDocenteGrupo?.grupo?.nombre || null,
       ambienteNombre: h.ambiente?.nombre || null,
       tipoComponente: h.tipoComponente,
       diaSemana: h.diaSemana,

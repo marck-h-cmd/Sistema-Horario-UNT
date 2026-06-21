@@ -186,12 +186,17 @@ export class PublicadorHorarios {
       include: {
         horario: {
           include: {
-            curso: { select: { codigo: true, nombre: true } },
-            docente: {
+            cursoDocenteGrupo: {
               include: {
-                usuario: { select: { nombre: true, apellidos: true } },
-              },
-            },
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                    planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } }
+                  }
+                }
+              }
+            }
           },
         },
       },

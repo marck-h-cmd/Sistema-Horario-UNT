@@ -30,67 +30,78 @@ export interface CursoUpdateInput extends Partial<CursoCreateInput> {
 }
 
 export class ServicioCurso {
-  private readonly CACHE_TTL = 600; // 10 minutos
+  private readonly CACHE_TTL = 600;
 
   async listar(filtros: CursoFiltros) {
     const {
       search,
       ciclo,
       activo,
+      departamentoId,
       page = 1,
       limit = 20,
     } = filtros;
 
-    const where: Prisma.CursoWhereInput = {};
+    const where: Prisma.PlanEstudioCursoWhereInput = {};
 
     if (search) {
-      where.OR = [
-        { codigo: { contains: search, mode: 'insensitive' } },
-        { nombre: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    if (ciclo) where.ciclo = ciclo;
-    if (activo !== undefined) where.activo = activo;
-    if (filtros.departamentoId) where.departamentoId = filtros.departamentoId;
-    if (filtros.planEstudioId) {
-      where.planesEstudio = {
-        some: { planEstudioId: filtros.planEstudioId }
+      where.curso = {
+        OR: [
+          { codigo: { contains: search, mode: 'insensitive' } },
+          { nombre: { contains: search, mode: 'insensitive' } },
+        ]
       };
     }
 
-    const [cursos, total] = await Promise.all([
-      prisma.curso.findMany({
+    if (ciclo) where.ciclo = ciclo;
+    if (activo !== undefined) where.curso = { ...((where.curso as any) || {}), activo };
+    if (departamentoId) where.departamentoId = departamentoId;
+    if (filtros.planEstudioId) {
+      where.planEstudioId = filtros.planEstudioId;
+    } else {
+      where.planEstudio = { activo: true };
+    }
+
+    const [planCursos, total] = await Promise.all([
+      prisma.planEstudioCurso.findMany({
         where,
         include: {
+          curso: true,
           departamento: {
             select: { id: true, nombre: true }
           },
-          grupos: {
-            select: {
-              id: true,
-              nombre: true,
-              capacidad: true,
-              activo: true,
-            },
-            where: { activo: true },
-          },
           _count: {
             select: {
-              cursosDocente: true,
-              horarios: true,
+              cursosDocentes: true,
             },
           },
         },
-        orderBy: [{ ciclo: 'asc' }, { codigo: 'asc' }],
+        orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.curso.count({ where }),
+      prisma.planEstudioCurso.count({ where }),
     ]);
 
+    const result = planCursos.map(pc => ({
+      id: pc.curso.id,
+      planEstudioCursoId: pc.id,
+      codigo: pc.curso.codigo,
+      nombre: pc.curso.nombre,
+      ciclo: pc.ciclo,
+      creditos: pc.creditos,
+      horasTeoria: pc.horasTeoria,
+      horasPractica: pc.horasPractica,
+      horasLaboratorio: pc.horasLaboratorio,
+      activo: pc.curso.activo,
+      departamento: pc.departamento,
+      _count: {
+        cursosDocente: pc._count.cursosDocentes,
+      }
+    }));
+
     return {
-      data: cursos,
+      data: result,
       meta: {
         page,
         limit,
@@ -104,54 +115,84 @@ export class ServicioCurso {
     const curso = await prisma.curso.findUnique({
       where: { id },
       include: {
-        grupos: {
-          where: { activo: true },
-          orderBy: { nombre: 'asc' },
-        },
-        cursosDocente: {
-          where: { activo: true },
+        planesEstudio: {
+          where: { planEstudio: { activo: true } },
           include: {
-            docente: {
+            cursosDocentes: {
+              where: { activo: true },
               include: {
-                usuario: {
-                  select: { nombre: true, apellidos: true, email: true },
+                docente: {
+                  include: {
+                    usuario: {
+                      select: { nombre: true, apellidos: true, email: true },
+                    },
+                  },
                 },
+                cursoDocenteGrupos: {
+                  where: { activo: true },
+                  include: { grupo: true }
+                }
               },
             },
-          },
-        },
-        _count: {
-          select: {
-            horarios: true,
-          },
-        },
+          }
+        }
       },
-    });
+    }) as any;
 
     if (!curso) {
       throw new AppError('Curso no encontrado', 404, 'CURSO_NOT_FOUND');
     }
 
-    return curso;
+    const pc = curso.planesEstudio[0];
+
+    return {
+      ...curso,
+      ciclo: pc?.ciclo,
+      creditos: pc?.creditos,
+      horasTeoria: pc?.horasTeoria,
+      horasPractica: pc?.horasPractica,
+      horasLaboratorio: pc?.horasLaboratorio,
+      cursosDocente: pc?.cursosDocentes || [],
+      grupos: pc?.cursosDocentes.flatMap((cd: any) => cd.cursoDocenteGrupos) || [],
+    };
   }
 
   async obtenerPorCodigo(codigo: string) {
     const curso = await prisma.curso.findUnique({
       where: { codigo },
       include: {
-        grupos: true,
+        planesEstudio: {
+          where: { planEstudio: { activo: true } },
+          include: {
+            cursosDocentes: {
+              include: { 
+                cursoDocenteGrupos: { 
+                  include: { 
+                    grupo: true 
+                  } 
+                } 
+              }
+            }
+          }
+        }
       },
-    });
+    }) as any;
 
     if (!curso) {
       throw new AppError('Curso no encontrado', 404, 'CURSO_NOT_FOUND');
     }
 
-    return curso;
+    const pc = curso.planesEstudio[0];
+
+    return {
+      ...curso,
+      ciclo: pc?.ciclo,
+      creditos: pc?.creditos,
+      grupos: pc?.cursosDocentes.flatMap((cd: any) => cd.cursoDocenteGrupos) || [],
+    };
   }
 
   async crear(datos: CursoCreateInput) {
-    // Validar código único
     const existente = await prisma.curso.findUnique({
       where: { codigo: datos.codigo },
     });
@@ -160,29 +201,44 @@ export class ServicioCurso {
       throw new AppError('Ya existe un curso con ese código', 409, 'CURSO_DUPLICADO');
     }
 
-    // Validar horas totales
     const horasTotales = datos.horasTeoria + datos.horasPractica + datos.horasLaboratorio;
     if (horasTotales === 0) {
       throw new AppError('El curso debe tener al menos una hora asignada', 400, 'CURSO_SIN_HORAS');
     }
 
+    let plan = await prisma.planEstudio.findFirst({ where: { activo: true } });
+    if (!plan) {
+      plan = await prisma.planEstudio.create({
+        data: {
+          nombre: `Plan ${new Date().getFullYear()}`,
+          anio: new Date().getFullYear(),
+          activo: true
+        }
+      });
+    }
+
     const curso = await prisma.curso.create({
       data: {
-        ...datos,
-        grupos: {
-          create: [
-            { nombre: 'A', capacidad: 30 },
-            { nombre: 'B', capacidad: 30 },
-          ],
-        },
+        codigo: datos.codigo,
+        nombre: datos.nombre,
+        planesEstudio: {
+          create: {
+            planEstudioId: plan.id,
+            ciclo: datos.ciclo,
+            creditos: datos.creditos,
+            horasTeoria: datos.horasTeoria,
+            horasPractica: datos.horasPractica,
+            horasLaboratorio: datos.horasLaboratorio,
+            departamentoId: datos.departamentoId,
+          }
+        }
       },
       include: {
-        grupos: true,
+        planesEstudio: true,
       },
     });
 
     await this.invalidarCache();
-
     return curso;
   }
 
@@ -198,37 +254,34 @@ export class ServicioCurso {
       }
     }
 
+    const updateData: any = {};
+    if (datos.codigo) updateData.codigo = datos.codigo;
+    if (datos.nombre) updateData.nombre = datos.nombre;
+    if (datos.activo !== undefined) updateData.activo = datos.activo;
+
     const cursoActualizado = await prisma.curso.update({
       where: { id },
-      data: datos,
-      include: {
-        grupos: true,
-      },
+      data: updateData,
+    });
+    
+    // update planEstudioCurso
+    await prisma.planEstudioCurso.updateMany({
+      where: { cursoId: id, planEstudio: { activo: true } },
+      data: {
+        ...(datos.ciclo && { ciclo: datos.ciclo }),
+        ...(datos.creditos && { creditos: datos.creditos }),
+        ...(datos.horasTeoria !== undefined && { horasTeoria: datos.horasTeoria }),
+        ...(datos.horasPractica !== undefined && { horasPractica: datos.horasPractica }),
+        ...(datos.horasLaboratorio !== undefined && { horasLaboratorio: datos.horasLaboratorio }),
+        ...(datos.departamentoId !== undefined && { departamentoId: datos.departamentoId }),
+      }
     });
 
     await this.invalidarCache();
-
     return cursoActualizado;
   }
 
   async eliminar(id: string) {
-    const curso = await this.obtenerPorId(id);
-
-    const horariosActivos = await prisma.horario.count({
-      where: {
-        cursoId: id,
-        estado: { in: ['CONFIRMADO', 'PUBLICADO'] },
-      },
-    });
-
-    if (horariosActivos > 0) {
-      throw new AppError(
-        'No se puede eliminar el curso porque tiene horarios activos',
-        409,
-        'CURSO_CON_HORARIOS'
-      );
-    }
-
     await prisma.curso.update({
       where: { id },
       data: { activo: false },
@@ -240,24 +293,29 @@ export class ServicioCurso {
   async buscar(termino: string, limite: number = 10) {
     if (!termino || termino.length < 2) return [];
 
-    return prisma.curso.findMany({
+    const planes = await prisma.planEstudioCurso.findMany({
       where: {
-        activo: true,
-        OR: [
-          { codigo: { contains: termino, mode: 'insensitive' } },
-          { nombre: { contains: termino, mode: 'insensitive' } },
-        ],
+        curso: {
+          activo: true,
+          OR: [
+            { codigo: { contains: termino, mode: 'insensitive' } },
+            { nombre: { contains: termino, mode: 'insensitive' } },
+          ],
+        },
+        planEstudio: { activo: true }
       },
-      select: {
-        id: true,
-        codigo: true,
-        nombre: true,
-        creditos: true,
-        ciclo: true,
-      },
+      include: { curso: true },
       take: limite,
-      orderBy: { codigo: 'asc' },
+      orderBy: { curso: { codigo: 'asc' } },
     });
+    
+    return planes.map(pc => ({
+      id: pc.curso.id,
+      codigo: pc.curso.codigo,
+      nombre: pc.curso.nombre,
+      creditos: pc.creditos,
+      ciclo: pc.ciclo,
+    }));
   }
 
   async obtenerPorCiclo(ciclo: number) {
@@ -266,16 +324,30 @@ export class ServicioCurso {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    const cursos = await prisma.curso.findMany({
-      where: { ciclo, activo: true },
+    const planes = await prisma.planEstudioCurso.findMany({
+      where: { ciclo, planEstudio: { activo: true }, curso: { activo: true } },
       include: {
-        grupos: {
+        curso: true,
+        cursosDocentes: {
           where: { activo: true },
-          select: { id: true, nombre: true },
-        },
+          include: {
+            cursoDocenteGrupos: {
+              include: {
+                grupo: true
+              }
+            }
+          }
+        }
       },
-      orderBy: { codigo: 'asc' },
-    });
+      orderBy: { curso: { codigo: 'asc' } },
+    }) as any[];
+
+    const cursos = planes.map(pc => ({
+      ...pc.curso,
+      ciclo: pc.ciclo,
+      creditos: pc.creditos,
+      grupos: pc.cursosDocentes.flatMap((cd: any) => cd.cursoDocenteGrupos),
+    }));
 
     await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(cursos));
 
@@ -283,7 +355,6 @@ export class ServicioCurso {
   }
 
   async asignarDocente(cursoId: string, docenteId: string, horasAsignadas: number) {
-    // Verificar que existan
     await this.obtenerPorId(cursoId);
     
     const docente = await prisma.docente.findUnique({ where: { id: docenteId } });
@@ -291,9 +362,18 @@ export class ServicioCurso {
       throw new AppError('Docente no encontrado', 404, 'DOCENTE_NOT_FOUND');
     }
 
+    const pc = await prisma.planEstudioCurso.findFirst({
+      where: { cursoId, planEstudio: { activo: true } }
+    });
+    
+    if (!pc) throw new AppError('Plan estudio curso no encontrado', 404, 'PLAN_ESTUDIO_CURSO_NOT_FOUND');
+
+    const periodo = await prisma.periodoAcademico.findFirst({ where: { activo: true } });
+    if (!periodo) throw new AppError('No hay periodo académico activo', 400, 'NO_PERIODO_ACTIVO');
+
     const existente = await prisma.cursoDocente.findUnique({
       where: {
-        cursoId_docenteId: { cursoId, docenteId },
+        planEstudioCursoId_docenteId_periodoId: { planEstudioCursoId: pc.id, docenteId, periodoId: periodo.id },
       },
     });
 
@@ -306,16 +386,25 @@ export class ServicioCurso {
 
     return prisma.cursoDocente.create({
       data: {
-        cursoId,
+        planEstudioCursoId: pc.id,
         docenteId,
+        periodoId: periodo.id,
         horasAsignadas,
       },
     });
   }
 
   async removerDocente(cursoId: string, docenteId: string) {
+    const pc = await prisma.planEstudioCurso.findFirst({
+      where: { cursoId, planEstudio: { activo: true } }
+    });
+    if (!pc) return;
+    
+    const periodo = await prisma.periodoAcademico.findFirst({ where: { activo: true } });
+    if (!periodo) return;
+
     return prisma.cursoDocente.updateMany({
-      where: { cursoId, docenteId },
+      where: { planEstudioCursoId: pc.id, docenteId, periodoId: periodo.id },
       data: { activo: false },
     });
   }

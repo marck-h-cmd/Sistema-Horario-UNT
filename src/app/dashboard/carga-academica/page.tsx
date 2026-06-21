@@ -60,6 +60,13 @@ interface CursoDisponible {
   }[];
 }
 
+interface PlanEstudio {
+  id: string;
+  nombre: string;
+  anio: number;
+  activo: boolean;
+}
+
 export default function CargaAcademicaAdminPage() {
   const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.OPERADOR]);
 
@@ -79,9 +86,20 @@ export default function CargaAcademicaAdminPage() {
   
   // Estado para Modal de Asignar Curso
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAsignacion, setEditingAsignacion] = useState<{
+    ids: string[];
+    cursoId: string;
+    grupoNombre: string;
+    componentes: TipoComponente[];
+    planEstudioId: string;
+    tieneProgramacion: boolean;
+  } | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [planesEstudio, setPlanesEstudio] = useState<PlanEstudio[]>([]);
+  const [selectedPlanEstudioId, setSelectedPlanEstudioId] = useState<string>('');
   const [cursosDisponibles, setCursosDisponibles] = useState<CursoDisponible[]>([]);
   const [selectedCursoId, setSelectedCursoId] = useState<string>('');
-  const [selectedGrupoId, setSelectedGrupoId] = useState<string>('');
+  const [selectedGrupoNombre, setSelectedGrupoNombre] = useState<string>('A');
   const [selectedComponentes, setSelectedComponentes] = useState<TipoComponente[]>([]);
 
   const esTiempoCompleto = dataLectiva?.docente?.dedicacion === 'TIEMPO_COMPLETO_40H' || dataLectiva?.docente?.dedicacion === 'DEDICACION_EXCLUSIVA';
@@ -236,32 +254,108 @@ export default function CargaAcademicaAdminPage() {
   const abrirModalAsignacion = async () => {
     setIsModalOpen(true);
     setSelectedCursoId('');
-    setSelectedGrupoId('');
+    setSelectedGrupoNombre('A');
     setSelectedComponentes([]);
+    
     try {
-      const res = await apiGet<CursoDisponible[]>('/api/asignacion/cursos-disponibles', { periodoId: selectedPeriodoId });
-      setCursosDisponibles(res.data || []);
+      if (planesEstudio.length === 0) {
+        const resPlanes = await apiGet<PlanEstudio[]>('/api/planes-estudio');
+        const planes = resPlanes.data || [];
+        setPlanesEstudio(planes);
+        const planActivo = planes.find(p => p.activo);
+        if (planActivo) {
+          setSelectedPlanEstudioId(planActivo.id);
+        } else if (planes.length > 0) {
+          setSelectedPlanEstudioId(planes[0].id);
+        }
+      }
     } catch (error) {
-      toast.error('Error al cargar cursos disponibles');
+      toast.error('Error al cargar currículas');
     }
   };
 
-  const asignarCurso = async () => {
-    if (!selectedCursoId || !selectedGrupoId || selectedComponentes.length === 0) {
+  useEffect(() => {
+    if (isModalOpen && selectedPeriodoId && selectedPlanEstudioId) {
+      async function loadCursos() {
+        try {
+          const res = await apiGet<CursoDisponible[]>('/api/asignacion/cursos-disponibles', { 
+            periodoId: selectedPeriodoId,
+            planEstudioId: selectedPlanEstudioId
+          });
+          setCursosDisponibles(res.data || []);
+        } catch (error) {
+          toast.error('Error al cargar cursos disponibles');
+        }
+      }
+      loadCursos();
+    }
+  }, [isModalOpen, selectedPeriodoId, selectedPlanEstudioId]);
+
+  const abrirModalEdicion = async (c: any) => {
+    try {
+      if (planesEstudio.length === 0) {
+        const resPlanes = await apiGet<PlanEstudio[]>('/api/planes-estudio');
+        const planes = resPlanes.data || [];
+        setPlanesEstudio(planes);
+      }
+      
+      const targetPlanId = c.planEstudioId || selectedPlanEstudioId || planesEstudio.find(p => p.activo)?.id || planesEstudio[0]?.id;
+      
+      setSelectedPlanEstudioId(targetPlanId);
+      setSelectedCursoId(c.cursoId);
+      setSelectedGrupoNombre(c.seccion);
+      
+      const comps: TipoComponente[] = [];
+      if (c.teo > 0) comps.push('TEORIA');
+      if (c.pra > 0) comps.push('PRACTICA');
+      if (c.lab > 0) comps.push('LABORATORIO');
+      setSelectedComponentes(comps);
+      
+      setEditingAsignacion({
+        ids: c.ids,
+        cursoId: c.cursoId,
+        grupoNombre: c.seccion,
+        componentes: comps,
+        planEstudioId: targetPlanId,
+        tieneProgramacion: !!c.tieneProgramacion
+      });
+      
+      setIsModalOpen(true);
+    } catch (error) {
+      toast.error('Error al preparar la edición');
+    }
+  };
+
+  const cerrarModal = () => {
+    setIsModalOpen(false);
+    setEditingAsignacion(null);
+  };
+
+  const ejecutarAsignacion = async () => {
+    if (!selectedCursoId || !selectedGrupoNombre || selectedComponentes.length === 0) {
       toast.error('Complete todos los campos de asignación');
       return;
     }
     try {
+      if (editingAsignacion) {
+        // Eliminar horarios anteriores
+        await Promise.all(editingAsignacion.ids.map(id => apiRequest(`/api/asignacion/carga-lectiva/${id}`, { method: 'DELETE' })));
+      }
+
       await apiPost('/api/asignacion/carga-lectiva', {
         periodoId: selectedPeriodoId,
         docenteId: selectedDocenteId,
         cursoId: selectedCursoId,
-        grupoId: selectedGrupoId,
+        grupoNombre: selectedGrupoNombre.trim().toUpperCase() || 'A',
         componentes: selectedComponentes
       });
-      toast.success('Curso asignado exitosamente');
+
+      toast.success(editingAsignacion ? 'Asignación modificada exitosamente' : 'Curso asignado exitosamente');
       setIsModalOpen(false);
-      // Recargar datos para ver la nueva asignación
+      setIsConfirmModalOpen(false);
+      setEditingAsignacion(null);
+
+      // Recargar datos
       const resL = await apiGet<any>('/api/declaracion/lectiva', { 
         periodoId: selectedPeriodoId, 
         docenteId: selectedDocenteId 
@@ -272,10 +366,23 @@ export default function CargaAcademicaAdminPage() {
     }
   };
 
-  const eliminarAsignacion = async (horarioId: string) => {
+  const asignarCurso = () => {
+    if (!selectedCursoId || !selectedGrupoNombre || selectedComponentes.length === 0) {
+      toast.error('Complete todos los campos de asignación');
+      return;
+    }
+
+    if (editingAsignacion) {
+      setIsConfirmModalOpen(true);
+    } else {
+      ejecutarAsignacion();
+    }
+  };
+
+  const eliminarAsignacion = async (horarioIds: string[]) => {
     if (!confirm('¿Está seguro de eliminar esta asignación?')) return;
     try {
-      await apiRequest(`/api/asignacion/carga-lectiva/${horarioId}`, { method: 'DELETE' });
+      await Promise.all(horarioIds.map(id => apiRequest(`/api/asignacion/carga-lectiva/${id}`, { method: 'DELETE' })));
       toast.success('Asignación eliminada');
       // Recargar
       const resL = await apiGet<any>('/api/declaracion/lectiva', { 
@@ -426,6 +533,8 @@ export default function CargaAcademicaAdminPage() {
     if (!acc[key]) {
       acc[key] = {
         ids: [],
+        cursoId: asig.cursoId,
+        planEstudioId: asig.planEstudioId,
         codigo: asig.cursoCodigo,
         nombre: asig.cursoNombre,
         ciclo: asig.ciclo,
@@ -433,13 +542,17 @@ export default function CargaAcademicaAdminPage() {
         teo: 0,
         pra: 0,
         lab: 0,
-        alumnos: asig.alumnosAprox || 50
+        alumnos: asig.alumnosAprox || 50,
+        tieneProgramacion: false
       };
     }
     acc[key].ids.push(asig.id);
     if (asig.tipoComponente === 'TEORIA') acc[key].teo += asig.horas;
     if (asig.tipoComponente === 'PRACTICA') acc[key].pra += asig.horas;
     if (asig.tipoComponente === 'LABORATORIO') acc[key].lab += asig.horas;
+    if (asig.diaSemana || asig.horaInicio || asig.ambienteId) {
+      acc[key].tieneProgramacion = true;
+    }
     return acc;
   }, {} as Record<string, any>);
   const lineasCursos = Object.values(cursosAgrupados);
@@ -607,16 +720,22 @@ export default function CargaAcademicaAdminPage() {
                               <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-indigo-50/50 dark:bg-indigo-900/20">{c.lab}</td>
                               <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center font-bold text-blue-600 dark:text-blue-400">{totalHrs}</td>
                               <td className="p-2 text-center">
-                                <button 
-                                  onClick={() => {
-                                    // Simplificación: eliminar el primer horario de este grupo (lo ideal es un dropdown de componentes)
-                                    if (c.ids[0]) eliminarAsignacion(c.ids[0]);
-                                  }}
-                                  className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Eliminar asignación"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => abrirModalEdicion(c)}
+                                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                                    title="Editar asignación"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => eliminarAsignacion(c.ids)}
+                                    className="text-red-500 hover:text-red-700 transition-colors"
+                                    title="Eliminar asignación"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -892,45 +1011,104 @@ export default function CargaAcademicaAdminPage() {
       </div>
 
       {/* Modal para Asignar Curso */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if(!open) setEditingAsignacion(null); }}>
+        <DialogContent className="sm:max-w-[700px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
           <DialogHeader>
-            <DialogTitle>Asignar Curso a {docenteInfo?.nombreCompleto}</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-slate-100">{editingAsignacion ? 'Editar Asignación' : 'Asignar Curso'} a {docenteInfo?.nombreCompleto}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Curso</label>
+              <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Currícula (Plan de Estudios)</label>
               <select 
-                value={selectedCursoId}
-                onChange={(e) => { setSelectedCursoId(e.target.value); setSelectedGrupoId(''); }}
-                className="w-full h-10 rounded-md border border-slate-300 px-3 text-sm"
+                value={selectedPlanEstudioId}
+                onChange={(e) => {
+                  setSelectedPlanEstudioId(e.target.value);
+                  setSelectedCursoId('');
+                  setSelectedGrupoNombre('A');
+                }}
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Seleccione un curso...</option>
-                {cursosDisponibles.map(c => (
-                  <option key={c.id} value={c.id}>{c.codigo} - {c.nombre} (Ciclo {c.ciclo})</option>
+                <option value="">Seleccione una currícula...</option>
+                {planesEstudio.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre} ({p.anio}) {p.activo ? ' - Activo' : ''}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Cursos Disponibles</label>
+              <div className="max-h-[300px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-md bg-white dark:bg-slate-900">
+                <table className="w-full text-sm text-left text-slate-800 dark:text-slate-200">
+                  <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 border-b border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-300">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Código</th>
+                      <th className="px-3 py-2 font-semibold">Nombre</th>
+                      <th className="px-2 py-2 font-semibold text-center">T</th>
+                      <th className="px-2 py-2 font-semibold text-center">P</th>
+                      <th className="px-2 py-2 font-semibold text-center">L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cursosDisponibles.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
+                          No hay cursos en esta currícula
+                        </td>
+                      </tr>
+                    ) : (
+                      cursosDisponibles.map(c => (
+                        <tr 
+                          key={c.id} 
+                          onClick={() => {
+                            setSelectedCursoId(c.id);
+                            setSelectedGrupoNombre('A');
+                          }}
+                          className={`cursor-pointer border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 ${selectedCursoId === c.id ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200' : 'border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900'}`}
+                        >
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="radio" 
+                                checked={selectedCursoId === c.id} 
+                                readOnly
+                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800"
+                              />
+                              {c.codigo}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 font-medium">{c.nombre} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Ciclo {c.ciclo})</span></td>
+                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasTeoria}h</td>
+                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasPractica}h</td>
+                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasLaboratorio}h</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
             
             {selectedCursoId && (
               <div>
-                <label className="text-sm font-medium mb-1 block">Sección / Grupo</label>
-                <select 
-                  value={selectedGrupoId}
-                  onChange={(e) => setSelectedGrupoId(e.target.value)}
-                  className="w-full h-10 rounded-md border border-slate-300 px-3 text-sm"
-                >
-                  <option value="">Seleccione una sección...</option>
-                  {cursosDisponibles.find(c => c.id === selectedCursoId)?.grupos.map(g => (
-                    <option key={g.id} value={g.id}>Grupo {g.nombre}</option>
-                  ))}
-                </select>
+                <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Sección / Grupo</label>
+                <div className="flex flex-col gap-1">
+                  <select 
+                    value={selectedGrupoNombre}
+                    onChange={(e) => setSelectedGrupoNombre(e.target.value)}
+                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 px-3 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                  </select>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Seleccione el grupo predefinido (catálogo estático).</span>
+                </div>
               </div>
             )}
 
-            {selectedGrupoId && (
+            {selectedCursoId && (
               <div>
-                <label className="text-sm font-medium mb-2 block">Componentes a Asignar</label>
+                <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Componentes a Asignar</label>
                 <div className="flex gap-4">
                   {(['TEORIA', 'PRACTICA', 'LABORATORIO'] as TipoComponente[]).map(comp => {
                     const curso = cursosDisponibles.find(c => c.id === selectedCursoId);
@@ -938,7 +1116,7 @@ export default function CargaAcademicaAdminPage() {
                     if (!hasHoras) return null;
                     
                     return (
-                      <label key={comp} className="flex items-center gap-2 cursor-pointer">
+                      <label key={comp} className="flex items-center gap-2 cursor-pointer text-slate-800 dark:text-slate-200">
                         <input 
                           type="checkbox"
                           checked={selectedComponentes.includes(comp)}
@@ -946,7 +1124,7 @@ export default function CargaAcademicaAdminPage() {
                             if (e.target.checked) setSelectedComponentes([...selectedComponentes, comp]);
                             else setSelectedComponentes(selectedComponentes.filter(c => c !== comp));
                           }}
-                          className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300 dark:border-slate-700 dark:bg-slate-800"
                         />
                         <span className="text-sm">{comp.charAt(0) + comp.slice(1).toLowerCase()}</span>
                       </label>
@@ -957,8 +1135,46 @@ export default function CargaAcademicaAdminPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button onClick={asignarCurso} className="bg-blue-600 text-white hover:bg-blue-700">Asignar</Button>
+            <Button variant="outline" onClick={cerrarModal}>Cancelar</Button>
+            <Button onClick={asignarCurso} className="bg-blue-600 text-white hover:bg-blue-700">
+              {editingAsignacion ? 'Guardar Cambios' : 'Asignar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Advertencia / Confirmación para Modificar Asignaciones con Horarios Programados */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600 font-bold">
+              <AlertCircle className="h-5 w-5" />
+              Confirmar Modificación de Asignación
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              <strong>Advertencia de Modificación:</strong> Este curso ya está registrado en la carga académica del docente en el sistema.
+            </p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Al guardar los cambios, el sistema <strong>eliminará primero todos los registros de horarios y componentes anteriores</strong> asociados a este curso y grupo. Posteriormente, se crearán las nuevas asignaciones según su selección.
+            </p>
+            {editingAsignacion?.tieneProgramacion && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                <strong>Importante:</strong> El docente ya ha programado horarios (días, horas o aulas) para esta materia. Esta programación detallada también se perderá y el docente deberá volver a configurarla.
+              </div>
+            )}
+            <p className="text-sm font-semibold text-slate-750 dark:text-slate-200 mt-2">
+              ¿Está seguro de que desea confirmar esta modificación en el sistema?
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsConfirmModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={ejecutarAsignacion} className="bg-amber-600 text-white hover:bg-amber-700">
+              Confirmar y Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

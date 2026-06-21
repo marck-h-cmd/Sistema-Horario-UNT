@@ -123,24 +123,46 @@ export class ReporteService {
     const cursosAsignados = await prisma.cursoDocente.findMany({
       where: { docenteId, activo: true },
       include: {
-        curso: {
+        planEstudioCurso: {
           include: {
-            grupos: { where: { activo: true } },
+            curso: true,
           },
         },
+        cursoDocenteGrupos: {
+          where: { activo: true },
+          include: {
+            grupo: true,
+          }
+        },
       },
-    });
+    }) as any[];
 
     // Horarios académicos (Lectivos)
     const horariosLectivos = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
         estado: { not: 'CANCELADO' },
+        cursoDocenteGrupo: {
+          cursoDocente: {
+            docenteId
+          }
+        }
       },
       include: {
-        curso: true,
-        grupo: true,
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: {
+                planEstudioCurso: {
+                  include: {
+                    curso: true
+                  }
+                }
+              }
+            }
+          }
+        },
         ambiente: true,
       },
     });
@@ -182,16 +204,13 @@ export class ReporteService {
 
     // Cursos
     const filasCursos = cursosAsignados.map((ca: any) => {
-      const c = ca.curso;
+      const plan = ca.planEstudioCurso;
+      const c = plan.curso;
       // Obtener qué grupos específicos de este curso tiene asignados este docente en el periodo
-      const horariosCursoDocente = data.horariosLectivos.filter((h: any) => h.cursoId === c.id);
-      const gruposIds = Array.from(new Set(horariosCursoDocente.map((h: any) => h.grupoId).filter(Boolean)));
-      const gruposNombres = c.grupos
-        .filter((g: any) => gruposIds.includes(g.id))
-        .map((g: any) => g.nombre)
-        .join(', ') || 'A';
+      // En horariosLectivos, h.grupo.cursoDocenteId ya nos relaciona
+      const gruposNombres = (ca.cursoDocenteGrupos ?? []).map((cdg: any) => cdg.grupo?.nombre).filter(Boolean).join(', ') || 'A';
 
-      const totalHoras = c.horasTeoria + c.horasPractica + c.horasLaboratorio;
+      const totalHoras = plan.horasTeoria + plan.horasPractica + plan.horasLaboratorio;
 
       return `
         <tr>
@@ -199,19 +218,19 @@ export class ReporteService {
           <td>${escapeHtml(c.nombre)}</td>
           <td>OB</td>
           <td>Ingeniería de Sistemas</td>
-          <td>${escapeHtml(c.ciclo.toString())}°</td>
+          <td>${escapeHtml(plan.ciclo.toString())}°</td>
           <td>${escapeHtml(gruposNombres)}</td>
           <td>30</td>
-          <td>${c.horasTeoria}</td>
-          <td>${c.horasPractica}</td>
-          <td>${c.horasLaboratorio}</td>
+          <td>${plan.horasTeoria}</td>
+          <td>${plan.horasPractica}</td>
+          <td>${plan.horasLaboratorio}</td>
           <td class="font-bold">${totalHoras}</td>
         </tr>`;
     }).join('');
 
     const totalLectivas = cursosAsignados.reduce((sum: number, ca: any) => {
-      const c = ca.curso;
-      return sum + c.horasTeoria + c.horasPractica + c.horasLaboratorio;
+      const plan = ca.planEstudioCurso;
+      return sum + plan.horasTeoria + plan.horasPractica + plan.horasLaboratorio;
     }, 0);
 
     // Carga No Lectiva
@@ -526,9 +545,10 @@ export class ReporteService {
       const hFin = parseInt(hl.horaFin.split(':')[0], 10);
       const rowSpan = Math.max(1, hFin - hIni);
 
+      const cursoObj = (hl as any).cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso;
       matriz[dia][hIni] = {
         tipo: 'LECTIVO',
-        label: `<strong>${escapeHtml(hl.curso.codigo)}</strong><br/>${escapeHtml(hl.curso.nombre)}`,
+        label: `<strong>${escapeHtml(cursoObj.codigo)}</strong><br/>${escapeHtml(cursoObj.nombre)}`,
         rowSpan,
         bg: COLOR_LECTIVA.bg,
         border: COLOR_LECTIVA.border,

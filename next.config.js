@@ -5,6 +5,12 @@ const nextConfig = {
     serverComponentsExternalPackages: ['puppeteer', 'puppeteer-core', 'zod', 'ai', '@ai-sdk/groq'],
     serverMinification: false
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

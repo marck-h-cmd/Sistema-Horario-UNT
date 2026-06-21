@@ -4,8 +4,10 @@ import { HORARIOS } from '@/lib/constantes';
 export const HORA_LIMITE_FIN_CLASES = HORARIOS.HORA_LIMITE_FIN_CLASES;
 
 export function calcularHorasEntre(horaInicio: string, horaFin: string): number {
+  if (!horaInicio || !horaFin) return 0;
   const [hiH, hiM] = horaInicio.split(':').map(Number);
   const [hfH, hfM] = horaFin.split(':').map(Number);
+  if (Number.isNaN(hiH) || Number.isNaN(hiM) || Number.isNaN(hfH) || Number.isNaN(hfM)) return 0;
   return hfH + hfM / 60 - (hiH + hiM / 60);
 }
 

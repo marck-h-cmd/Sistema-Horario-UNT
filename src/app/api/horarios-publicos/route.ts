@@ -19,39 +19,71 @@ export async function GET(request: NextRequest) {
       estado: 'PUBLICADO',
     };
 
-    if (ciclo) {
-      where.curso = { ciclo: parseInt(ciclo) };
-    }
-    if (cursoId) {
-      where.cursoId = cursoId;
-    }
-    if (docenteId) {
-      where.docenteId = docenteId;
+    if (ciclo || cursoId || docenteId) {
+      where.cursoDocenteGrupo = {
+        cursoDocente: {
+          ...(docenteId && { docenteId }),
+          planEstudioCurso: {
+            ...(ciclo && { ciclo: parseInt(ciclo) }),
+            ...(cursoId && { cursoId })
+          }
+        }
+      };
     }
 
     const horarios = await prisma.horario.findMany({
       where,
       select: {
         id: true,
-        docenteId: true,
         diaSemana: true,
         horaInicio: true,
         horaFin: true,
         tipoComponente: true,
-        curso: { select: { codigo: true, nombre: true, ciclo: true, horasTeoria: true, horasPractica: true, horasLaboratorio: true } },
-        docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: { select: { nombre: true } } } },
         ambiente: { select: { codigo: true, nombre: true } },
-        grupo: { select: { nombre: true } }
+        cursoDocenteGrupo: {
+          select: {
+            grupo: {
+              select: { nombre: true }
+            },
+            cursoDocente: {
+              select: {
+                docenteId: true,
+                docente: { select: { usuario: { select: { nombre: true, apellidos: true } }, departamento: { select: { nombre: true } } } },
+                planEstudioCurso: {
+                  select: {
+                    curso: { select: { codigo: true, nombre: true } },
+                    ciclo: true,
+                    horasTeoria: true,
+                    horasPractica: true,
+                    horasLaboratorio: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
     });
 
-    const horariosFormateados = horarios.map(h => ({
-      ...h,
-      docente: {
-        ...h.docente,
-        departamento: h.docente.departamento?.nombre ?? ''
-      }
-    }));
+    const horariosFormateados = (horarios as any[]).map(h => {
+      const cdg = h.cursoDocenteGrupo;
+      return {
+        ...h,
+        docenteId: cdg?.cursoDocente?.docenteId,
+        grupo: cdg?.grupo,
+        curso: {
+          ...cdg?.cursoDocente?.planEstudioCurso?.curso,
+          ciclo: cdg?.cursoDocente?.planEstudioCurso?.ciclo,
+          horasTeoria: cdg?.cursoDocente?.planEstudioCurso?.horasTeoria,
+          horasPractica: cdg?.cursoDocente?.planEstudioCurso?.horasPractica,
+          horasLaboratorio: cdg?.cursoDocente?.planEstudioCurso?.horasLaboratorio,
+        },
+        docente: {
+          ...cdg?.cursoDocente?.docente,
+          departamento: cdg?.cursoDocente?.docente?.departamento?.nombre ?? ''
+        }
+      };
+    });
 
     return createSuccessResponse(horariosFormateados);
   } catch (error: any) {
