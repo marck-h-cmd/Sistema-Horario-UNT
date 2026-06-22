@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
       where: qDocenteId && user.rol !== 'DOCENTE' ? { id: qDocenteId } : { usuarioId: user.userId },
       include: {
         usuario: { select: { nombre: true, apellidos: true } },
+        cargos: {
+          where: { activo: true },
+          select: { tipoCargo: true, activo: true, fechaInicio: true, fechaFin: true, resolucion: true },
+        },
         departamento: {
           include: {
             facultad: true,
@@ -56,12 +60,28 @@ export async function GET(request: NextRequest) {
     const horarios = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId: docente.id,
         estado: { not: 'CANCELADO' },
+        cursoDocenteGrupo: {
+          cursoDocente: {
+            docenteId: docente.id
+          }
+        }
       },
       include: {
-        curso: true,
-        grupo: true,
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: {
+                planEstudioCurso: {
+                  include: {
+                    curso: true
+                  }
+                }
+              }
+            }
+          }
+        },
         ambiente: true,
       },
       orderBy: [
@@ -72,15 +92,18 @@ export async function GET(request: NextRequest) {
 
     // 4. Mapear horarios y calcular horas por componente
     const asignaciones = horarios.map((h) => {
-      const horas = service.obtenerHorasComponente(h.curso, h.tipoComponente);
+      const planCurso = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
+      if (!planCurso) return null;
+      const horas = service.obtenerHorasComponente(planCurso as any, h.tipoComponente);
       return {
         id: h.id,
-        cursoId: h.cursoId,
-        cursoCodigo: h.curso.codigo,
-        cursoNombre: h.curso.nombre,
-        ciclo: h.curso.ciclo,
-        grupoId: h.grupoId,
-        grupoNombre: h.grupo?.nombre || null,
+        cursoId: planCurso.cursoId,
+        planEstudioId: planCurso.planEstudioId,
+        cursoCodigo: planCurso.curso.codigo,
+        cursoNombre: planCurso.curso.nombre,
+        ciclo: planCurso.ciclo,
+        grupoId: h.cursoDocenteGrupo?.grupoId,
+        grupoNombre: h.cursoDocenteGrupo?.grupo?.nombre,
         ambienteId: h.ambienteId,
         ambienteNombre: h.ambiente?.nombre || null,
         tipoComponente: h.tipoComponente,
@@ -92,10 +115,10 @@ export async function GET(request: NextRequest) {
         confirmadoPor: h.confirmadoPor,
         fechaConfirmacion: h.fechaConfirmacion,
       };
-    });
+    }).filter(Boolean);
 
     const horasDedicacion = service.obtenerHorasDedicacion(docente.dedicacion);
-    const totalHorasLectivas = asignaciones.reduce((sum, a) => sum + a.horas, 0);
+    const totalHorasLectivas = asignaciones.reduce((sum, a) => sum + (a ? a.horas : 0), 0);
 
     return createSuccessResponse({
       docente: {
@@ -105,6 +128,7 @@ export async function GET(request: NextRequest) {
         categoria: docente.categoria,
         dedicacion: docente.dedicacion,
         horasDedicacion,
+        cargosActivos: docente.cargos ?? [],
         departamento: docente.departamento ? {
           nombre: docente.departamento.nombre,
           facultad: docente.departamento.facultad ? {

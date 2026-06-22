@@ -134,7 +134,7 @@ export default function SeleccionHorarioPage() {
   const laboratorios = useMemo(() => ambientes.filter(a => a.tipo === TipoAmbiente.LABORATORIO), [ambientes]);
 
   const getEstadoCurso = useCallback((curso: Curso) => {
-    const horariosCurso = horariosExistentes.filter(h => h.cursoId === curso.id);
+    const horariosCurso = horariosExistentes.filter(h => h.curso?.id === curso.id);
     const tieneTeoria = curso.horasTeoria > 0;
     const tieneLab = curso.horasLaboratorio > 0;
     

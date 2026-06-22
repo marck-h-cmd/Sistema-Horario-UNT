@@ -19,20 +19,19 @@ export async function GET(
       return createErrorResponse('DOCENTE_NOT_FOUND', 'Docente no encontrado', 404);
     }
 
-    const where: any = { docenteId: params.id };
+    const where: any = { cursoDocenteGrupo: { cursoDocente: { docenteId: params.id } } };
     if (periodoId) where.periodoId = periodoId;
 
     const horarios = await prisma.horario.findMany({
       where,
       include: {
-        curso: {
-          select: { id: true, codigo: true, nombre: true, horasTeoria: true, horasPractica: true },
-        },
-        ambiente: {
-          select: { id: true, codigo: true, nombre: true, tipo: true, capacidad: true },
-        },
-        grupo: {
-          select: { id: true, nombre: true },
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: { planEstudioCurso: { include: { curso: true } } }
+            }
+          }
         },
         periodo: {
           select: { id: true, nombre: true, estado: true },
@@ -41,7 +40,15 @@ export async function GET(
       orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
     });
 
-    return createSuccessResponse(horarios);
+    const mappedHorarios = horarios.map((h: any) => ({
+      ...h,
+      grupo: h.cursoDocenteGrupo ? {
+        ...h.cursoDocenteGrupo.grupo,
+        cursoDocente: h.cursoDocenteGrupo.cursoDocente
+      } : null
+    }));
+
+    return createSuccessResponse(mappedHorarios);
   } catch (error: any) {
     console.error('Error obteniendo horario del docente:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Error al obtener horario', 500);

@@ -73,6 +73,7 @@ type HorarioDocente = {
   curso: { codigo: string; nombre: string; creditos: number };
   ambiente: { codigo: string; tipo: string };
   grupo: { nombre: string } | null;
+  cursoDocenteGrupo?: any;
 };
 
 type DocenteHorarioInput = {
@@ -83,27 +84,31 @@ type DocenteHorarioInput = {
 };
 
 export function htmlSeccionDocente(docente: DocenteHorarioInput): string {
-  const cursosUnicos = new Set(docente.horarios.map((h) => h.curso.codigo));
+  const cursosUnicos = new Set(docente.horarios.map((h) => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo));
   const totalHoras = docente.horarios.reduce(
-    (acc, h) => acc + calcularHorasEntre(h.horaInicio, h.horaFin),
+    (acc, h) => acc + (h.horaInicio && h.horaFin ? calcularHorasEntre(h.horaInicio, h.horaFin) : 0),
     0
   );
 
   const bloquesDia = DIAS.map((dia) => {
     const horariosDia = docente.horarios
       .filter((h) => h.diaSemana === dia)
-      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+      .sort((a, b) => {
+        const timeA = a.horaInicio || '';
+        const timeB = b.horaInicio || '';
+        return timeA.localeCompare(timeB);
+      });
     if (horariosDia.length === 0) return '';
 
     const filas = horariosDia
       .map(
         (h) => `
         <tr style="background:${DAY_COLORS[dia]}">
-          <td class="col-horario">${escapeHtml(h.horaInicio.slice(0, 5))} – ${escapeHtml(h.horaFin.slice(0, 5))}</td>
-          <td class="col-codigo">${escapeHtml(h.curso.codigo)}</td>
-          <td class="col-curso">${escapeHtml(h.curso.nombre)}</td>
-          <td>${escapeHtml(h.ambiente.codigo)}</td>
-          <td>${escapeHtml(h.ambiente.tipo === 'LABORATORIO' ? 'Lab.' : 'Aula')}</td>
+          <td class="col-horario">${h.horaInicio && h.horaFin ? `${escapeHtml(h.horaInicio.slice(0, 5))} – ${escapeHtml(h.horaFin.slice(0, 5))}` : 'Sin programar'}</td>
+          <td class="col-codigo">${escapeHtml(h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo)}</td>
+          <td class="col-curso">${escapeHtml(h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre)}</td>
+          <td>${escapeHtml(h.ambiente?.codigo ?? '—')}</td>
+          <td>${escapeHtml(h.ambiente?.tipo === 'LABORATORIO' ? 'Lab.' : (h.ambiente?.tipo === 'AULA' ? 'Aula' : '—'))}</td>
           <td>${escapeHtml(h.grupo?.nombre ?? '—')}</td>
           <td>${escapeHtml(h.curso.creditos)}</td>
         </tr>`
@@ -155,6 +160,7 @@ type HorarioAmbiente = {
   curso: { codigo: string; nombre: string };
   docente: { usuario: { nombre: string; apellidos: string } };
   grupo: { nombre: string } | null;
+  cursoDocenteGrupo?: any;
 };
 
 type AmbienteHorarioInput = {
@@ -190,9 +196,9 @@ export function htmlSeccionAmbiente(ambiente: AmbienteHorarioInput): string {
     const horariosDia = horariosPorDia[dia] || [];
     if (horariosDia.length === 0) continue;
     const filas = horariosDia.map((h) => [
-      `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`,
-      h.curso.codigo,
-      h.curso.nombre,
+      h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : 'Sin programar',
+      h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo,
+      h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
       Formateadores.nombreUsuario(h.docente.usuario),
       h.grupo?.nombre ?? '—',
     ]);
@@ -280,12 +286,12 @@ export function htmlSeccionCurso(curso: CursoHorarioInput): string {
     const horariosDia = horariosPorDia[dia] || [];
     if (horariosDia.length === 0) continue;
     const filas = horariosDia.map((h) => [
-      `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}`,
-      Formateadores.nombreUsuario(h.docente.usuario),
-      h.ambiente.codigo,
-      h.ambiente.tipo === 'LABORATORIO' ? 'Laboratorio' : 'Aula',
+      h.horaInicio && h.horaFin ? `${h.horaInicio.slice(0, 5)} – ${h.horaFin.slice(0, 5)}` : 'Sin programar',
+      Formateadores.nombreUsuario(h.docente?.usuario),
+      h.ambiente?.codigo ?? '—',
+      h.ambiente?.tipo === 'LABORATORIO' ? 'Laboratorio' : (h.ambiente?.tipo === 'AULA' ? 'Aula' : '—'),
       h.grupo?.nombre ?? '—',
-      `${calcularHorasEntre(h.horaInicio, h.horaFin).toFixed(1)} h`,
+      h.horaInicio && h.horaFin ? `${calcularHorasEntre(h.horaInicio, h.horaFin).toFixed(1)} h` : '0.0 h',
     ]);
     contenido += generarSeccionTitulo(dia);
     contenido += generarTablaHTML(

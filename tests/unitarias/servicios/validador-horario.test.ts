@@ -24,6 +24,20 @@ vi.mock('@/lib/prisma', () => ({
         codigo: 'A101',
       }),
     },
+    cursoDocenteGrupo: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: 'grupo-1',
+        grupoId: 'static-grupo-1',
+        grupo: { nombre: 'A' },
+        cursoDocente: {
+          docenteId: 'docente-1',
+          planEstudioCurso: {
+            ciclo: 1,
+            curso: { codigo: 'IS-101', nombre: 'Curso Test' }
+          }
+        }
+      }),
+    },
   },
 }));
 

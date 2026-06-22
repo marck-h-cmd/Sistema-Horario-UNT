@@ -10,7 +10,8 @@ const updateSchema = z.object({
   periodoId: z.string().uuid(),
   docenteId: z.string().uuid(),
   cursoId: z.string().uuid(),
-  grupoId: z.string().uuid(),
+  grupoId: z.string().uuid().optional(),
+  grupoNombre: z.string().optional(),
   componentes: z.array(z.enum(['TEORIA', 'PRACTICA', 'LABORATORIO'])),
 });
 
@@ -33,7 +34,10 @@ export async function PUT(
 
     // Para modificar, eliminamos primero la asignación actual e insertamos la nueva
     await service.eliminarCargaLectiva(params.id, user.userId);
-    const resultado = await service.asignarCargaLectiva(validation.data, user.userId);
+    const resultado = await service.asignarCargaLectiva({
+      ...validation.data,
+      grupoNombre: validation.data.grupoNombre || 'A',
+    }, user.userId);
 
     return createSuccessResponse(resultado, 'Asignación modificada exitosamente');
   } catch (error: any) {

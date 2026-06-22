@@ -13,7 +13,8 @@ const updateCursoSchema = z.object({
   horasPractica: z.number().int().min(0).optional(),
   horasLaboratorio: z.number().int().min(0).optional(),
   ciclo: z.number().int().min(1).max(10).optional(),
-  planEstudios: z.string().optional(),
+  tipoCurso: z.string().optional(),
+  departamentoId: z.number().int().optional(),
   activo: z.boolean().optional(),
 });
 

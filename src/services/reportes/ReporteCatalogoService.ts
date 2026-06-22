@@ -140,10 +140,10 @@ export class ReporteCatalogoService {
       include: {
         usuario: { select: { nombre: true, apellidos: true, email: true, activo: true } },
         departamento: { select: { nombre: true } },
-        _count: { select: { cursos: true, horarios: true } },
+        _count: { select: { cursos: true } },
       },
       orderBy: { codigo: 'asc' },
-    });
+    }) as any[];
     this.validarEncontrado(docentes, registroId, 'Docente');
 
     const activos = docentes.filter((d) => d.usuario.activo).length;
@@ -188,17 +188,20 @@ export class ReporteCatalogoService {
     if (registroId) where.id = registroId;
     if (createdAt) where.createdAt = createdAt;
     if (ciclo && ciclo > 0) where.ciclo = ciclo;
-    const cursos = await prisma.curso.findMany({
+    const cursos = await prisma.planEstudioCurso.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
-      include: { _count: { select: { grupos: true, cursosDocente: true } } },
-      orderBy: [{ ciclo: 'asc' }, { codigo: 'asc' }],
-    });
+      include: { 
+        curso: true,
+        _count: { select: { cursosDocentes: true } } 
+      },
+      orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
+    }) as any[];
     this.validarEncontrado(cursos, registroId, 'Curso');
 
-    const activos = cursos.filter((c) => c.activo).length;
+    const activos = cursos.filter((c) => c.curso.activo).length;
     const totalCreditos = cursos.reduce((s, c) => s + c.creditos, 0);
     const partes: string[] = [];
-    if (registroId) partes.push(`${cursos[0]?.codigo} — ${cursos[0]?.nombre}`);
+    if (registroId) partes.push(`${cursos[0]?.curso.codigo} — ${cursos[0]?.curso.nombre}`);
     else partes.push(`Listado (${cursos.length} cursos)`);
     if (ciclo && ciclo > 0) partes.push(`Ciclo ${ciclo}`);
     const subtitulo = partes.join(' · ');
@@ -210,14 +213,14 @@ export class ReporteCatalogoService {
     ]);
 
     const filas = cursos.map((c) => [
-      c.codigo,
-      c.nombre,
+      c.curso.codigo,
+      c.curso.nombre,
       c.ciclo.toString(),
       c.creditos.toString(),
       `${c.horasTeoria}T / ${c.horasPractica}P / ${c.horasLaboratorio}L`,
-      c._count.grupos.toString(),
-      c._count.cursosDocente.toString(),
-      c.activo ? 'Sí' : 'No',
+      '-', // Grupos
+      c._count.cursosDocentes.toString(),
+      c.curso.activo ? 'Sí' : 'No',
     ]);
 
     return {
@@ -328,26 +331,37 @@ export class ReporteCatalogoService {
 
   private async contenidoGrupos(registroId?: string, fechaDesde?: Date, fechaHasta?: Date, cursoId?: string, periodoId?: string) {
     const createdAt = this.rangoFechas(fechaDesde, fechaHasta);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, any> = {};
     if (registroId) where.id = registroId;
     if (createdAt) where.createdAt = createdAt;
-    if (cursoId) where.cursoId = cursoId;
-    if (periodoId) where.horarios = { some: { periodoId } };
-    const grupos = await prisma.grupo.findMany({
+    if (cursoId) where.cursoDocente = { planEstudioCurso: { cursoId } };
+    if (periodoId) {
+      where.cursoDocente = {
+        ...((where.cursoDocente as any) || {}),
+        periodoId
+      };
+    }
+    const grupos = await prisma.cursoDocenteGrupo.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
       include: {
-        curso: { select: { codigo: true, nombre: true, ciclo: true } },
+        grupo: true,
+        cursoDocente: {
+          include: { planEstudioCurso: { include: { curso: true } } }
+        },
         _count: { select: { horarios: true, matriculas: true } },
       },
-      orderBy: [{ curso: { codigo: 'asc' } }, { nombre: 'asc' }],
-    });
+      orderBy: [
+        { cursoDocente: { planEstudioCurso: { curso: { codigo: 'asc' } } } },
+        { grupo: { nombre: 'asc' } }
+      ],
+    }) as any[];
     this.validarEncontrado(grupos, registroId, 'Grupo');
 
     const activos = grupos.filter((g) => g.activo).length;
     const partes: string[] = [];
-    if (registroId) partes.push(`${grupos[0]?.curso.codigo} — Grupo ${grupos[0]?.nombre}`);
+    if (registroId) partes.push(`${grupos[0]?.cursoDocente.planEstudioCurso.curso.codigo} — Grupo ${grupos[0]?.grupo?.nombre}`);
     else partes.push(`Listado (${grupos.length} grupos)`);
-    if (cursoId && grupos.length > 0) partes.push(`Curso: ${grupos[0].curso.nombre}`);
+    if (cursoId && grupos.length > 0) partes.push(`Curso: ${grupos[0].cursoDocente.planEstudioCurso.curso.nombre}`);
     const subtitulo = partes.join(' · ');
 
     const kpis = generarKpiGrid([
@@ -360,10 +374,10 @@ export class ReporteCatalogoService {
     ]);
 
     const filas = grupos.map((g) => [
-      g.curso.codigo,
-      g.curso.nombre,
-      g.curso.ciclo.toString(),
-      g.nombre,
+      g.cursoDocente.planEstudioCurso.curso.codigo,
+      g.cursoDocente.planEstudioCurso.curso.nombre,
+      g.cursoDocente.planEstudioCurso.ciclo.toString(),
+      g.grupo?.nombre ?? '—',
       g.capacidad.toString(),
       g._count.horarios.toString(),
       g._count.matriculas.toString(),
@@ -388,11 +402,15 @@ export class ReporteCatalogoService {
     if (registroId) where.id = registroId;
     if (createdAt) where.createdAt = createdAt;
     if (docenteId) where.docenteId = docenteId;
-    if (cursoId) where.cursoId = cursoId;
+    if (cursoId) where.planEstudioCurso = { cursoId };
     const asignaciones = await prisma.cursoDocente.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
       include: {
-        curso: { select: { codigo: true, nombre: true, creditos: true, ciclo: true } },
+        planEstudioCurso: {
+          include: {
+            curso: { select: { codigo: true, nombre: true } }
+          }
+        },
         docente: {
           select: {
             codigo: true,
@@ -400,17 +418,17 @@ export class ReporteCatalogoService {
           },
         },
       },
-      orderBy: [{ docente: { codigo: 'asc' } }, { curso: { codigo: 'asc' } }],
+      orderBy: [{ docente: { codigo: 'asc' } }, { planEstudioCurso: { curso: { codigo: 'asc' } } }],
     });
     this.validarEncontrado(asignaciones, registroId, 'Asignación');
 
     const activas = asignaciones.filter((a) => a.activo).length;
     const totalHoras = asignaciones.reduce((s, a) => s + a.horasAsignadas, 0);
     const partes: string[] = [];
-    if (registroId) partes.push(`${asignaciones[0]?.docente.codigo} → ${asignaciones[0]?.curso.codigo}`);
+    if (registroId) partes.push(`${asignaciones[0]?.docente.codigo} → ${asignaciones[0]?.planEstudioCurso.curso.codigo}`);
     else partes.push(`Listado (${asignaciones.length} asignaciones)`);
-    if (docenteId && asignaciones.length > 0) partes.push(`Docente: ${Formateadores.nombreUsuario(asignaciones[0].docente.usuario)}`);
-    if (cursoId && asignaciones.length > 0) partes.push(`Curso: ${asignaciones[0].curso.nombre}`);
+    if (docenteId && asignaciones.length > 0) partes.push(`Docente: ${Formateadores.nombreUsuario(asignaciones[0].docente.usuario as any)}`);
+    if (cursoId && asignaciones.length > 0) partes.push(`Curso: ${asignaciones[0].planEstudioCurso.curso.nombre}`);
     const subtitulo = partes.join(' · ');
 
     const kpis = generarKpiGrid([
@@ -421,11 +439,11 @@ export class ReporteCatalogoService {
 
     const filas = asignaciones.map((a) => [
       a.docente.codigo,
-      Formateadores.nombreUsuario(a.docente.usuario),
-      a.curso.codigo,
-      a.curso.nombre,
-      a.curso.ciclo.toString(),
-      a.curso.creditos.toString(),
+      Formateadores.nombreUsuario(a.docente.usuario as any),
+      a.planEstudioCurso.curso.codigo,
+      a.planEstudioCurso.curso.nombre,
+      a.planEstudioCurso.ciclo.toString(),
+      a.planEstudioCurso.creditos.toString(),
       a.horasAsignadas.toString(),
       a.activo ? 'Sí' : 'No',
     ]);

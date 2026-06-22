@@ -40,7 +40,12 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const horario = await servicioHorario.actualizar(params.id, body);
+    const { grupoId, ...rest } = body;
+    const dto = {
+      ...rest,
+      cursoDocenteGrupoId: grupoId,
+    };
+    const horario = await servicioHorario.actualizar(params.id, dto);
     return createSuccessResponse(horario);
   } catch (error: any) {
     if (error.statusCode) {

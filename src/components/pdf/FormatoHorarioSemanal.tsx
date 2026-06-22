@@ -102,6 +102,9 @@ export interface CargaLectivaRow {
   lugar: string;
   aula: string;
   total: number;
+  horasTeoria?: number;
+  horasPractica?: number;
+  horasLaboratorio?: number;
 }
 
 export interface CargaNoLectivaRow {
@@ -155,6 +158,11 @@ export function FormatoHorarioSemanal({
   totalHoras,
   fechaRegistro,
 }: FormatoHorarioSemanalProps) {
+  const totalTeoria = cargaLectiva.reduce((acc, c) => acc + (c.horasTeoria || 0), 0);
+  const totalPractica = cargaLectiva.reduce((acc, c) => acc + (c.horasPractica || 0), 0);
+  const totalLaboratorio = cargaLectiva.reduce((acc, c) => acc + (c.horasLaboratorio || 0), 0);
+  const totalLectivas = cargaLectiva.reduce((acc, c) => acc + (c.total || 0), 0);
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -243,14 +251,15 @@ export function FormatoHorarioSemanal({
           )}
           
           <View style={styles.row}>
-            <View style={[styles.cell, { width: '25%' }]}>
-              <Text style={styles.textBold}>T: </Text>
-              <Text style={styles.textBold}>P: </Text>
+            <View style={[styles.cell, { width: '25%', justifyContent: 'center' }]}>
+              <Text style={styles.textBold}>T: {totalTeoria}   P: {totalPractica}   L: {totalLaboratorio}</Text>
             </View>
             <View style={[styles.cell, { width: '45%' }]}><Text></Text></View>
             <View style={[styles.cell, { width: '10%' }]}><Text></Text></View>
             <View style={[styles.cell, { width: '12%' }]}><Text></Text></View>
-            <View style={[styles.cellNoBorder, { width: '8%' }]}><Text></Text></View>
+            <View style={[styles.cellNoBorder, { width: '8%', justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={styles.textBold}>{totalLectivas}</Text>
+            </View>
           </View>
 
           {/* CHNL Header */}
@@ -302,7 +311,7 @@ export function FormatoHorarioSemanal({
           <Text>T: TEORIA - P: PRACTICA</Text>
           <Text>LU (LUNES); MA (MARTES); MI (MIERCOLES); JU (JUEVES); VI (VIERNES); SA (SABADO); DO (DOMINGO); TIEMPO EN FORMATO DE 24 HORAS.</Text>
           <Text style={{ marginTop: 4 }}>
-            LUGAR: (F01: "CC. Agropecuarias"; F02: "CC. Biológicas"; F03: "CC. Económicas"; F04: "CC. Físicas y Matemáticas"; F05: "CC. Sociales"; F06: "Derecho y Ciencias Políticas"; F07: "Educación y Comunicación"; F08: "Enfermería"; F09: "Estomatología"; F10: "Farmacia y Bioquímica"; F11: "Ingeniería"; F12: "Ingeniería Química"; F13: "Medicina"; F14: "Filial Valle Jequetepeque"; F15: "Filial Huamachuco"; F16: "Filial Santiago de Chuco"; OA: "Oficina Administrativa"; SC: "Salida de Campo").
+            {"LUGAR: (F01: \"CC. Agropecuarias\"; F02: \"CC. Biológicas\"; F03: \"CC. Económicas\"; F04: \"CC. Físicas y Matemáticas\"; F05: \"CC. Sociales\"; F06: \"Derecho y Ciencias Políticas\"; F07: \"Educación y Comunicación\"; F08: \"Enfermería\"; F09: \"Estomatología\"; F10: \"Farmacia y Bioquímica\"; F11: \"Ingeniería\"; F12: \"Ingeniería Química\"; F13: \"Medicina\"; F14: \"Filial Valle Jequetepeque\"; F15: \"Filial Huamachuco\"; F16: \"Filial Santiago de Chuco\"; OA: \"Oficina Administrativa\"; SC: \"Salida de Campo\")."}
           </Text>
         </View>
 

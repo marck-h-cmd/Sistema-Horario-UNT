@@ -38,6 +38,7 @@ interface HorarioItem {
   curso: { nombre: string; codigo: string };
   ambiente: { codigo: string; nombre: string; tipo: string };
   grupo?: { nombre: string };
+  cursoDocenteGrupo?: any;
 }
 
 interface VentanaAtencion {
@@ -401,7 +402,7 @@ export default function DocenteDashboardPage() {
   }, 0);
   const horasLaboratorio = totalHorasSemanal - horasTeoria;
   
-  const cursosAsignados = new Set(horarios.map(h => h.curso?.codigo)).size;
+  const cursosAsignados = new Set(horarios.map(h => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo)).size;
 
   // MATRIZ Y HORAS BLOQUEADAS PARA ROWSPAN
   const horasBloqueadasPorDia: Record<string, Set<string>> = {}; 
@@ -436,7 +437,7 @@ export default function DocenteDashboardPage() {
   const horasARenderizar = HORAS_STRINGS;
 
   const horasConClase = HORAS_STRINGS.filter(h => DIAS.some(d => matriz[d]?.[h] || horasBloqueadasPorDia[d]?.has(h)));
-  const cursosUnicos = Array.from(new Set(horarios.map(h => h.curso?.codigo)));
+  const cursosUnicos = Array.from(new Set(horarios.map(h => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo)));
   const cursoColorMap: Record<string, any> = {};
   cursosUnicos.forEach((codigo, index) => {
     cursoColorMap[codigo] = COLORES_CURSO[index % COLORES_CURSO.length];
@@ -444,7 +445,7 @@ export default function DocenteDashboardPage() {
 
   const pieData = cursosUnicos.map(codigo => ({
     name: codigo,
-    value: horarios.filter(h => h.curso?.codigo === codigo && h.horaInicio && h.horaFin).reduce((acc, h) => {
+    value: horarios.filter(h => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo === codigo && h.horaInicio && h.horaFin).reduce((acc, h) => {
       const inicio = parseInt(h.horaInicio.split(':')[0]);
       const fin = parseInt(h.horaFin.split(':')[0]);
       return acc + (fin - inicio);

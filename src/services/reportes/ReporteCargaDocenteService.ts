@@ -32,50 +32,69 @@ export class ReporteCargaDocenteService {
       include: {
         usuario: { select: { nombre: true, apellidos: true, email: true, activo: true } },
         cursos: {
-          where: { activo: true },
+          where: { activo: true, periodoId },
           include: {
-            curso: {
-              select: {
-                codigo: true,
-                nombre: true,
-                ciclo: true,
-                creditos: true,
-                horasTeoria: true,
-                horasPractica: true,
-                horasLaboratorio: true,
+            planEstudioCurso: {
+              include: {
+                curso: {
+                  select: {
+                    codigo: true,
+                    nombre: true,
+                  },
+                },
               },
             },
+            cursoDocenteGrupos: {
+              include: {
+                grupo: true,
+                horarios: {
+                  where: periodoId ? { periodoId, estado: { not: 'CANCELADO' } } : { id: '__never__' },
+                  include: {
+                    ambiente: { select: { codigo: true } },
+                  },
+                  orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
+                }
+              }
+            }
           },
-        },
-        // Si no hay período, devuelve [] (where con id inexistente).
-        // Si lo hay, sólo trae los horarios de ese período no cancelados.
-        horarios: {
-          where: periodoId
-            ? { periodoId, estado: { not: 'CANCELADO' } }
-            : { id: '__never__' },
-          include: {
-            grupo: { select: { nombre: true } },
-            curso: { select: { codigo: true } },
-            ambiente: { select: { codigo: true } },
-          },
-          orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
         },
       },
       orderBy: [{ categoria: 'asc' }, { codigo: 'asc' }],
     });
 
-    const docentesFormateados = docentes.map(d => ({
-      ...d,
-      horarios: (d.horarios || [])
-        .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
-        .map(h => ({
-          ...h,
-          diaSemana: h.diaSemana!,
-          horaInicio: h.horaInicio!,
-          horaFin: h.horaFin!,
-          ambiente: h.ambiente || { codigo: 'Sin ambiente' },
+    const docentesFormateados = docentes.map(d => {
+      const horariosDelDocente = d.cursos.flatMap(c => 
+        c.cursoDocenteGrupos.flatMap(cdg => 
+          cdg.horarios.map(h => ({
+            ...h,
+            curso: { codigo: c.planEstudioCurso.curso.codigo },
+            grupo: { nombre: cdg.grupo.nombre }
+          }))
+        )
+      );
+
+      return {
+        ...d,
+        cursos: d.cursos.map(c => ({
+          ...c,
+          curso: c.planEstudioCurso.curso,
+          ciclo: c.planEstudioCurso.ciclo,
+          creditos: c.planEstudioCurso.creditos,
+          horasTeoria: c.planEstudioCurso.horasTeoria,
+          horasPractica: c.planEstudioCurso.horasPractica,
+          horasLaboratorio: c.planEstudioCurso.horasLaboratorio,
         })),
-    }));
+        horarios: horariosDelDocente
+          .filter(h => h.diaSemana !== null && h.horaInicio !== null && h.horaFin !== null)
+          .map(h => ({
+            ...h,
+            diaSemana: h.diaSemana!,
+            horaInicio: h.horaInicio!,
+            horaFin: h.horaFin!,
+            ambiente: h.ambiente || { codigo: 'Sin ambiente' },
+          })),
+      };
+    });
 
     const totalDocentes = docentesFormateados.length;
     const totalAsignaciones = docentesFormateados.reduce((s, d) => s + d.cursos.length, 0);
@@ -173,7 +192,7 @@ export class ReporteCargaDocenteService {
       const filasHorario = d.horarios.map((h) => [
         DIAS[h.diaSemana] ?? h.diaSemana,
         `${h.horaInicio} – ${h.horaFin}`,
-        h.curso.codigo,
+        h.curso?.codigo || '—',
         h.grupo?.nombre ? `Grupo ${h.grupo.nombre}` : '—',
         h.ambiente.codigo,
       ]);

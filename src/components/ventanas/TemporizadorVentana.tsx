@@ -62,39 +62,39 @@ export function TemporizadorVentana({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-500 shadow-sm',
+        'flex flex-col items-center justify-center p-6 rounded-2xl border transition-all duration-500 shadow-sm',
         getSemaforoClasses(),
         className
       )}
     >
       {/* Casing del Semáforo */}
       {(estado === 'activa' || estado === 'pausada') ? (
-        <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 dark:bg-slate-950 rounded-full border border-slate-700/50 shadow-inner mb-4 transition-all duration-500">
+        <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-100 dark:bg-slate-950 rounded-full border border-slate-200/80 dark:border-slate-800 shadow-inner mb-4 transition-all duration-500">
           {/* Rojo */}
           <div
             className={cn(
-              "w-4 h-4 rounded-full transition-all duration-500 ease-out",
+              "w-3.5 h-3.5 rounded-full transition-all duration-500 ease-out",
               semaforoColor === 'red'
-                ? "bg-rose-500 shadow-[0_0_14px_6px_rgba(244,63,94,0.6)] scale-110"
-                : "bg-rose-950/40 opacity-30"
+                ? "bg-rose-500 shadow-[0_0_12px_4px_rgba(244,63,94,0.5)] scale-110"
+                : "bg-slate-300 dark:bg-slate-800 opacity-40"
             )}
           />
           {/* Amarillo */}
           <div
             className={cn(
-              "w-4 h-4 rounded-full transition-all duration-500 ease-out",
+              "w-3.5 h-3.5 rounded-full transition-all duration-500 ease-out",
               semaforoColor === 'yellow'
-                ? "bg-amber-400 shadow-[0_0_14px_6px_rgba(251,191,36,0.6)] scale-110"
-                : "bg-amber-950/40 opacity-30"
+                ? "bg-amber-400 shadow-[0_0_12px_4px_rgba(251,191,36,0.5)] scale-110"
+                : "bg-slate-300 dark:bg-slate-800 opacity-40"
             )}
           />
           {/* Verde */}
           <div
             className={cn(
-              "w-4 h-4 rounded-full transition-all duration-500 ease-out",
+              "w-3.5 h-3.5 rounded-full transition-all duration-500 ease-out",
               semaforoColor === 'green'
-                ? "bg-emerald-500 shadow-[0_0_14px_6px_rgba(16,185,129,0.6)] scale-110"
-                : "bg-emerald-950/40 opacity-30"
+                ? "bg-emerald-500 shadow-[0_0_12px_4px_rgba(16,185,129,0.5)] scale-110"
+                : "bg-slate-300 dark:bg-slate-800 opacity-40"
             )}
           />
         </div>
@@ -110,7 +110,7 @@ export function TemporizadorVentana({
 
       {/* Reloj Digital */}
       <div className={cn(
-        'text-4xl font-mono font-bold tracking-wider tabular-nums transition-colors duration-500',
+        'text-4xl font-mono font-semibold tracking-wider tabular-nums transition-colors duration-500',
         estado === 'inactiva' && 'text-slate-600 dark:text-slate-300',
         estado === 'finalizada' && 'text-slate-400 dark:text-slate-500',
         estado === 'activa' && semaforoColor === 'green' && 'text-emerald-600 dark:text-emerald-400',
@@ -128,7 +128,7 @@ export function TemporizadorVentana({
       {/* Barra de Progreso y Mensaje Informativo */}
       {(estado === 'activa' || estado === 'pausada') && (
         <div className="w-full mt-4 space-y-2">
-          <div className="w-full bg-slate-200 dark:bg-slate-700/50 h-2.5 rounded-full overflow-hidden p-0.5">
+          <div className="w-full bg-slate-200/60 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500 ease-out",

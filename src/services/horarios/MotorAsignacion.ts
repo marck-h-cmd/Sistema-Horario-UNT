@@ -107,6 +107,13 @@ export class MotorAsignacion {
       creadoPor,
     } = solicitud;
 
+    if (!grupoId) {
+      return {
+        exitoso: false,
+        mensaje: 'No se especificó el grupo (grupoId) para la asignación.',
+      };
+    }
+
     let docenteId = solicitud.docenteId;
     let ambienteId = solicitud.ambienteId;
     const mensajes: string[] = [];
@@ -139,9 +146,10 @@ export class MotorAsignacion {
     }
 
     // Verificar que el docente tenga el curso asignado
-    const cursoDocente = await prisma.cursoDocente.findUnique({
+    const cursoDocente = await prisma.cursoDocente.findFirst({
       where: {
-        cursoId_docenteId: { cursoId, docenteId },
+        docenteId,
+        planEstudioCursoId: cursoId, // Asumiendo que cursoId es planEstudioCursoId en este contexto
       },
     });
 
@@ -156,7 +164,7 @@ export class MotorAsignacion {
     // PASO 2: Seleccionar ambiente según tipo
     // ==========================================
     if (!ambienteId) {
-      const curso = await prisma.curso.findUnique({
+      const curso = await prisma.planEstudioCurso.findUnique({
         where: { id: cursoId },
         select: { horasLaboratorio: true, horasTeoria: true, horasPractica: true },
       });
@@ -280,12 +288,27 @@ export class MotorAsignacion {
     // PASO 5: Crear el horario
     // ==========================================
     try {
+      let cursoDocenteGrupo = await prisma.cursoDocenteGrupo.findFirst({
+        where: {
+          cursoDocenteId: cursoDocente.id,
+          grupoId: grupoId,
+        }
+      });
+
+      if (!cursoDocenteGrupo) {
+        cursoDocenteGrupo = await prisma.cursoDocenteGrupo.create({
+          data: {
+            cursoDocenteId: cursoDocente.id,
+            grupoId: grupoId,
+            capacidad: 40,
+          }
+        });
+      }
+
       const horario = await prisma.horario.create({
         data: {
           periodoId,
-          cursoId,
-          docenteId,
-          grupoId: grupoId || null,
+          cursoDocenteGrupoId: cursoDocenteGrupo.id,
           ambienteId,
           diaSemana,
           horaInicio,
@@ -295,14 +318,17 @@ export class MotorAsignacion {
           fechaCreacion: new Date(),
         },
         include: {
-          curso: { select: { codigo: true, nombre: true } },
-          docente: {
+          cursoDocenteGrupo: {
             include: {
-              usuario: { select: { nombre: true, apellidos: true } },
-            },
+              grupo: true,
+              cursoDocente: {
+                include: {
+                  docente: { include: { usuario: { select: { nombre: true, apellidos: true } } } },
+                  planEstudioCurso: { include: { curso: { select: { codigo: true, nombre: true } } } }
+                }
+              }
+            }
           },
-          ambiente: { select: { codigo: true, nombre: true, tipo: true } },
-          grupo: { select: { nombre: true } },
         },
       });
 
@@ -339,7 +365,7 @@ export class MotorAsignacion {
     // Obtener docentes que tienen el curso asignado
     const cursoDocentes = await prisma.cursoDocente.findMany({
       where: {
-        cursoId,
+        planEstudioCursoId: cursoId,
         activo: true,
         docente: {
           usuario: { activo: true },
@@ -361,16 +387,16 @@ export class MotorAsignacion {
       .map(cd => cd.docente)
       .sort((a, b) => {
         // 1. Primero por modalidad (Nombrados vs Contratados)
-        const esNombradoA = CATEGORIAS_NOMBRADOS.includes(a.categoria);
-        const esNombradoB = CATEGORIAS_NOMBRADOS.includes(b.categoria);
+        const esNombradoA = CATEGORIAS_NOMBRADOS.includes(a.categoria as CategoriaDocente);
+        const esNombradoB = CATEGORIAS_NOMBRADOS.includes(b.categoria as CategoriaDocente);
         
         if (esNombradoA !== esNombradoB) {
           return esNombradoA ? -1 : 1;
         }
 
         // 2. Luego por jerarquía de categoría
-        const jerarquiaA = JERARQUIA_CATEGORIAS[a.categoria] || 99;
-        const jerarquiaB = JERARQUIA_CATEGORIAS[b.categoria] || 99;
+        const jerarquiaA = JERARQUIA_CATEGORIAS[a.categoria as CategoriaDocente] || 99;
+        const jerarquiaB = JERARQUIA_CATEGORIAS[b.categoria as CategoriaDocente] || 99;
         
         if (jerarquiaA !== jerarquiaB) {
           return jerarquiaA - jerarquiaB;
@@ -446,7 +472,7 @@ export class MotorAsignacion {
       .filter(d => d !== diaSemanaOriginal) as DiaSemana[];
 
     // Primero: probar otros ambientes en el mismo horario
-    const curso = await prisma.curso.findUnique({
+    const curso = await prisma.planEstudioCurso.findUnique({
       where: { id: cursoId },
       select: { horasLaboratorio: true },
     });
@@ -595,7 +621,7 @@ export class MotorAsignacion {
     const cursosDocentes = await prisma.cursoDocente.findMany({
       where: { activo: true },
       include: {
-        curso: true,
+        planEstudioCurso: { include: { curso: true } },
         docente: {
           include: {
             usuario: { select: { nombre: true, apellidos: true } },
@@ -610,16 +636,16 @@ export class MotorAsignacion {
       const docB = b.docente;
 
       // 1. Modalidad
-      const esNombradoA = CATEGORIAS_NOMBRADOS.includes(docA.categoria);
-      const esNombradoB = CATEGORIAS_NOMBRADOS.includes(docB.categoria);
+      const esNombradoA = CATEGORIAS_NOMBRADOS.includes(docA.categoria as CategoriaDocente);
+      const esNombradoB = CATEGORIAS_NOMBRADOS.includes(docB.categoria as CategoriaDocente);
       
       if (esNombradoA !== esNombradoB) {
         return esNombradoA ? -1 : 1;
       }
 
       // 2. Categoría
-      const jerarquiaA = JERARQUIA_CATEGORIAS[docA.categoria] || 99;
-      const jerarquiaB = JERARQUIA_CATEGORIAS[docB.categoria] || 99;
+      const jerarquiaA = JERARQUIA_CATEGORIAS[docA.categoria as CategoriaDocente] || 99;
+      const jerarquiaB = JERARQUIA_CATEGORIAS[docB.categoria as CategoriaDocente] || 99;
       
       if (jerarquiaA !== jerarquiaB) {
         return jerarquiaA - jerarquiaB;
@@ -644,7 +670,7 @@ export class MotorAsignacion {
         for (const franja of franjas) {
           const resultado = await this.asignarHorario({
             periodoId,
-            cursoId: cd.cursoId,
+            cursoId: cd.planEstudioCursoId,
             docenteId: cd.docenteId,
             diaSemana: dia,
             horaInicio: franja.inicio,

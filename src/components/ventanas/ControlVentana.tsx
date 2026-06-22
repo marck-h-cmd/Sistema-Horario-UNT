@@ -74,13 +74,13 @@ export function ControlVentana({
         {estado === 'activa' && subEstado && (
           <div className="space-y-3">
             {subEstado === 'esperando_llamado' && docenteEnTurno && (
-              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-sm text-amber-800 dark:text-amber-300 space-y-1 shadow-sm">
-                <p className="font-bold flex items-center gap-1.5 uppercase tracking-wide text-xs">
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-sm text-amber-800 dark:text-amber-300 space-y-1 shadow-sm animate-fadeIn">
+                <p className="font-semibold flex items-center gap-1.5 uppercase tracking-wide text-xs text-amber-700 dark:text-amber-400">
                   <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                   Llamando a Docente en Cola
                 </p>
-                <p className="text-xs font-semibold">
-                  Turno actual: Posición #{docenteEnTurno.posicion} - <span className="font-bold">{docenteEnTurno.nombre}</span>
+                <p className="text-xs font-medium">
+                  Turno actual: Posición #{docenteEnTurno.posicion} - <span className="font-semibold">{docenteEnTurno.nombre}</span>
                 </p>
                 <p className="text-[11px] opacity-90 mt-1">
                   El docente se encuentra en cola para ser llamado. Haga clic en el botón de &apos;Llamar&apos; para iniciar su atención.
@@ -88,13 +88,13 @@ export function ControlVentana({
               </div>
             )}
             {subEstado === 'en_atencion' && docenteEnTurno && (
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-sm text-emerald-800 dark:text-emerald-300 space-y-1 shadow-sm">
-                <p className="font-bold flex items-center gap-1.5 uppercase tracking-wide text-xs">
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-sm text-emerald-800 dark:text-emerald-300 space-y-1 shadow-sm animate-fadeIn">
+                <p className="font-semibold flex items-center gap-1.5 uppercase tracking-wide text-xs text-emerald-700 dark:text-emerald-400">
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   Docente en Atención
                 </p>
-                <p className="text-xs font-semibold">
-                  Atendiendo a: <span className="font-bold">{docenteEnTurno.nombre}</span> (Posición #{docenteEnTurno.posicion})
+                <p className="text-xs font-medium">
+                  Atendiendo a: <span className="font-semibold">{docenteEnTurno.nombre}</span> (Posición #{docenteEnTurno.posicion})
                 </p>
                 <p className="text-[11px] opacity-90 mt-1">
                   El docente está seleccionando sus asignaturas y horarios en el workspace.
@@ -102,12 +102,12 @@ export function ControlVentana({
               </div>
             )}
             {subEstado === 'esperando_turno' && (
-              <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-sm text-blue-800 dark:text-blue-300 space-y-1 shadow-sm">
-                <p className="font-bold flex items-center gap-1.5 uppercase tracking-wide text-xs">
-                  <span className="inline-block w-2 h-2 rounded-full bg-blue-50"></span>
+              <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-sm text-blue-800 dark:text-blue-300 space-y-1 shadow-sm animate-fadeIn">
+                <p className="font-semibold flex items-center gap-1.5 uppercase tracking-wide text-xs text-blue-750 dark:text-blue-400">
+                  <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
                   Esperando Siguiente Turno
                 </p>
-                <p className="text-xs font-semibold">
+                <p className="text-xs font-medium">
                   Atención finalizada con éxito.
                 </p>
                 <p className="text-[11px] opacity-90 mt-1">
@@ -147,7 +147,7 @@ export function ControlVentana({
               <Boton
                 onClick={onSaltarTurno}
                 variant="outline"
-                className="col-span-2 gap-2 mt-2 border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
+                className="col-span-2 gap-2 mt-2 border-amber-500/20 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium"
               >
                 <SkipForward className="h-4 w-4" />
                 Saltar Turno (15 min)

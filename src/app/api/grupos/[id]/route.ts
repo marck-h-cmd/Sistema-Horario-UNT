@@ -4,7 +4,7 @@ import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
 import { z } from 'zod';
 
 const updateGrupoSchema = z.object({
-  cursoId: z.string().uuid().optional(),
+  cursoDocenteId: z.string().uuid().optional(),
   nombre: z.string().min(1).max(50).optional(),
   capacidad: z.number().int().positive().optional(),
   activo: z.boolean().optional(),
@@ -15,11 +15,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const grupo = await prisma.grupo.findUnique({
+    const cdg = await prisma.cursoDocenteGrupo.findUnique({
       where: { id: params.id },
       include: {
-        curso: {
-          select: { id: true, codigo: true, nombre: true, ciclo: true },
+        grupo: true,
+        cursoDocente: {
+          include: { planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } } }
         },
         _count: {
           select: { horarios: true },
@@ -27,11 +28,22 @@ export async function GET(
       },
     });
 
-    if (!grupo) {
+    if (!cdg) {
       return createErrorResponse('NOT_FOUND', 'Grupo no encontrado', 404);
     }
 
-    return createSuccessResponse(grupo);
+    const responseGrupo = {
+      id: cdg.id,
+      nombre: cdg.grupo.nombre,
+      capacidad: cdg.capacidad,
+      activo: cdg.activo,
+      cursoDocenteId: cdg.cursoDocenteId,
+      grupoId: cdg.grupoId,
+      curso: cdg.cursoDocente?.planEstudioCurso?.curso,
+      _count: cdg._count,
+    };
+
+    return createSuccessResponse(responseGrupo);
   } catch (error: any) {
     console.error('Error obteniendo grupo:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Error al obtener grupo', 500);
@@ -50,12 +62,35 @@ export async function PUT(
       return createErrorResponse('VALIDATION_ERROR', 'Datos inválidos', 400, validation.error.errors);
     }
 
-    const grupo = await prisma.grupo.update({
+    const updateData: any = {};
+    if (validation.data.cursoDocenteId !== undefined) {
+      updateData.cursoDocenteId = validation.data.cursoDocenteId;
+    }
+    if (validation.data.capacidad !== undefined) {
+      updateData.capacidad = validation.data.capacidad;
+    }
+    if (validation.data.activo !== undefined) {
+      updateData.activo = validation.data.activo;
+    }
+    if (validation.data.nombre !== undefined) {
+      let staticGrupo = await prisma.grupo.findUnique({
+        where: { nombre: validation.data.nombre },
+      });
+      if (!staticGrupo) {
+        staticGrupo = await prisma.grupo.create({
+          data: { nombre: validation.data.nombre }
+        });
+      }
+      updateData.grupoId = staticGrupo.id;
+    }
+
+    const cdg = await prisma.cursoDocenteGrupo.update({
       where: { id: params.id },
-      data: validation.data,
+      data: updateData,
       include: {
-        curso: {
-          select: { id: true, codigo: true, nombre: true, ciclo: true },
+        grupo: true,
+        cursoDocente: {
+          include: { planEstudioCurso: { include: { curso: { select: { id: true, codigo: true, nombre: true } } } } }
         },
         _count: {
           select: { horarios: true },
@@ -63,7 +98,18 @@ export async function PUT(
       },
     });
 
-    return createSuccessResponse(grupo);
+    const responseGrupo = {
+      id: cdg.id,
+      nombre: cdg.grupo.nombre,
+      capacidad: cdg.capacidad,
+      activo: cdg.activo,
+      cursoDocenteId: cdg.cursoDocenteId,
+      grupoId: cdg.grupoId,
+      curso: cdg.cursoDocente?.planEstudioCurso?.curso,
+      _count: cdg._count,
+    };
+
+    return createSuccessResponse(responseGrupo);
   } catch (error: any) {
     console.error('Error actualizando grupo:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Error al actualizar grupo', 500);
@@ -75,7 +121,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.grupo.update({
+    await prisma.cursoDocenteGrupo.update({
       where: { id: params.id },
       data: { activo: false },
     });

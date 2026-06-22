@@ -34,11 +34,22 @@ export class ValidacionHorarioService {
       prisma.horario.findMany({
         where: {
           periodoId,
-          docenteId,
           estado: { not: 'CANCELADO' },
+          cursoDocenteGrupo: { cursoDocente: { docenteId } }
         },
         include: {
-          curso: true,
+          cursoDocenteGrupo: {
+            include: {
+              grupo: true,
+              cursoDocente: {
+                include: {
+                  planEstudioCurso: {
+                    include: { curso: true }
+                  }
+                }
+              }
+            }
+          },
           ambiente: true,
         },
       }),
@@ -174,8 +185,8 @@ export class ValidacionHorarioService {
           cumpleComisiones = false;
           clasesDesconcentradasSinComision.push({
             horarioId: h.id,
-            curso: h.curso.nombre,
-            sede: h.sedeDescentralizadaRef,
+            curso: (h as any).cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre ?? 'Desconocido',
+            sede: h.sedeDescentralizadaRef!,
           });
         }
       }
@@ -223,17 +234,18 @@ export class ValidacionHorarioService {
     const horarios = await prisma.horario.findMany({
       where: {
         periodoId,
-        docenteId,
+        cursoDocenteGrupo: { cursoDocente: { docenteId } },
         estado: { not: 'CANCELADO' },
       },
     });
 
     await prisma.$transaction(async (tx) => {
       // Confirmar todos los horarios
+      const horarioIds = horarios.map((h) => h.id);
+      
       await tx.horario.updateMany({
         where: {
-          periodoId,
-          docenteId,
+          id: { in: horarioIds },
           estado: { in: [EstadoHorario.BORRADOR, EstadoHorario.SELECCION_TEMPORAL] },
         },
         data: {
@@ -244,7 +256,6 @@ export class ValidacionHorarioService {
       });
 
       // Eliminar validaciones previas de estos horarios
-      const horarioIds = horarios.map((h) => h.id);
       await tx.validacionHorario.deleteMany({
         where: {
           horarioId: { in: horarioIds },
