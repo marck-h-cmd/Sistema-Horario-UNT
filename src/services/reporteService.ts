@@ -517,7 +517,7 @@ export class ReporteService {
     const nombreDocente = `${docente.usuario.nombre} ${docente.usuario.apellidos}`;
 
     // Armar la grilla de horas
-    const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 a 20:00
+    const HORAS = Array.from({ length: 15 }, (_, i) => i + 7); // 7:00 a 22:00 (last block is 21-22)
     const DIAS: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
     const DIAS_LABEL: Record<string, string> = {
       LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles',

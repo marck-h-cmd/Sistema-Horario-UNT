@@ -702,8 +702,7 @@ export default function CargaAcademicaAdminPage() {
                           <th className="text-center py-2.5">Escuela Prof.</th>
                           <th className="text-center py-2.5">Ciclo</th>
                           <th className="text-center py-2.5">Alumnos</th>
-                          <th className="text-center py-2.5">Teo</th>
-                          <th className="text-center py-2.5">Pra</th>
+                          <th className="text-center py-2.5">Teo + Pra</th>
                           <th className="text-center py-2.5">Lab</th>
                           <th className="text-center py-2.5">Total Hrs.</th>
                           <th className="text-center py-2.5"></th>
@@ -721,8 +720,7 @@ export default function CargaAcademicaAdminPage() {
                               <td className="text-center text-slate-500 dark:text-slate-400 py-3">Ing. Sistemas</td>
                               <td className="text-center font-medium py-3">{c.ciclo}</td>
                               <td className="text-center text-slate-500 dark:text-slate-400 py-3">Aprox. {c.alumnos}</td>
-                              <td className="text-center font-medium text-sky-650 dark:text-sky-400 bg-sky-500/5 dark:bg-sky-500/10 py-3">{c.teo}</td>
-                              <td className="text-center font-medium text-purple-650 dark:text-purple-400 bg-purple-500/5 dark:bg-purple-500/10 py-3">{c.pra}</td>
+                              <td className="text-center font-medium text-sky-650 dark:text-sky-400 bg-sky-500/5 dark:bg-sky-500/10 py-3">{c.teo + c.pra}</td>
                               <td className="text-center font-medium text-indigo-650 dark:text-indigo-400 bg-indigo-500/5 dark:bg-indigo-500/10 py-3">{c.lab}</td>
                               <td className="text-center font-bold text-indigo-700 dark:text-indigo-300 bg-primary/5 dark:bg-primary/10 py-3">{totalHrs}</td>
                               <td className="py-3 pr-4">
@@ -748,11 +746,11 @@ export default function CargaAcademicaAdminPage() {
                         })}
                         {lineasCursos.length === 0 && (
                           <tr>
-                            <td colSpan={12} className="p-6 text-center text-slate-450 dark:text-slate-550">No tiene carga lectiva asignada.</td>
+                            <td colSpan={11} className="p-6 text-center text-slate-450 dark:text-slate-550">No tiene carga lectiva asignada.</td>
                           </tr>
                         )}
                         <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-bold border-t border-slate-200 dark:border-slate-800 hover:bg-transparent">
-                          <td colSpan={10} className="p-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">TOTAL HORAS LECTIVAS:</td>
+                          <td colSpan={9} className="p-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">TOTAL HORAS LECTIVAS:</td>
                           <td className="p-4 text-center text-base font-extrabold text-primary bg-primary/5 dark:bg-primary/10">{dataLectiva.totalHorasLectivas}</td>
                           <td></td>
                         </tr>
@@ -1056,15 +1054,14 @@ export default function CargaAcademicaAdminPage() {
                     <tr>
                       <th>Código</th>
                       <th>Nombre</th>
-                      <th className="text-center">T</th>
-                      <th className="text-center">P</th>
+                      <th className="text-center">T + P</th>
                       <th className="text-center">L</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cursosDisponibles.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center text-slate-400 dark:text-slate-550">
+                        <td colSpan={4} className="text-center text-slate-400 dark:text-slate-550">
                           No hay cursos en esta currícula
                         </td>
                       </tr>
@@ -1090,8 +1087,7 @@ export default function CargaAcademicaAdminPage() {
                             </div>
                           </td>
                           <td className="font-semibold">{c.nombre} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Ciclo {c.ciclo})</span></td>
-                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasTeoria}h</td>
-                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasPractica}h</td>
+                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasTeoria + c.horasPractica}h</td>
                           <td className="text-center text-slate-500 dark:text-slate-400">{c.horasLaboratorio}h</td>
                         </tr>
                       ))

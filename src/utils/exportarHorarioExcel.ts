@@ -705,8 +705,8 @@ export async function appendHorarioToExcelWorksheet(
   // Configure column widths only on the first block to avoid repeating and messing up widths
   if (startRow === 1) {
     if (format === 'grid') {
-      for (let c = 1; c <= HORA_COL_DER; c++) {
-        ws.getColumn(c).width = c === HORA_COL_IZQ || c === HORA_COL_DER ? 8 : 7.2;
+      for (let c = 1; c <= ULTIMA_COL; c++) {
+        ws.getColumn(c).width = c === HORA_COL_IZQ ? 8 : 7.2;
       }
     } else {
       ws.getColumn(1).width = 14; // Hora
@@ -725,21 +725,21 @@ export async function appendHorarioToExcelWorksheet(
   }
 
   // Título principal institucional
-  mergeAndStyle(ws, startRow, 1, startRow, format === 'grid' ? HORA_COL_DER : 7, 'UNIVERSIDAD NACIONAL DE TRUJILLO', {
+  mergeAndStyle(ws, startRow, 1, startRow, format === 'grid' ? ULTIMA_COL : 7, 'UNIVERSIDAD NACIONAL DE TRUJILLO', {
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
     font: { bold: true, size: 13, color: { argb: 'FFFFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
   });
 
   // Subtítulo 1
-  mergeAndStyle(ws, startRow + 1, 1, startRow + 1, format === 'grid' ? HORA_COL_DER : 7, 'FACULTAD DE INGENIERÍA', {
+  mergeAndStyle(ws, startRow + 1, 1, startRow + 1, format === 'grid' ? ULTIMA_COL : 7, 'FACULTAD DE INGENIERÍA', {
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7EFF6' } },
     font: { bold: true, size: 10.5, color: { argb: 'FF1A365D' } },
     alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
   });
 
   // Subtítulo 2
-  mergeAndStyle(ws, startRow + 2, 1, startRow + 2, format === 'grid' ? HORA_COL_DER : 7, 'ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS', {
+  mergeAndStyle(ws, startRow + 2, 1, startRow + 2, format === 'grid' ? ULTIMA_COL : 7, 'ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS', {
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } },
     font: { bold: true, size: 10, color: { argb: 'FF475569' } },
     alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
@@ -754,11 +754,11 @@ export async function appendHorarioToExcelWorksheet(
     minute: '2-digit',
   });
   
-  mergeAndStyle(ws, startRow + 3, 1, startRow + 3, format === 'grid' ? Math.floor(HORA_COL_DER / 2) : 3, `${titulo || 'HORARIO ACADÉMICO'}`, {
+  mergeAndStyle(ws, startRow + 3, 1, startRow + 3, format === 'grid' ? Math.floor(ULTIMA_COL / 2) : 3, `${titulo || 'HORARIO ACADÉMICO'}`, {
     font: { bold: true, size: 10 },
     alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
   });
-  mergeAndStyle(ws, startRow + 3, format === 'grid' ? Math.floor(HORA_COL_DER / 2) + 1 : 4, startRow + 3, format === 'grid' ? HORA_COL_DER : 7, `Generado el: ${fechaGeneracion}`, {
+  mergeAndStyle(ws, startRow + 3, format === 'grid' ? Math.floor(ULTIMA_COL / 2) + 1 : 4, startRow + 3, format === 'grid' ? ULTIMA_COL : 7, `Generado el: ${fechaGeneracion}`, {
     font: { size: 9, color: { argb: 'FF64748B' } },
     alignment: { horizontal: 'right', vertical: 'middle', wrapText: true },
   });
@@ -824,7 +824,7 @@ export async function appendHorarioToExcelWorksheet(
       alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
       border: borderThin,
     });
-    mergeAndStyle(ws, dataStartRow, 19, dataStartRow, HORA_COL_DER - 1, 'DEPARTAMENTO', {
+    mergeAndStyle(ws, dataStartRow, 19, dataStartRow, ULTIMA_COL, 'DEPARTAMENTO', {
       fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } },
       font: { bold: true, size: 9, color: { argb: 'FFFFFFFF' } },
       alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
@@ -915,7 +915,7 @@ export async function appendHorarioToExcelWorksheet(
         font: { size: 9, bold: true },
         alignment: { horizontal: 'center', vertical: 'middle' },
       });
-      mergeAndStyle(ws, excelRow, 19, excelRow, HORA_COL_DER - 1, doc?.departamento ?? '', docBaseStyle);
+      mergeAndStyle(ws, excelRow, 19, excelRow, ULTIMA_COL, doc?.departamento ?? '', docBaseStyle);
     }
 
     currentRow = dataStartRow + totalFilasDocentes + 2 + 1;
@@ -942,8 +942,6 @@ export async function appendHorarioToExcelWorksheet(
         headerStyle
       );
     });
-
-    mergeAndStyle(ws, grillaStartRow, HORA_COL_DER, grillaStartRow, HORA_COL_DER, 'HORA', headerStyle);
 
     const ocupado = new Set<string>();
 
@@ -973,8 +971,6 @@ export async function appendHorarioToExcelWorksheet(
       row.height = 32;
 
       mergeAndStyle(ws, excelRow, HORA_COL_IZQ, excelRow, HORA_COL_IZQ, label, horaStyle(thickTop));
-      mergeAndStyle(ws, excelRow, HORA_COL_DER, excelRow, HORA_COL_DER, label, horaStyle(thickTop));
-
       diasRender.forEach(dia => {
         const c1 = diaStartCol(dia);
         const c2 = diaEndCol(dia);
@@ -1240,8 +1236,7 @@ export async function appendHorarioToExcelWorkbook(
       ? DIAS_GRILLA.filter(d => opciones.diasMostrados!.includes(d))
       : DIAS_GRILLA;
     const ULTIMA_COL = PRIMER_DIA_COL + Math.max(0, diasRender.length) * ANCHO_DIA;
-    const HORA_COL_DER = ULTIMA_COL + 1;
-    ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${lastRow}`;
+    ws.pageSetup.printArea = `A1:${colLetter(ULTIMA_COL)}${lastRow}`;
     ws.pageSetup.printTitlesRow = '1:1';
   } else {
     ws.pageSetup.printArea = `A1:G${lastRow}`;
@@ -1432,8 +1427,7 @@ export async function exportarHorariosTodosCiclosExcel(
         ? DIAS_GRILLA.filter(d => opciones.diasMostrados!.includes(d))
         : DIAS_GRILLA;
       const ULTIMA_COL = PRIMER_DIA_COL + Math.max(0, diasRender.length) * ANCHO_DIA;
-      const HORA_COL_DER = ULTIMA_COL + 1;
-      ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${lastRow}`;
+      ws.pageSetup.printArea = `A1:${colLetter(ULTIMA_COL)}${lastRow}`;
     } else {
       ws.pageSetup.printArea = `A1:G${lastRow}`;
     }
@@ -1477,8 +1471,7 @@ export async function exportarHorariosTodosCiclosExcel(
           ? DIAS_GRILLA.filter(d => opciones.diasMostrados!.includes(d))
           : DIAS_GRILLA;
         const ULTIMA_COL = PRIMER_DIA_COL + Math.max(0, diasRender.length) * ANCHO_DIA;
-        const HORA_COL_DER = ULTIMA_COL + 1;
-        ws.pageSetup.printArea = `A1:${colLetter(HORA_COL_DER)}${lastRow}`;
+        ws.pageSetup.printArea = `A1:${colLetter(ULTIMA_COL)}${lastRow}`;
       } else {
         ws.pageSetup.printArea = `A1:G${lastRow}`;
       }

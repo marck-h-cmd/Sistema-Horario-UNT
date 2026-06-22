@@ -45,7 +45,8 @@ export async function PUT(
       ...rest,
       cursoDocenteGrupoId: grupoId,
     };
-    const horario = await servicioHorario.actualizar(params.id, dto);
+    const userRol = (request as any).user?.rol;
+    const horario = await servicioHorario.actualizar(params.id, dto, userRol);
     return createSuccessResponse(horario);
   } catch (error: any) {
     if (error.statusCode) {
@@ -68,7 +69,8 @@ export async function DELETE(
   if (authResult) return authResult;
 
   try {
-    const resultado = await servicioHorario.eliminar(params.id);
+    const userRol = (request as any).user?.rol;
+    const resultado = await servicioHorario.eliminar(params.id, userRol);
     return createSuccessResponse(resultado);
   } catch (error: any) {
     if (error.statusCode) {

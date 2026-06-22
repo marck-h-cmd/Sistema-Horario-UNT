@@ -172,15 +172,15 @@ export async function POST(req: NextRequest) {
     let cargaNoLectivaList: any[] = [];
     if (noLectivaDb) {
       cargaNoLectivaList = noLectivaDb.items.map((item) => ({
-        tipoActividad: MAP_TIPO_ACTIVIDAD[item.tipoActividad] || item.tipoActividad,
+        tipoActividad: item.tipoActividad,
         horasSemanales: item.horasSemanales,
         descripcion: item.descripcion || '',
       }));
     } else {
       // Valores por defecto para rellenar el formato si no tiene declaración
       cargaNoLectivaList = [
-        { tipoActividad: MAP_TIPO_ACTIVIDAD.PREPARACION_Y_EVALUACION, horasSemanales: 0 },
-        { tipoActividad: MAP_TIPO_ACTIVIDAD.CONSEJERIA, horasSemanales: 0 },
+        { tipoActividad: 'PREPARACION_Y_EVALUACION', horasSemanales: 0 },
+        { tipoActividad: 'CONSEJERIA', horasSemanales: 0 },
       ];
     }
 
@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
 
       const cargaNoLectivaHorarioList = cargaNoLectivaList.map(n => {
         // Find matching item in db
-        const matchingItem = noLectivaDb?.items.find(i => (MAP_TIPO_ACTIVIDAD[i.tipoActividad] || i.tipoActividad) === n.tipoActividad);
+        const matchingItem = noLectivaDb?.items.find(i => i.tipoActividad === n.tipoActividad);
         
         let horarioStr = '';
         if (matchingItem) {
@@ -321,7 +321,7 @@ export async function POST(req: NextRequest) {
         
         return {
           actividadId: matchingItem?.tipoActividad || 'OTRO',
-          actividadNombre: n.tipoActividad,
+          actividadNombre: MAP_TIPO_ACTIVIDAD[n.tipoActividad] || n.tipoActividad,
           horarioStr: horarioStr,
           lugar: 'F11',
           aula: 'CUBÍCULO',

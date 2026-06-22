@@ -11,9 +11,9 @@ const DIAS_LABEL: Record<string, string> = {
   JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado',
 };
 
-// Generador de horas de 07:00 a 20:00
+// Generador de horas de 07:00 a 22:00
 const HORAS: string[] = [];
-for (let i = 7; i <= 20; i++) {
+for (let i = 7; i <= 22; i++) {
   HORAS.push(`${i.toString().padStart(2, '0')}:00`);
 }
 
