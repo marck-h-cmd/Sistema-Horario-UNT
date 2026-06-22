@@ -1,16 +1,7 @@
 export const CHART_PRIMARY = '#c9a84c';
 
 export const CHART_COLORS = [
-  '#f59e0b',
-  '#6366f1',
-  '#10b981',
-  '#f43f5e',
-  '#0ea5e9',
-  '#a855f7',
-  '#fb923c',
-  '#14b8a6',
-  '#84cc16',
-  '#e879f9',
+  '#3b82f6', // Brand Blue (unified single color to prevent saturation)
 ];
 
 export const CHART_MIN_HEIGHT = 320;

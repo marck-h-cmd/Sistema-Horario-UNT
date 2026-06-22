@@ -12,6 +12,7 @@ import {
 
 import { BarChartCard } from '@/components/charts/BarChartCard';
 import { PieChartCard } from '@/components/charts/PieChartCard';
+import { AreaChartCard } from '@/components/charts/AreaChartCard';
 import { ErrorAlert } from '@/components/feedback/ErrorAlert';
 import { KpiSkeleton } from '@/components/feedback/KpiSkeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -65,23 +66,23 @@ const CHART_COLORS = {
 const KPI_STYLES = [
   {
     wrapper:
-      'border-blue-100 bg-gradient-to-br from-blue-50 to-white dark:border-blue-900/60 dark:from-blue-950/50 dark:to-slate-900',
-    icon: 'bg-blue-100 text-blue-700 dark:bg-blue-900/70 dark:text-blue-300',
+      'border-blue-100/80 bg-gradient-to-br from-blue-50/40 via-white to-white hover:shadow-lg hover:shadow-blue-500/5 hover:border-blue-300 dark:border-blue-950/50 dark:from-blue-950/10 dark:via-[#111627] dark:to-[#111627] dark:hover:border-blue-800/60',
+    icon: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
   },
   {
     wrapper:
-      'border-emerald-100 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-900/60 dark:from-emerald-950/50 dark:to-slate-900',
-    icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/70 dark:text-emerald-300',
+      'border-emerald-100/80 bg-gradient-to-br from-emerald-50/40 via-white to-white hover:shadow-lg hover:shadow-emerald-500/5 hover:border-emerald-300 dark:border-emerald-950/50 dark:from-emerald-950/10 dark:via-[#111627] dark:to-[#111627] dark:hover:border-emerald-800/60',
+    icon: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400',
   },
   {
     wrapper:
-      'border-amber-100 bg-gradient-to-br from-amber-50 to-white dark:border-amber-900/60 dark:from-amber-950/50 dark:to-slate-900',
-    icon: 'bg-amber-100 text-amber-700 dark:bg-amber-900/70 dark:text-amber-300',
+      'border-amber-100/80 bg-gradient-to-br from-amber-50/40 via-white to-white hover:shadow-lg hover:shadow-amber-500/5 hover:border-amber-300 dark:border-amber-950/50 dark:from-amber-950/10 dark:via-[#111627] dark:to-[#111627] dark:hover:border-amber-800/60',
+    icon: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400',
   },
   {
     wrapper:
-      'border-violet-100 bg-gradient-to-br from-violet-50 to-white dark:border-violet-900/60 dark:from-violet-950/50 dark:to-slate-900',
-    icon: 'bg-violet-100 text-violet-700 dark:bg-violet-900/70 dark:text-violet-300',
+      'border-violet-100/80 bg-gradient-to-br from-violet-50/40 via-white to-white hover:shadow-lg hover:shadow-violet-500/5 hover:border-violet-300 dark:border-violet-950/50 dark:from-violet-950/10 dark:via-[#111627] dark:to-[#111627] dark:hover:border-violet-800/60',
+    icon: 'bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400',
   },
 ];
 
@@ -102,27 +103,27 @@ function DashboardKpiCard({
 
   return (
     <div
-      className={`rounded-2xl border p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${style.wrapper}`}
+      className={`rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] ${style.wrapper}`}
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             {title}
           </p>
 
-          <p className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+          <p className="mt-2.5 text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white leading-none">
             {value}
           </p>
 
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500 font-medium">
             {subtitle}
           </p>
         </div>
 
         <div
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${style.icon}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 ${style.icon}`}
         >
-          <Icon className="h-7 w-7" />
+          <Icon className="h-6 w-6" />
         </div>
       </div>
     </div>
@@ -260,11 +261,11 @@ export default function DashboardPage() {
           <KpiSkeleton />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <BarChartCard title=" " data={[]} dataKey="pct" xKey="a" loading />
+            <BarChartCard title=" " data={[]} dataKey="pct" xKey="a" layout="vertical" loading />
             <PieChartCard title=" " data={[]} loading />
           </div>
 
-          <BarChartCard title=" " data={[]} dataKey="s" xKey="f" loading />
+          <AreaChartCard title=" " data={[]} dataKey="s" xKey="f" loading />
         </div>
       ) : (
         <div className="space-y-8">
@@ -309,6 +310,7 @@ export default function DashboardPage() {
               data={barOcupacion}
               xKey="ambiente"
               dataKey="pct"
+              layout="vertical"
               loading={false}
             />
 
@@ -319,7 +321,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          <BarChartCard
+          <AreaChartCard
             title="Mapa de calor — sesiones por día y hora"
             description="Conteo de inicios de clase entre 8:00 y 19:00 (Lun–Vie)"
             data={barMapaCalor}

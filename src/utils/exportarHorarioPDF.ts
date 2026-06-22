@@ -455,7 +455,7 @@ export function generarContenidoHorarioPDF(
     </colgroup>
   `;
 
-  const totalFilas = Math.max(13, docentesUnicos.length);
+  const totalFilas = Math.max(11, docentesUnicos.length);
 
   const filas = Array.from({ length: totalFilas }, (_, i) => {
     const doc = docentesUnicos[i];
@@ -541,7 +541,7 @@ export function generarContenidoHorarioPDF(
       </tr>`;
   }).join('');
 
-  const ROW_HEIGHT = 30;
+  const ROW_HEIGHT = 23;
   const START_MINUTES = 7 * 60;
   const TOTAL_FRANJAS = FRANJAS.length;
   const GRID_HEIGHT = ROW_HEIGHT * TOTAL_FRANJAS;
@@ -693,12 +693,73 @@ export function generarContenidoHorarioPDF(
 
     const labelComp = getComponentLabel(h);
     const ambText = formatAmbiente(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
+    const ambTextClean = height <= 30 ? ambText.replace(/<br\s*\/?>/gi, ' ') : ambText;
 
     const nombreCorto = doc?.asignatura
       ? doc.asignatura.split(' ').slice(0, 4).join(' ')
       : '';
 
     const grupo = h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : '';
+
+    let htmlContenidoBlock = '';
+
+    if (height <= 30) {
+      // Bloque de 1 hora (23px alto): Ultra compacto, todo en 1 o 2 líneas
+      const labelText = labelComp ? ` ${labelComp}` : '';
+      htmlContenidoBlock = `
+        <div style="font-size: 8.5px; font-weight: bold; line-height: 1; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+          ${doc?.numero ?? ''}<span style="font-size: 7px; font-weight: normal;">${labelText}</span>
+        </div>
+        ${ambTextClean ? `
+          <div style="font-size: 6.5px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%; font-style: italic;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+      `;
+    } else if (height <= 50) {
+      // Bloque de 2 horas (46px alto): Compacto
+      const labelHtml = labelComp ? `<span style="font-size: 7px; font-weight: normal; line-height: 1;"> ${labelComp}</span>` : '';
+      htmlContenidoBlock = `
+        <strong style="font-size: 10px; line-height: 1;">${doc?.numero ?? ''}${labelHtml}</strong>
+        ${nombreCorto ? `
+          <div style="font-size: 7px; font-style: italic; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${nombreCorto}
+          </div>
+        ` : ''}
+        ${ambTextClean ? `
+          <div style="font-size: 7px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+        ${grupo ? `
+          <div style="font-size: 6.5px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${grupo}
+          </div>
+        ` : ''}
+      `;
+    } else {
+      // Bloques de 3 o más horas (>= 69px alto): Espacioso
+      const labelHtml = labelComp ? `<span style="font-size: 7.5px; font-weight: normal; line-height: 1.1;">${labelComp}</span>` : '';
+      htmlContenidoBlock = `
+        <strong style="font-size: 12px; line-height: 1;">${doc?.numero ?? ''}</strong>
+        ${labelHtml}
+        ${nombreCorto ? `
+          <div style="font-size: 7px; font-style: italic; line-height: 1.15; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${nombreCorto}
+          </div>
+        ` : ''}
+        ${ambTextClean ? `
+          <div style="font-size: 7px; line-height: 1.15; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+        ${grupo ? `
+          <div style="font-size: 7px; line-height: 1.1; margin-top: 2px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${grupo}
+          </div>
+        ` : ''}
+      `;
+    }
 
     return `
       <div
@@ -716,31 +777,12 @@ export function generarContenidoHorarioPDF(
           flex-direction:column;
           align-items:center;
           justify-content:center;
-          padding:2px 1px;
+          padding:1px 2px;
           z-index:3;
+          box-sizing:border-box;
         "
       >
-        <strong style="font-size:14px;line-height:1">${doc?.numero ?? ''}</strong>
-
-        ${
-          labelComp
-            ? `<span style="font-size:8px;font-weight:normal;line-height:1.1">${labelComp}</span>`
-            : ''
-        }
-
-        <div style="font-size:7.5px;margin-top:1px;font-style:italic;line-height:1.15">
-          ${nombreCorto}
-        </div>
-
-        <div style="font-size:7px;margin-top:1px;line-height:1.15">
-          ${ambText}
-        </div>
-
-        ${
-          grupo
-            ? `<div style="font-size:7px;margin-top:2px;line-height:1.1">${grupo}</div>`
-            : ''
-        }
+        ${htmlContenidoBlock}
       </div>
     `;
   };
@@ -1144,6 +1186,7 @@ export function generarContenidoHorarioPDF(
     body {
       padding: ${margin}mm;
       padding-bottom: ${margin + (hideGlobalHeaderFooter ? 0 : 15)}mm;
+      background-color: ${hideGlobalHeaderFooter ? '#cbd5e1' : '#ffffff'};
     }
 
     /* Encabezado y Pie de página */
@@ -1202,7 +1245,7 @@ export function generarContenidoHorarioPDF(
 
     @page {
       size: ${pageSize} ${orientation};
-      margin: ${hideGlobalHeaderFooter ? `${margin}mm` : `25mm ${margin}mm 20mm ${margin}mm`};
+      margin: ${hideGlobalHeaderFooter ? `12mm ${margin}mm ${margin}mm ${margin}mm` : `25mm ${margin}mm 20mm ${margin}mm`};
       
       @top-left {
         content: element(header);
@@ -1216,10 +1259,22 @@ export function generarContenidoHorarioPDF(
       }
     }
 
+    .page-container {
+      background: #ffffff;
+      margin: 20px auto;
+      padding: 10mm 12mm;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      border-radius: 6px;
+      max-width: 297mm;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      clear: both;
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
-      margin-bottom: 15px;
+      margin-bottom: 6px;
     }
 
     th,
@@ -1234,12 +1289,12 @@ export function generarContenidoHorarioPDF(
       color: #ffffff !important;
       font-weight: bold;
       text-align: center;
-      padding: 8px 10px;
+      padding: 4px 6px;
       font-size: 11px;
     }
 
     td {
-      padding: 6px 8px;
+      padding: 3px 5px;
     }
 
     tr:nth-child(even) td {
@@ -1249,7 +1304,7 @@ export function generarContenidoHorarioPDF(
     .tabla-superior {
       border-collapse: collapse;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 6px;
       table-layout: fixed;
     }
 
@@ -1318,6 +1373,7 @@ export function generarContenidoHorarioPDF(
       body {
         margin: 0;
         padding: 0;
+        background-color: #ffffff !important;
       }
 
       .header {
@@ -1327,11 +1383,25 @@ export function generarContenidoHorarioPDF(
       .print-only {
         display: block;
       }
+
+      .page-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+        background: none !important;
+      }
+
+      .page-container + .page-container {
+        page-break-before: always;
+      }
     }
   </style>
 </head>
 <body>
 
+  ${hideGlobalHeaderFooter ? '' : `
   <div class="header print-only">
     <div class="left">
       <div class="title">${titulo}</div>
@@ -1353,6 +1423,7 @@ export function generarContenidoHorarioPDF(
     })}</div>
     <div>Escuela Profesional de Ingeniería de Sistemas</div>
   </div>
+  `}
 
 ${content}
 
@@ -1559,21 +1630,21 @@ export async function exportarHorariosTodosCiclosPDF(
     const titleText = options?.format === 'table' ? `Listado de Horarios - Ciclo ${ciclo}` : 'HORARIO ACADÉMICO';
     const cycleHeader = `
       <div class="cycle-page-header">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a365d; padding-bottom: 5px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a365d; padding-bottom: 2px; margin-bottom: 6px; padding-top: 2px;">
           <div>
-            <div style="font-size: 14px; font-weight: bold; color: #1a365d;">${titleText}</div>
-            <div style="font-size: 11px; color: #64748b;">${periodoNombre} - Ciclo ${ciclo}</div>
+            <div style="font-size: 13px; font-weight: bold; color: #1a365d;">${titleText}</div>
+            <div style="font-size: 10px; color: #64748b;">${periodoNombre} - Ciclo ${ciclo}</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 10px; font-weight: bold; color: #1a365d;">Universidad Nacional de Trujillo</div>
-            <div style="font-size: 9px;">Facultad de Ingeniería</div>
+            <div style="font-size: 9px; font-weight: bold; color: #1a365d;">Universidad Nacional de Trujillo</div>
+            <div style="font-size: 8px;">Facultad de Ingeniería</div>
           </div>
         </div>
       </div>
     `;
 
     const cycleFooter = `
-      <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 9px; color: #64748b;">
+      <div style="margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 2px; display: flex; justify-content: space-between; font-size: 8px; color: #64748b;">
         <div>Generado el: ${new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
         <div>Escuela Profesional de Ingeniería de Sistemas</div>
       </div>
