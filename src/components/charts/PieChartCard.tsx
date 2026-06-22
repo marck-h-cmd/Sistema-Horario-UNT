@@ -14,17 +14,17 @@ interface PieChartCardProps {
 }
 
 const DONUT_COLORS = [
-  '#f59e0b',
-  '#6366f1',
-  '#10b981',
-  '#f43f5e',
-  '#0ea5e9',
+  '#1a365d', // UNT Blue (Primary)
+  '#3b82f6', // Accent Blue (Softer)
+  '#c9a84c', // UNT Gold (Highlight)
+  '#64748b', // Slate (Neutral)
+  '#94a3b8', // Light Slate (Muted)
 ];
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-3 shadow-xl">
+    <div className="rounded-xl border border-slate-200/50 dark:border-slate-800/50 bg-white/90 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 shadow-2xl">
       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">{payload[0].name}</p>
       <p className="text-lg font-bold text-slate-900 dark:text-white">{payload[0].value}</p>
     </div>
@@ -37,7 +37,7 @@ export function PieChartCard({ title, description, data, className, loading }: P
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className={cn('bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm', className)}>
+    <div className={cn('bg-white/95 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300', className)}>
       <div className="p-6">
         <h3 className="text-slate-900 dark:text-white font-semibold">{title}</h3>
         {description && <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">{description}</p>}

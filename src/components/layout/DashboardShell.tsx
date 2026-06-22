@@ -47,15 +47,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
-          <span className="font-display text-base font-bold text-unt-blue">UNT</span>
+      <div className="flex items-center gap-3 border-b border-white/5 px-6 py-5 bg-white/5 backdrop-blur-sm">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-white to-slate-50 shadow-sm ring-1 ring-white/10">
+          <span className="font-display text-base font-extrabold text-unt-blue">UNT</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-sm font-semibold tracking-tight">
+          <h1 className="truncate font-display text-sm font-bold tracking-tight">
             Gestión de Horarios
           </h1>
-          <p className="truncate text-xs text-unt-gold-light">Ing. de Sistemas</p>
+          <p className="truncate text-xs text-unt-gold-light font-medium">Ing. de Sistemas</p>
         </div>
       </div>
 
@@ -90,14 +90,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {user && (
-        <div className="border-t border-white/10 p-4">
+        <div className="border-t border-white/5 p-4 bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-unt-gold text-xs font-bold text-unt-blue shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#e2c878] to-[#c9a84c] text-xs font-extrabold text-unt-blue shadow-md ring-1 ring-white/10">
               {user.nombre?.charAt(0)}
               {user.apellidos?.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
+              <p className="truncate text-sm font-semibold">
                 {user.nombre} {user.apellidos}
               </p>
               <p className="truncate text-xs text-blue-200">
@@ -119,8 +119,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 bg-unt-blue text-white shadow-lg lg:block">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#090b14]">
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 bg-gradient-to-b from-[#0f213b] via-[#091526] to-[#050b14] text-white shadow-xl border-r border-white/5 lg:block">
         {sidebar}
       </aside>
 
@@ -131,7 +131,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-unt-blue text-white shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-64 bg-gradient-to-b from-[#0f213b] via-[#091526] to-[#050b14] text-white shadow-2xl">
             <button
               type="button"
               className="absolute right-3 top-3 rounded-lg p-1.5 hover:bg-white/10"
@@ -146,7 +146,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="lg:ml-64">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-header backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
+        <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-800/40 dark:bg-[#090b14]/80">
           <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-3.5">
             <div className="flex min-w-0 items-center gap-3">
               <button
