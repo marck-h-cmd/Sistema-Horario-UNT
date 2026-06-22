@@ -558,18 +558,18 @@ export default function CargaAcademicaAdminPage() {
   const lineasCursos = Object.values(cursosAgrupados);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100vh-8rem)] animate-fadeIn">
       <div className="flex items-center justify-between">
         <PageHeader 
           title="Carga Académica" 
           description="Gestione y asigne la carga lectiva y no lectiva de los docentes."
         />
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Período:</label>
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Período:</label>
           <select
             value={selectedPeriodoId}
             onChange={(e) => setSelectedPeriodoId(e.target.value)}
-            className="h-10 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm"
+            className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm font-semibold text-slate-800 dark:text-slate-250 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-4 focus:ring-primary/5 cursor-pointer transition-colors duration-150"
           >
             {periodos.map(p => <option key={p.id} value={p.id}>{p.nombre} {p.activo ? '(Activo)' : ''}</option>)}
           </select>
@@ -578,98 +578,100 @@ export default function CargaAcademicaAdminPage() {
 
       <div className="flex flex-1 overflow-hidden mt-6 gap-6">
         {/* Sidebar: Lista de Docentes */}
-        <div className="w-80 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-blue-600" /> Docentes
+        <div className="w-80 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-550 mb-3 flex items-center gap-2 uppercase tracking-wider">
+              <BookOpen className="h-4 w-4 text-primary" /> Docentes
             </h3>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Buscar docente..."
                 value={searchDocente}
                 onChange={e => setSearchDocente(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900"
+                className="input w-full pl-9"
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
             {docentesFiltrados.map(d => (
               <button
                 key={d.id}
                 onClick={() => setSelectedDocenteId(d.id)}
-                className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-colors ${
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all duration-150 border-l-4 ${
                   selectedDocenteId === d.id 
-                    ? 'bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' 
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
+                    ? 'bg-primary/5 border-primary text-primary font-semibold dark:bg-primary/15' 
+                    : 'border-transparent text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                 }`}
               >
-                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{d.nombreCompleto}</div>
+                <div className="font-semibold truncate">{d.nombreCompleto}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex justify-between">
-                  <span>{d.codigo}</span>
-                  <span className={d.horasLectivasAsignadas > 0 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>
+                  <span className="font-mono text-[11px] opacity-80">{d.codigo}</span>
+                  <span className={d.horasLectivasAsignadas > 0 ? 'text-primary font-semibold' : 'opacity-70'}>
                     {d.horasLectivasAsignadas}h asignadas
                   </span>
                 </div>
               </button>
             ))}
             {docentesFiltrados.length === 0 && (
-              <div className="text-center text-slate-500 text-sm p-4">No hay docentes.</div>
+              <div className="text-center text-slate-400 dark:text-slate-550 text-sm p-4">No hay docentes.</div>
             )}
           </div>
         </div>
 
         {/* Contenido Principal: Declaración de Carga */}
-        <div className="flex-1 overflow-y-auto pr-2 pb-16">
+        <div className="flex-1 overflow-y-auto pr-2 pb-16 custom-scrollbar">
           {!selectedDocenteId ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-              <BookOpen className="h-12 w-12 mb-4 opacity-50" />
-              <p>Seleccione un docente para gestionar su carga horaria.</p>
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-550 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800/80">
+              <BookOpen className="h-12 w-12 mb-4 text-slate-300 dark:text-slate-700 opacity-60" />
+              <p className="text-sm font-semibold">Seleccione un docente para gestionar su carga horaria.</p>
             </div>
           ) : loadingDocenteData ? (
-            <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>
+            <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
           ) : dataLectiva ? (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fadeIn">
               
               {/* Encabezado PDF-like */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="bg-blue-600 dark:bg-blue-900 p-4 sm:px-6">
-                  <h1 className="text-xl font-bold text-white uppercase tracking-wide">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-gradient-to-r from-primary to-indigo-700 dark:from-primary-900/60 dark:to-indigo-950/60 p-5 sm:px-6 border-b border-primary/10">
+                  <h1 className="text-base sm:text-lg font-extrabold text-white tracking-wide uppercase">
                     CARGA HORARIA - DECLARACIÓN DE CARGA HORARIA ASIGNADA
                   </h1>
-                  <p className="text-blue-100 text-sm mt-1">Período Académico {dataLectiva.periodo.nombre}</p>
+                  <p className="text-indigo-100 dark:text-indigo-200/90 text-xs mt-1 font-medium">Período Académico {dataLectiva.periodo.nombre}</p>
                 </div>
                 
-                <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800">
-                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase">I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR:</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm mb-6">
-                    <div className="flex border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
-                      <span className="font-semibold text-slate-600 dark:text-slate-300 w-40">FACULTAD:</span>
-                      <span className="text-slate-800 dark:text-slate-100 font-medium">Ingeniería</span>
+                <div className="p-5 sm:px-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                  <h2 className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-wider">I. DATOS SOBRE LA SITUACIÓN DEL PROFESOR:</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/50 dark:border-slate-800/60">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase w-32 flex-shrink-0">FACULTAD:</span>
+                      <span className="text-slate-800 dark:text-slate-100 font-semibold text-sm">Ingeniería</span>
                     </div>
-                    <div className="flex border-b border-dashed border-slate-200 dark:border-slate-700 pb-2">
-                      <span className="font-semibold text-slate-600 dark:text-slate-300 w-40">DPTO. ACADÉMICO:</span>
-                      <span className="text-slate-800 dark:text-slate-100 font-medium">{docenteInfo.departamento?.nombre || 'Dpto. de Ingeniería de Sistemas'}</span>
+                    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/50 dark:border-slate-800/60">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase w-32 flex-shrink-0">DPTO. ACADÉMICO:</span>
+                      <span className="text-slate-800 dark:text-slate-100 font-semibold text-sm">{docenteInfo.departamento?.nombre || 'Dpto. de Ingeniería de Sistemas'}</span>
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border border-slate-200 dark:border-slate-700">
-                      <thead className="bg-blue-50 dark:bg-slate-800 text-blue-900 dark:text-slate-200 font-bold text-xs uppercase">
+                  <div className="table-container">
+                    <table className="table">
+                      <thead>
                         <tr>
-                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-left">NOMBRE COMPLETO</th>
-                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">CONDICIÓN</th>
-                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">CATEGORÍA</th>
-                          <th className="border border-slate-200 dark:border-slate-700 p-3 text-center">MODALIDAD</th>
+                          <th className="py-2.5">NOMBRE COMPLETO</th>
+                          <th className="text-center py-2.5">CONDICIÓN</th>
+                          <th className="text-center py-2.5">CATEGORÍA</th>
+                          <th className="text-center py-2.5">MODALIDAD</th>
                         </tr>
                       </thead>
-                      <tbody className="text-slate-800 dark:text-slate-100">
-                        <tr>
-                          <td className="border border-slate-200 dark:border-slate-700 p-3">{docenteInfo.nombreCompleto}</td>
-                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">NOMBRADO</td>
-                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">{Formateadores.categoriaDocente(docenteInfo.categoria)}</td>
-                          <td className="border border-slate-200 dark:border-slate-700 p-3 text-center">{Formateadores.dedicacionDocente(docenteInfo.dedicacion)} {docenteInfo.horasDedicacion} H</td>
+                      <tbody>
+                        <tr className="hover:bg-transparent">
+                          <td className="font-semibold text-slate-900 dark:text-slate-50 py-3">{docenteInfo.nombreCompleto}</td>
+                          <td className="text-center py-3"><span className="badge badge-gray">NOMBRADO</span></td>
+                          <td className="text-center py-3">{Formateadores.categoriaDocente(docenteInfo.categoria)}</td>
+                          <td className="text-center font-medium text-slate-800 dark:text-slate-200 py-3">
+                            {Formateadores.dedicacionDocente(docenteInfo.dedicacion)} - {docenteInfo.horasDedicacion}H
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -677,63 +679,67 @@ export default function CargaAcademicaAdminPage() {
                 </div>
 
                 {/* 1. TRABAJO LECTIVO */}
-                <div className="p-4 sm:px-6">
+                <div className="p-5 sm:px-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase">1. TRABAJO LECTIVO.- Datos completos y con claridad</h2>
-                    <Button size="sm" onClick={abrirModalAsignacion} className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs">
-                      <Plus className="h-4 w-4 mr-1" /> Asignar Curso
+                    <h2 className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">1. TRABAJO LECTIVO.- Datos completos y con claridad</h2>
+                    <Button 
+                      size="sm" 
+                      onClick={abrirModalAsignacion} 
+                      className="btn-primary h-8 text-xs font-semibold px-3 gap-1"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Asignar Curso
                     </Button>
                   </div>
                   
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                    <table className="w-full text-sm">
-                      <thead className="bg-blue-600 dark:bg-blue-900 text-white font-bold text-xs">
+                  <div className="table-container">
+                    <table className="table">
+                      <thead>
                         <tr>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">CÓDIGO</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-left">NOMBRE DEL CURSO</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">SECCIÓN</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">CURSO</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Escuela Prof.</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Ciclo</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Nro Tot. Alumnos</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsTeo</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsPra</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsLab</th>
-                          <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Total Hrs.</th>
-                          <th className="p-3 text-center"></th>
+                          <th className="text-center py-2.5">CÓDIGO</th>
+                          <th className="py-2.5">NOMBRE DEL CURSO</th>
+                          <th className="text-center py-2.5">SECCIÓN</th>
+                          <th className="text-center py-2.5">TIPO</th>
+                          <th className="text-center py-2.5">Escuela Prof.</th>
+                          <th className="text-center py-2.5">Ciclo</th>
+                          <th className="text-center py-2.5">Alumnos</th>
+                          <th className="text-center py-2.5">Teo</th>
+                          <th className="text-center py-2.5">Pra</th>
+                          <th className="text-center py-2.5">Lab</th>
+                          <th className="text-center py-2.5">Total Hrs.</th>
+                          <th className="text-center py-2.5"></th>
                         </tr>
                       </thead>
-                      <tbody className="text-slate-700 dark:text-slate-200">
+                      <tbody>
                         {lineasCursos.map((c: any, i: number) => {
                           const totalHrs = c.teo + c.pra + c.lab;
                           return (
-                            <tr key={i} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 group">
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center font-mono text-xs">{c.codigo}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 font-medium">{c.nombre}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">{c.seccion || '-'}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">OB</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Ingeniería de Sistemas</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">{c.ciclo}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Aprox. {c.alumnos}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-sky-50/50 dark:bg-sky-900/20">{c.teo}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-purple-50/50 dark:bg-purple-900/20">{c.pra}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-indigo-50/50 dark:bg-indigo-900/20">{c.lab}</td>
-                              <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center font-bold text-blue-600 dark:text-blue-400">{totalHrs}</td>
-                              <td className="p-2 text-center">
-                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <tr key={i} className="group">
+                              <td className="text-center font-mono text-xs text-slate-500 dark:text-slate-400 py-3">{c.codigo}</td>
+                              <td className="font-semibold text-slate-800 dark:text-slate-100 py-3">{c.nombre}</td>
+                              <td className="text-center font-bold text-primary py-3">{c.seccion || '-'}</td>
+                              <td className="text-center py-3"><span className="badge badge-gray">OB</span></td>
+                              <td className="text-center text-slate-500 dark:text-slate-400 py-3">Ing. Sistemas</td>
+                              <td className="text-center font-medium py-3">{c.ciclo}</td>
+                              <td className="text-center text-slate-500 dark:text-slate-400 py-3">Aprox. {c.alumnos}</td>
+                              <td className="text-center font-medium text-sky-650 dark:text-sky-400 bg-sky-500/5 dark:bg-sky-500/10 py-3">{c.teo}</td>
+                              <td className="text-center font-medium text-purple-650 dark:text-purple-400 bg-purple-500/5 dark:bg-purple-500/10 py-3">{c.pra}</td>
+                              <td className="text-center font-medium text-indigo-650 dark:text-indigo-400 bg-indigo-500/5 dark:bg-indigo-500/10 py-3">{c.lab}</td>
+                              <td className="text-center font-bold text-indigo-700 dark:text-indigo-300 bg-primary/5 dark:bg-primary/10 py-3">{totalHrs}</td>
+                              <td className="py-3 pr-4">
+                                <div className="table-actions">
                                   <button 
                                     onClick={() => abrirModalEdicion(c)}
-                                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                                    className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all duration-150"
                                     title="Editar asignación"
                                   >
-                                    <Edit2 className="h-4 w-4" />
+                                    <Edit2 className="h-3.5 w-3.5" />
                                   </button>
                                   <button 
                                     onClick={() => eliminarAsignacion(c.ids)}
-                                    className="text-red-500 hover:text-red-700 transition-colors"
+                                    className="p-1 rounded-md text-red-500 hover:text-red-755 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 transition-all duration-150"
                                     title="Eliminar asignación"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               </td>
@@ -742,12 +748,12 @@ export default function CargaAcademicaAdminPage() {
                         })}
                         {lineasCursos.length === 0 && (
                           <tr>
-                            <td colSpan={12} className="p-6 text-center text-slate-500">No tiene carga lectiva asignada.</td>
+                            <td colSpan={12} className="p-6 text-center text-slate-450 dark:text-slate-550">No tiene carga lectiva asignada.</td>
                           </tr>
                         )}
-                        <tr className="bg-slate-50 dark:bg-slate-800 font-bold border-t-2 border-slate-300 dark:border-slate-600">
-                          <td colSpan={10} className="p-3 text-right text-slate-700 dark:text-slate-300">TOTAL HORAS LECTIVAS:</td>
-                          <td className="p-3 text-center text-blue-700 dark:text-blue-400">{dataLectiva.totalHorasLectivas}</td>
+                        <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-bold border-t border-slate-200 dark:border-slate-800 hover:bg-transparent">
+                          <td colSpan={10} className="p-4 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">TOTAL HORAS LECTIVAS:</td>
+                          <td className="p-4 text-center text-base font-extrabold text-primary bg-primary/5 dark:bg-primary/10">{dataLectiva.totalHorasLectivas}</td>
                           <td></td>
                         </tr>
                       </tbody>
@@ -757,12 +763,12 @@ export default function CargaAcademicaAdminPage() {
               </div>
 
               {/* SECCIONES 2-10: ACTIVIDADES NO LECTIVAS */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-sm space-y-8">
-                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4 flex items-start gap-3">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-5 sm:p-6 shadow-sm space-y-8">
+                <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-900/30 rounded-xl p-4 flex items-start gap-3">
                   <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-amber-800 dark:text-amber-400">
-                    <p className="font-semibold mb-1">Información sobre la declaración No Lectiva:</p>
-                    <ul className="list-disc list-inside ml-2 space-y-0.5 opacity-90">
+                  <div className="text-sm text-slate-705 dark:text-slate-350">
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 mb-1">Información sobre la declaración No Lectiva:</p>
+                    <ul className="list-disc list-inside ml-2 space-y-1 opacity-90 text-xs">
                       <li>El docente debe declarar exactamente <strong>{dataLectiva.horasNoLectivasDisponibles} horas</strong> no lectivas.</li>
                       <li>Como administrador, usted puede visualizar o modificar esta información si es necesario.</li>
                     </ul>
@@ -778,18 +784,18 @@ export default function CargaAcademicaAdminPage() {
                     const maxLabel = restr.exact !== undefined ? `Exacto: ${restr.exact}h` : `Máx: ${restr.max}h`;
                     const inputDeshabilitado = !isEditing || restr.max === 0;
                     return (
-                      <div key={act.id} className="border-b border-slate-100 dark:border-slate-800 pb-6 last:border-0 last:pb-0">
+                      <div key={act.id} className="border-b border-slate-100 dark:border-slate-850 pb-6 last:border-0 last:pb-0">
                         <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                           <div className="flex-1 space-y-1">
-                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase">{act.num}. {act.name}</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{act.desc}</p>
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">{act.num}. {act.name}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">{act.desc}</p>
                           </div>
                           <div className="flex-[1.3] flex gap-4 items-start justify-end">
                             <div className="flex-1 space-y-2">
                               {act.id !== 'PREPARACION_Y_EVALUACION' && (
                                 <textarea 
                                   disabled={!isEditing}
-                                  className="w-full min-h-[72px] resize-y bg-yellow-50/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 disabled:opacity-60" 
+                                  className="input min-h-[72px] resize-y" 
                                   placeholder="Detalle de las actividades..." 
                                   value={data.descripcion} 
                                   onChange={(e) => handleFieldChange(act.id, 'descripcion', e.target.value)} 
@@ -797,33 +803,35 @@ export default function CargaAcademicaAdminPage() {
                               )}
 
                               {(act.id === 'CONSEJERIA' || act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA') && esTiempoCompleto && (
-                                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 select-none">
+                                <label className="flex items-center gap-2 text-xs font-medium text-slate-650 dark:text-slate-405 select-none cursor-pointer">
                                   <input
                                     type="checkbox"
                                     disabled={!isEditing}
                                     checked={data.metadata?.excepcionAcreditacion === true}
                                     onChange={(e) => handleMetadataChange(act.id, 'excepcionAcreditacion', e.target.checked)}
+                                    className="rounded text-primary focus:ring-primary h-4 w-4 border-slate-300 dark:border-slate-700 dark:bg-slate-800"
                                   />
                                   Excepción por acreditación (permite hasta 3h)
                                 </label>
                               )}
 
                               {(act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
-                                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 select-none">
+                                <label className="flex items-center gap-2 text-xs font-medium text-slate-650 dark:text-slate-405 select-none cursor-pointer">
                                   <input
                                     type="checkbox"
                                     disabled={!isEditing}
                                     checked={data.metadata?.esMiembroConsejoFacultad === true}
                                     onChange={(e) => handleMetadataChange(act.id, 'esMiembroConsejoFacultad', e.target.checked)}
+                                    className="rounded text-primary focus:ring-primary h-4 w-4 border-slate-300 dark:border-slate-700 dark:bg-slate-800"
                                   />
                                   Miembro del Consejo de Facultad (máx. 3h)
                                 </label>
                               )}
 
                               {act.id === 'COMITES_TECNICOS_Y_COMISIONES' && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <div>
-                                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Tipo de comisión</label>
+                                    <label className="text-[11px] font-bold text-slate-500 dark:text-slate-405 uppercase tracking-wider">Tipo de comisión</label>
                                     <select
                                       disabled={!isEditing}
                                       value={data.metadata?.esPresidenteCalidad ? 'PRESIDENTE' : data.metadata?.esComisionGeneral ? 'COMISION' : ''}
@@ -832,7 +840,7 @@ export default function CargaAcademicaAdminPage() {
                                         handleMetadataChange(act.id, 'esPresidenteCalidad', v === 'PRESIDENTE');
                                         handleMetadataChange(act.id, 'esComisionGeneral', v === 'COMISION');
                                       }}
-                                      className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                      className="input mt-1 h-9 py-1 px-3"
                                     >
                                       <option value="">Seleccione…</option>
                                       <option value="PRESIDENTE">Presidente Calidad/COTECU</option>
@@ -840,11 +848,11 @@ export default function CargaAcademicaAdminPage() {
                                     </select>
                                   </div>
                                   <div>
-                                    <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">N° Resolución</label>
+                                    <label className="text-[11px] font-bold text-slate-500 dark:text-slate-405 uppercase tracking-wider">N° Resolución</label>
                                     <input
                                       disabled={!isEditing}
                                       type="text"
-                                      className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                      className="input mt-1 h-9 py-1 px-3"
                                       value={data.metadata?.resolucion || ''}
                                       onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)}
                                     />
@@ -854,31 +862,31 @@ export default function CargaAcademicaAdminPage() {
 
                               {act.id === 'INVESTIGACION' && (
                                 <div>
-                                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Código / Proyecto (VRI)</label>
+                                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider">Código / Proyecto (VRI)</label>
                                   <input
                                     disabled={!isEditing}
                                     type="text"
-                                    className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                    className="input mt-1 h-9 py-1 px-3"
                                     value={data.metadata?.codigoProyecto || ''}
                                     onChange={(e) => handleMetadataChange(act.id, 'codigoProyecto', e.target.value)}
                                   />
                                   {horasNum > 0 && !String(data.metadata?.codigoProyecto || '').trim() && (
-                                    <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
-                                      Falta el código/proyecto (se recomienda registrarlo).
+                                    <div className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                      <Info className="h-3 w-3" /> Falta el código/proyecto (se recomienda registrarlo).
                                     </div>
                                   )}
                                 </div>
                               )}
 
                               {(act.id === 'ASESORIA_DE_TESIS' || act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA' || act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   {act.id === 'ASESORIA_DE_TESIS' && (
                                     <div className="sm:col-span-2">
-                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">N° Resolución / Constancia</label>
+                                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-405 uppercase tracking-wider">N° Resolución / Constancia</label>
                                       <input
                                         disabled={!isEditing}
                                         type="text"
-                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        className="input mt-1 h-9 py-1 px-3"
                                         value={data.metadata?.resolucion || ''}
                                         onChange={(e) => handleMetadataChange(act.id, 'resolucion', e.target.value)}
                                       />
@@ -886,11 +894,11 @@ export default function CargaAcademicaAdminPage() {
                                   )}
                                   {act.id === 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA' && (
                                     <div className="sm:col-span-2">
-                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Proyecto RSU (código/nombre)</label>
+                                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider">Proyecto RSU (código/nombre)</label>
                                       <input
                                         disabled={!isEditing}
                                         type="text"
-                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        className="input mt-1 h-9 py-1 px-3"
                                         value={data.metadata?.proyecto || ''}
                                         onChange={(e) => handleMetadataChange(act.id, 'proyecto', e.target.value)}
                                       />
@@ -898,11 +906,11 @@ export default function CargaAcademicaAdminPage() {
                                   )}
                                   {(act.id === 'ACTIVIDADES_DE_GOBIERNO' || act.id === 'ACTIVIDADES_DE_ADMINISTRACION') && (
                                     <div className="sm:col-span-2">
-                                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Cargo / sustento</label>
+                                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider">Cargo / sustento</label>
                                       <input
                                         disabled={!isEditing}
                                         type="text"
-                                        className="mt-1 w-full h-9 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 text-sm disabled:opacity-60"
+                                        className="input mt-1 h-9 py-1 px-3"
                                         value={data.metadata?.cargo || ''}
                                         onChange={(e) => handleMetadataChange(act.id, 'cargo', e.target.value)}
                                       />
@@ -912,26 +920,26 @@ export default function CargaAcademicaAdminPage() {
                               )}
 
                               {restr.max === 0 && (
-                                <div className="text-[11px] text-red-600 dark:text-red-400">
+                                <div className="text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase tracking-wide">
                                   No aplica para la dedicación actual.
                                 </div>
                               )}
                             </div>
                             <div className="w-32 flex-shrink-0">
                               <div className="flex items-center gap-2">
-                                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Horas:</label>
+                                <label className="text-[11px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">Horas:</label>
                                 <input 
                                   disabled={inputDeshabilitado}
                                   type="text"
                                   inputMode="numeric"
                                   pattern="[0-9]*"
-                                  className="w-full h-10 bg-yellow-50/50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-3 text-center font-bold text-slate-800 dark:text-slate-100 disabled:opacity-60" 
+                                  className="input h-10 px-3 text-center font-extrabold text-slate-900 dark:text-slate-100 disabled:opacity-50" 
                                   value={data.horas} 
                                   onChange={(e) => handleFieldChange(act.id, 'horas', e.target.value)} 
                                   onBlur={() => handleHorasBlur(act.id)} 
                                 />
                               </div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 text-right">
+                              <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-1.5 text-right">
                                 {maxLabel}
                               </div>
                             </div>
@@ -943,40 +951,45 @@ export default function CargaAcademicaAdminPage() {
                 </div>
 
                 {/* Footer: Totales y Botones */}
-                <div className="pt-6 border-t-2 border-slate-200 dark:border-slate-700 flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl">
-                      <div>
-                        <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Horas Lectivas</div>
-                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{dataLectiva.totalHorasLectivas} h</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Horas No Lectivas</div>
-                        <div className="flex items-center gap-2">
-                          <div className={`px-3 py-0.5 rounded border-2 font-bold text-lg ${
-                            totalNoLectivas === dataLectiva.horasNoLectivasDisponibles 
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                              : 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-                          }`}>
-                            {totalNoLectivas}
-                          </div>
-                          <span className="text-xs font-semibold text-slate-500">
-                            / {dataLectiva.horasNoLectivasDisponibles} h req.
-                          </span>
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-850 flex flex-col gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                    {/* Card 1: Horas Lectivas */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/40 p-5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-col justify-between">
+                      <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Horas Lectivas</span>
+                      <span className="text-2xl font-black text-indigo-650 dark:text-indigo-400 mt-3">{dataLectiva.totalHorasLectivas} h</span>
+                    </div>
+                    {/* Card 2: Horas No Lectivas */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/40 p-5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-col justify-between">
+                      <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Horas No Lectivas</span>
+                      <div className="flex items-baseline justify-between mt-3">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-2xl font-black text-slate-800 dark:text-white">{totalNoLectivas} h</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">/ {dataLectiva.horasNoLectivasDisponibles} h req.</span>
                         </div>
+                        <span className={`badge ${totalNoLectivas === dataLectiva.horasNoLectivasDisponibles ? 'badge-success' : 'badge-warning'}`}>
+                          {totalNoLectivas === dataLectiva.horasNoLectivasDisponibles ? 'Completado' : 'Pendiente'}
+                        </span>
                       </div>
-                      <div className="pl-0 sm:pl-6 border-l-0 sm:border-l border-slate-200 dark:border-slate-700">
-                        <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Total General</div>
-                        <div className="text-xl font-bold text-slate-800 dark:text-slate-100">{dataLectiva.totalHorasLectivas + totalNoLectivas} h / {docenteInfo.horasDedicacion} h</div>
+                    </div>
+                    {/* Card 3: Total General */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/40 p-5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-col justify-between">
+                      <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Total General</span>
+                      <div className="flex items-baseline gap-1.5 mt-3">
+                        <span className="text-2xl font-black text-emerald-650 dark:text-emerald-400">
+                          {dataLectiva.totalHorasLectivas + totalNoLectivas} h
+                        </span>
+                        <span className="text-xs text-slate-450 dark:text-slate-500 font-semibold">
+                          / {docenteInfo.horasDedicacion} h ded.
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-2">
+                  <div className="flex justify-end gap-3">
                     <Button
                       onClick={() => setIsEditing(true)}
                       disabled={isEditing}
-                      className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md disabled:opacity-50"
+                      className="btn-outline gap-2 shadow-sm font-semibold transition-all duration-150"
                     >
                       <Edit2 className="h-4 w-4" />
                       Editar Declaración
@@ -985,7 +998,7 @@ export default function CargaAcademicaAdminPage() {
                     <Button
                       onClick={handleGuardarNoLectiva}
                       disabled={!isEditing || guardando || totalNoLectivas !== dataLectiva.horasNoLectivasDisponibles}
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md disabled:opacity-50"
+                      className="btn-primary gap-2 shadow-sm font-semibold transition-all duration-150"
                     >
                       {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Guardar Declaración
@@ -1012,13 +1025,13 @@ export default function CargaAcademicaAdminPage() {
 
       {/* Modal para Asignar Curso */}
       <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if(!open) setEditingAsignacion(null); }}>
-        <DialogContent className="sm:max-w-[700px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-slate-100">{editingAsignacion ? 'Editar Asignación' : 'Asignar Curso'} a {docenteInfo?.nombreCompleto}</DialogTitle>
+            <DialogTitle>{editingAsignacion ? 'Editar Asignación' : 'Asignar Curso'} a {docenteInfo?.nombreCompleto}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Currícula (Plan de Estudios)</label>
+              <label className="label">Currícula (Plan de Estudios)</label>
               <select 
                 value={selectedPlanEstudioId}
                 onChange={(e) => {
@@ -1026,7 +1039,7 @@ export default function CargaAcademicaAdminPage() {
                   setSelectedCursoId('');
                   setSelectedGrupoNombre('A');
                 }}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input cursor-pointer"
               >
                 <option value="">Seleccione una currícula...</option>
                 {planesEstudio.map(p => (
@@ -1036,22 +1049,22 @@ export default function CargaAcademicaAdminPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Cursos Disponibles</label>
-              <div className="max-h-[300px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-md bg-white dark:bg-slate-900">
-                <table className="w-full text-sm text-left text-slate-800 dark:text-slate-200">
-                  <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 border-b border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-300">
+              <label className="label">Cursos Disponibles</label>
+              <div className="table-container max-h-[300px] overflow-y-auto custom-scrollbar">
+                <table className="table">
+                  <thead>
                     <tr>
-                      <th className="px-3 py-2 font-semibold">Código</th>
-                      <th className="px-3 py-2 font-semibold">Nombre</th>
-                      <th className="px-2 py-2 font-semibold text-center">T</th>
-                      <th className="px-2 py-2 font-semibold text-center">P</th>
-                      <th className="px-2 py-2 font-semibold text-center">L</th>
+                      <th>Código</th>
+                      <th>Nombre</th>
+                      <th className="text-center">T</th>
+                      <th className="text-center">P</th>
+                      <th className="text-center">L</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cursosDisponibles.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
+                        <td colSpan={5} className="text-center text-slate-400 dark:text-slate-550">
                           No hay cursos en esta currícula
                         </td>
                       </tr>
@@ -1063,23 +1076,23 @@ export default function CargaAcademicaAdminPage() {
                             setSelectedCursoId(c.id);
                             setSelectedGrupoNombre('A');
                           }}
-                          className={`cursor-pointer border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 ${selectedCursoId === c.id ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200' : 'border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900'}`}
+                          className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors ${selectedCursoId === c.id ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-300' : ''}`}
                         >
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
+                          <td>
+                            <div className="flex items-center gap-2 font-mono text-xs">
                               <input 
                                 type="radio" 
                                 checked={selectedCursoId === c.id} 
                                 readOnly
-                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800"
+                                className="w-4 h-4 text-primary focus:ring-primary border-slate-350 dark:border-slate-700 dark:bg-slate-800 focus:ring-offset-0 focus:ring-2"
                               />
                               {c.codigo}
                             </div>
                           </td>
-                          <td className="px-3 py-2 font-medium">{c.nombre} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Ciclo {c.ciclo})</span></td>
-                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasTeoria}h</td>
-                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasPractica}h</td>
-                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{c.horasLaboratorio}h</td>
+                          <td className="font-semibold">{c.nombre} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Ciclo {c.ciclo})</span></td>
+                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasTeoria}h</td>
+                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasPractica}h</td>
+                          <td className="text-center text-slate-500 dark:text-slate-400">{c.horasLaboratorio}h</td>
                         </tr>
                       ))
                     )}
@@ -1090,25 +1103,25 @@ export default function CargaAcademicaAdminPage() {
             
             {selectedCursoId && (
               <div>
-                <label className="text-sm font-medium mb-1 block text-slate-700 dark:text-slate-300">Sección / Grupo</label>
+                <label className="label">Sección / Grupo</label>
                 <div className="flex flex-col gap-1">
                   <select 
                     value={selectedGrupoNombre}
                     onChange={(e) => setSelectedGrupoNombre(e.target.value)}
-                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 px-3 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input cursor-pointer"
                   >
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="C">C</option>
                   </select>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Seleccione el grupo predefinido (catálogo estático).</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold">Seleccione el grupo predefinido (catálogo estático).</span>
                 </div>
               </div>
             )}
 
             {selectedCursoId && (
               <div>
-                <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Componentes a Asignar</label>
+                <label className="label">Componentes a Asignar</label>
                 <div className="flex gap-4">
                   {(['TEORIA', 'PRACTICA', 'LABORATORIO'] as TipoComponente[]).map(comp => {
                     const curso = cursosDisponibles.find(c => c.id === selectedCursoId);
@@ -1116,7 +1129,7 @@ export default function CargaAcademicaAdminPage() {
                     if (!hasHoras) return null;
                     
                     return (
-                      <label key={comp} className="flex items-center gap-2 cursor-pointer text-slate-800 dark:text-slate-200">
+                      <label key={comp} className="flex items-center gap-2 cursor-pointer text-slate-805 dark:text-slate-205 select-none">
                         <input 
                           type="checkbox"
                           checked={selectedComponentes.includes(comp)}
@@ -1124,9 +1137,9 @@ export default function CargaAcademicaAdminPage() {
                             if (e.target.checked) setSelectedComponentes([...selectedComponentes, comp]);
                             else setSelectedComponentes(selectedComponentes.filter(c => c !== comp));
                           }}
-                          className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300 dark:border-slate-700 dark:bg-slate-800"
+                          className="rounded text-primary focus:ring-primary h-4 w-4 border-slate-350 dark:border-slate-700 dark:bg-slate-800 focus:ring-offset-0 focus:ring-2"
                         />
-                        <span className="text-sm">{comp.charAt(0) + comp.slice(1).toLowerCase()}</span>
+                        <span className="text-sm font-semibold">{comp.charAt(0) + comp.slice(1).toLowerCase()}</span>
                       </label>
                     );
                   })}
@@ -1134,9 +1147,9 @@ export default function CargaAcademicaAdminPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={cerrarModal}>Cancelar</Button>
-            <Button onClick={asignarCurso} className="bg-blue-600 text-white hover:bg-blue-700">
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="btn-outline font-semibold" onClick={cerrarModal}>Cancelar</Button>
+            <Button onClick={asignarCurso} className="btn-primary font-semibold">
               {editingAsignacion ? 'Guardar Cambios' : 'Asignar'}
             </Button>
           </DialogFooter>
@@ -1145,34 +1158,34 @@ export default function CargaAcademicaAdminPage() {
 
       {/* Modal de Advertencia / Confirmación para Modificar Asignaciones con Horarios Programados */}
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600 font-bold">
-              <AlertCircle className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-amber-500 font-bold">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
               Confirmar Modificación de Asignación
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-3">
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              <strong>Advertencia de Modificación:</strong> Este curso ya está registrado en la carga académica del docente en el sistema.
+            <p className="text-sm text-slate-650 dark:text-slate-350 leading-relaxed font-semibold">
+              Advertencia de Modificación: Este curso ya está registrado en la carga académica del docente en el sistema.
             </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Al guardar los cambios, el sistema <strong>eliminará primero todos los registros de horarios y componentes anteriores</strong> asociados a este curso y grupo. Posteriormente, se crearán las nuevas asignaciones según su selección.
             </p>
             {editingAsignacion?.tieneProgramacion && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              <div className="p-3 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 dark:border-amber-900/30 rounded-xl text-xs text-amber-800 dark:text-amber-350 leading-relaxed font-medium">
                 <strong>Importante:</strong> El docente ya ha programado horarios (días, horas o aulas) para esta materia. Esta programación detallada también se perderá y el docente deberá volver a configurarla.
               </div>
             )}
-            <p className="text-sm font-semibold text-slate-750 dark:text-slate-200 mt-2">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-2">
               ¿Está seguro de que desea confirmar esta modificación en el sistema?
             </p>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsConfirmModalOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" className="btn-outline font-semibold" onClick={() => setIsConfirmModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={ejecutarAsignacion} className="bg-amber-600 text-white hover:bg-amber-700">
+            <Button onClick={ejecutarAsignacion} className="btn-primary bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500/30">
               Confirmar y Guardar
             </Button>
           </DialogFooter>

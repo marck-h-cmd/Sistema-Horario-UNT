@@ -33,7 +33,7 @@ const TablaHeader = React.forwardRef<HTMLTableSectionElement, TablaHeaderProps>(
       <thead
         ref={ref}
         className={cn(
-          'sticky top-0 z-10 border-b bg-slate-50/95 backdrop-blur-sm',
+          'sticky top-0 z-10 border-b border-slate-200/50 dark:border-slate-800 bg-slate-50/95 dark:bg-[#111827]/95 backdrop-blur-sm',
           className
         )}
         {...rest}
@@ -78,7 +78,7 @@ const TablaRow = React.forwardRef<HTMLTableRowElement, TablaRowProps>(
       <tr
         ref={ref}
         className={cn(
-          'border-b transition-colors duration-150 even:bg-slate-50/40 hover:bg-unt-blue/[0.04] data-[state=selected]:bg-unt-blue/10',
+          'border-b border-slate-200/50 dark:border-slate-800 transition-colors duration-150 even:bg-slate-50/20 dark:even:bg-[#111827]/30 hover:bg-primary/5 dark:hover:bg-primary/10 data-[state=selected]:bg-primary/10',
           className
         )}
         {...rest}
@@ -95,7 +95,7 @@ const TablaHead = React.forwardRef<HTMLTableCellElement, TablaHeadProps>(
       <th
         ref={ref}
         className={cn(
-          'h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-slate-600 [&:has([role=checkbox])]:pr-0',
+          'h-11 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 [&:has([role=checkbox])]:pr-0',
           className
         )}
         {...rest}
@@ -111,7 +111,7 @@ const TablaCell = React.forwardRef<HTMLTableCellElement, TablaCellProps>(
     return (
       <td
         ref={ref}
-        className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+        className={cn('px-4 py-3 align-middle text-slate-800 dark:text-slate-200 [&:has([role=checkbox])]:pr-0', className)}
         {...rest}
       />
     );
