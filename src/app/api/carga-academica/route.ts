@@ -7,24 +7,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
+    const planEstudioCursoId = searchParams.get('planEstudioCursoId') || undefined;
     const cursoId = searchParams.get('cursoId') || undefined;
     const docenteId = searchParams.get('docenteId') || undefined;
+    const periodoId = searchParams.get('periodoId') || undefined;
     const search = searchParams.get('search') || undefined;
 
-    const where: {
-      activo?: boolean;
-      cursoId?: string;
-      docenteId?: string;
-      OR?: Array<Record<string, unknown>>;
-    } = { activo: true };
+    const where: any = { activo: true };
 
-    if (cursoId) where.cursoId = cursoId;
+    if (planEstudioCursoId) where.planEstudioCursoId = planEstudioCursoId;
+    if (cursoId) where.planEstudioCurso = { cursoId };
     if (docenteId) where.docenteId = docenteId;
+    if (periodoId) where.periodoId = periodoId;
 
     if (search) {
       where.OR = [
-        { curso: { codigo: { contains: search, mode: 'insensitive' } } },
-        { curso: { nombre: { contains: search, mode: 'insensitive' } } },
+        { planEstudioCurso: { curso: { codigo: { contains: search, mode: 'insensitive' } } } },
+        { planEstudioCurso: { curso: { nombre: { contains: search, mode: 'insensitive' } } } },
         {
           docente: {
             usuario: {
@@ -42,14 +41,18 @@ export async function GET(request: NextRequest) {
       prisma.cursoDocente.findMany({
         where,
         include: {
-          curso: { select: { id: true, codigo: true, nombre: true, creditos: true, ciclo: true } },
+          planEstudioCurso: {
+            include: {
+              curso: { select: { id: true, codigo: true, nombre: true } }
+            }
+          },
           docente: {
             include: {
               usuario: { select: { nombre: true, apellidos: true, email: true } },
             },
           },
         },
-        orderBy: [{ curso: { codigo: 'asc' } }],
+        orderBy: [{ planEstudioCurso: { curso: { codigo: 'asc' } } }],
         skip: (page - 1) * limit,
         take: limit,
       }),

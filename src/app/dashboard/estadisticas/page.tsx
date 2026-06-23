@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Building2, CalendarClock, GraduationCap, Loader2, Users } from 'lucide-react';
 import { BarChartCard } from '@/components/charts/BarChartCard';
 import { PieChartCard } from '@/components/charts/PieChartCard';
+import { AreaChartCard } from '@/components/charts/AreaChartCard';
+import { LineChartCard } from '@/components/charts/LineChartCard';
 import { ErrorAlert } from '@/components/feedback/ErrorAlert';
 import { KpiCard } from '@/components/feedback/KpiCard';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -196,11 +198,12 @@ export default function EstadisticasPage() {
             </div>
           </div>
 
-          <BarChartCard
+          <LineChartCard
             title="Distribución por día de la semana"
             data={barPorDia}
             xKey="dia"
             dataKey="cantidad"
+            color="#c9a84c"
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -209,11 +212,12 @@ export default function EstadisticasPage() {
               data={barOcupacion}
               xKey="ambiente"
               dataKey="pct"
+              layout="vertical"
             />
             <PieChartCard title="Avance horario por categoría" data={pieAvance} />
           </div>
 
-          <BarChartCard
+          <AreaChartCard
             title="Intensidad horaria (mapa de calor agregado)"
             data={barMapaCalor}
             xKey="franja"

@@ -27,9 +27,17 @@ export class ReporteGestionService {
     const avanceCategoria = await this.servicioEstadisticas.obtenerAvanceCategoria(periodoId);
     const ocupacion = await this.servicioEstadisticas.obtenerOcupacionAmbientes(periodoId);
 
-    const docentesConHorarios = await prisma.horario.groupBy({
-      by: ['docenteId'],
-      where: { periodoId, estado: { not: 'CANCELADO' } },
+    const docentesConHorarios = await prisma.cursoDocente.findMany({
+      where: { 
+        periodoId,
+        cursoDocenteGrupos: {
+          some: {
+            horarios: { some: { estado: { not: 'CANCELADO' } } }
+          }
+        }
+      },
+      select: { docenteId: true },
+      distinct: ['docenteId'],
     });
 
     let contenido = generarKpiGrid([

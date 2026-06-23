@@ -25,6 +25,7 @@ export interface HorarioCalendarItem {
   grupo?: { nombre: string } | null;
   estado?: string;
   tipoComponente?: string;
+  cursoDocenteGrupo?: any;
 }
 
 interface HorarioWeeklyCalendarProps {
@@ -132,20 +133,20 @@ export function HorarioWeeklyCalendar({
     const seen = new Map<string, any>();
     for (const h of normalizedHorarios) {
       const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-      const key = `${docId}||${h.curso.codigo}`;
+      const key = `${docId}||${h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo}`;
       if (!seen.has(key)) {
         seen.set(key, {
           docenteId: docId,
           nombre: `${h.docente.usuario.nombre} ${h.docente.usuario.apellidos}`,
-          asignatura: h.curso.nombre,
-          cursoCodigo: h.curso.codigo || '',
+          asignatura: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
+          cursoCodigo: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo || '',
           horasT: h.curso.horasTeoria ?? 0,
           horasP: h.curso.horasPractica ?? 0,
           horasL: h.curso.horasLaboratorio ?? 0,
           grupos: new Set(
             normalizedHorarios.filter(x => {
               const xDocId = x.docenteId ?? `${x.docente.usuario.apellidos}-${x.docente.usuario.nombre}`;
-              return xDocId === docId && x.curso.codigo === h.curso.codigo;
+              return xDocId === docId && x.curso.codigo === h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo;
             }).map(x => x.grupo?.nombre ?? 'A')
           ).size,
           totalHoras: (h.curso.horasTeoria ?? 0) + (h.curso.horasPractica ?? 0) + (h.curso.horasLaboratorio ?? 0),
@@ -169,7 +170,7 @@ export function HorarioWeeklyCalendar({
 
   const getDocente = (h: HorarioCalendarItem) => {
     const docId = h.docenteId ?? `${h.docente.usuario.apellidos}-${h.docente.usuario.nombre}`;
-    const key = `${docId}||${h.curso.codigo}`;
+    const key = `${docId}||${h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo}`;
     return docentesUnicos.find(d => (d.docenteId + '||' + d.cursoCodigo) === key);
   };
 
@@ -215,7 +216,7 @@ export function HorarioWeeklyCalendar({
 
   const getComponentLabel = (h: HorarioCalendarItem) => {
     if (h.tipoComponente === 'PRACTICA') return ' Práctica';
-    if (h.tipoComponente === 'TEORIA' && h.curso.codigo === 'EG-106B') return ' Teoría';
+    if (h.tipoComponente === 'TEORIA' && h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo === 'EG-106B') return ' Teoría';
     if (h.tipoComponente === 'LABORATORIO') return ' Lab.';
     return '';
   };

@@ -12,6 +12,16 @@ export class ApiClientError extends Error {
   }
 }
 
+function clearAuthAndRedirect() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
+    window.location.href = '/auth/login';
+  }
+}
+
 function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('accessToken');
@@ -98,6 +108,8 @@ export async function apiRequest<T>(
     if (newToken) {
       headers['Authorization'] = `Bearer ${newToken}`;
       response = await fetch(url, { ...init, headers, body: requestBody });
+    } else {
+      clearAuthAndRedirect();
     }
   }
 
@@ -116,6 +128,9 @@ export async function apiRequest<T>(
   const json: ApiResponse<T> = await response.json();
 
   if (!json.success) {
+    if (response.status === 404 && json.error?.code === 'USER_NOT_FOUND') {
+      clearAuthAndRedirect();
+    }
     throw new ApiClientError(
       json.error?.message || 'Error en la solicitud',
       json.error?.code || 'UNKNOWN_ERROR',

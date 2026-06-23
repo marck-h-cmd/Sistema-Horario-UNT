@@ -27,6 +27,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (userId) {
+      const userExists = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: { id: true }
+      });
+      if (!userExists) {
+        userId = null;
+      }
+    }
+
     const { searchParams } = new URL(request.url);
     const clientSessionId = searchParams.get('sessionId');
 
@@ -104,6 +114,16 @@ export async function POST(request: NextRequest) {
         const payload = await tokenService.validateToken(token);
         userId = payload.userId;
       } catch (e) {}
+    }
+
+    if (userId) {
+      const userExists = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: { id: true }
+      });
+      if (!userExists) {
+        userId = null;
+      }
     }
 
     const session = await prisma.chatSesion.create({

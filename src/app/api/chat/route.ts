@@ -51,6 +51,16 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
+    if (userId) {
+      const userExists = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: { id: true }
+      });
+      if (!userExists) {
+        userId = null;
+      }
+    }
+
     let session = null;
 
     if (userId) {
@@ -227,7 +237,7 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
                   dia: h.diaSemana,
                   de: h.horaInicio,
                   a: h.horaFin,
-                  curso: h.curso?.nombre ?? '-',
+                  curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre ?? '-',
                   aula: h.ambiente?.nombre ?? '-',
                   estado: h.estado
                 })) : undefined

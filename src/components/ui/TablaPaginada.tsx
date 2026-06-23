@@ -43,7 +43,7 @@ export function TablaPaginada<T extends Record<string, any>>({
 }: TablaPaginadaProps<T>) {
   return (
     <div className={cn('space-y-4', className)}>
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-slate-200/50 dark:border-slate-800/80 overflow-hidden shadow-sm">
         <TablaDatos>
           <TablaHeader>
             <TablaRow>
@@ -84,7 +84,7 @@ export function TablaPaginada<T extends Record<string, any>>({
 
       {totalPaginas > 1 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Página {paginaActual} de {totalPaginas}
           </div>
           <div className="flex gap-2">

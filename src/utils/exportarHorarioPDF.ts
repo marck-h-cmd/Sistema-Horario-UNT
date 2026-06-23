@@ -280,7 +280,7 @@ const getMetadatosCursoPDF = (h: any): MetadatosCursoPDF => {
   };
 };
 
-export async function exportarHorarioPDF(
+export function generarContenidoHorarioPDF(
   horarios: any[],
   titulo: string,
   subtitulo: string,
@@ -292,7 +292,7 @@ export async function exportarHorarioPDF(
     printImmediately?: boolean;
     format?: 'grid' | 'table';
   }
-): Promise<void> {
+): { content: string, getHtmlBase: (c: string, hideGlobalHeaderFooter?: boolean) => string } {
   const format = options?.format || 'grid';
   const pageSize = options?.pageSize || 'A4';
   const orientation = options?.orientation || 'landscape';
@@ -455,7 +455,7 @@ export async function exportarHorarioPDF(
     </colgroup>
   `;
 
-  const totalFilas = Math.max(13, docentesUnicos.length);
+  const totalFilas = Math.max(11, docentesUnicos.length);
 
   const filas = Array.from({ length: totalFilas }, (_, i) => {
     const doc = docentesUnicos[i];
@@ -541,7 +541,7 @@ export async function exportarHorarioPDF(
       </tr>`;
   }).join('');
 
-  const ROW_HEIGHT = 30;
+  const ROW_HEIGHT = 23;
   const START_MINUTES = 7 * 60;
   const TOTAL_FRANJAS = FRANJAS.length;
   const GRID_HEIGHT = ROW_HEIGHT * TOTAL_FRANJAS;
@@ -693,12 +693,73 @@ export async function exportarHorarioPDF(
 
     const labelComp = getComponentLabel(h);
     const ambText = formatAmbiente(h.ambiente?.nombre ?? h.ambiente?.codigo ?? '');
+    const ambTextClean = height <= 30 ? ambText.replace(/<br\s*\/?>/gi, ' ') : ambText;
 
     const nombreCorto = doc?.asignatura
       ? doc.asignatura.split(' ').slice(0, 4).join(' ')
       : '';
 
     const grupo = h.grupo?.nombre ? `Gr. ${h.grupo.nombre}` : '';
+
+    let htmlContenidoBlock = '';
+
+    if (height <= 30) {
+      // Bloque de 1 hora (23px alto): Ultra compacto, todo en 1 o 2 líneas
+      const labelText = labelComp ? ` ${labelComp}` : '';
+      htmlContenidoBlock = `
+        <div style="font-size: 8.5px; font-weight: bold; line-height: 1; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+          ${doc?.numero ?? ''}<span style="font-size: 7px; font-weight: normal;">${labelText}</span>
+        </div>
+        ${ambTextClean ? `
+          <div style="font-size: 6.5px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%; font-style: italic;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+      `;
+    } else if (height <= 50) {
+      // Bloque de 2 horas (46px alto): Compacto
+      const labelHtml = labelComp ? `<span style="font-size: 7px; font-weight: normal; line-height: 1;"> ${labelComp}</span>` : '';
+      htmlContenidoBlock = `
+        <strong style="font-size: 10px; line-height: 1;">${doc?.numero ?? ''}${labelHtml}</strong>
+        ${nombreCorto ? `
+          <div style="font-size: 7px; font-style: italic; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${nombreCorto}
+          </div>
+        ` : ''}
+        ${ambTextClean ? `
+          <div style="font-size: 7px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+        ${grupo ? `
+          <div style="font-size: 6.5px; line-height: 1; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${grupo}
+          </div>
+        ` : ''}
+      `;
+    } else {
+      // Bloques de 3 o más horas (>= 69px alto): Espacioso
+      const labelHtml = labelComp ? `<span style="font-size: 7.5px; font-weight: normal; line-height: 1.1;">${labelComp}</span>` : '';
+      htmlContenidoBlock = `
+        <strong style="font-size: 12px; line-height: 1;">${doc?.numero ?? ''}</strong>
+        ${labelHtml}
+        ${nombreCorto ? `
+          <div style="font-size: 7px; font-style: italic; line-height: 1.15; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${nombreCorto}
+          </div>
+        ` : ''}
+        ${ambTextClean ? `
+          <div style="font-size: 7px; line-height: 1.15; margin-top: 1px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${ambTextClean}
+          </div>
+        ` : ''}
+        ${grupo ? `
+          <div style="font-size: 7px; line-height: 1.1; margin-top: 2px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; width: 100%;">
+            ${grupo}
+          </div>
+        ` : ''}
+      `;
+    }
 
     return `
       <div
@@ -716,31 +777,12 @@ export async function exportarHorarioPDF(
           flex-direction:column;
           align-items:center;
           justify-content:center;
-          padding:2px 1px;
+          padding:1px 2px;
           z-index:3;
+          box-sizing:border-box;
         "
       >
-        <strong style="font-size:14px;line-height:1">${doc?.numero ?? ''}</strong>
-
-        ${
-          labelComp
-            ? `<span style="font-size:8px;font-weight:normal;line-height:1.1">${labelComp}</span>`
-            : ''
-        }
-
-        <div style="font-size:7.5px;margin-top:1px;font-style:italic;line-height:1.15">
-          ${nombreCorto}
-        </div>
-
-        <div style="font-size:7px;margin-top:1px;line-height:1.15">
-          ${ambText}
-        </div>
-
-        ${
-          grupo
-            ? `<div style="font-size:7px;margin-top:2px;line-height:1.1">${grupo}</div>`
-            : ''
-        }
+        ${htmlContenidoBlock}
       </div>
     `;
   };
@@ -1118,7 +1160,7 @@ export async function exportarHorarioPDF(
 </html>`;
 
   // Generar HTML base con los estilos compartidos
-  const getHtmlBase = (content: string) => `
+  const getHtmlBase = (content: string, hideGlobalHeaderFooter = false) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -1143,7 +1185,8 @@ export async function exportarHorarioPDF(
 
     body {
       padding: ${margin}mm;
-      padding-bottom: ${margin + 15}mm;
+      padding-bottom: ${margin + (hideGlobalHeaderFooter ? 0 : 15)}mm;
+      background-color: ${hideGlobalHeaderFooter ? '#cbd5e1' : '#ffffff'};
     }
 
     /* Encabezado y Pie de página */
@@ -1202,7 +1245,7 @@ export async function exportarHorarioPDF(
 
     @page {
       size: ${pageSize} ${orientation};
-      margin: 25mm ${margin}mm 20mm ${margin}mm;
+      margin: ${hideGlobalHeaderFooter ? `12mm ${margin}mm ${margin}mm ${margin}mm` : `25mm ${margin}mm 20mm ${margin}mm`};
       
       @top-left {
         content: element(header);
@@ -1216,10 +1259,22 @@ export async function exportarHorarioPDF(
       }
     }
 
+    .page-container {
+      background: #ffffff;
+      margin: 20px auto;
+      padding: 10mm 12mm;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      border-radius: 6px;
+      max-width: 297mm;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      clear: both;
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
-      margin-bottom: 15px;
+      margin-bottom: 6px;
     }
 
     th,
@@ -1234,12 +1289,12 @@ export async function exportarHorarioPDF(
       color: #ffffff !important;
       font-weight: bold;
       text-align: center;
-      padding: 8px 10px;
+      padding: 4px 6px;
       font-size: 11px;
     }
 
     td {
-      padding: 6px 8px;
+      padding: 3px 5px;
     }
 
     tr:nth-child(even) td {
@@ -1249,7 +1304,7 @@ export async function exportarHorarioPDF(
     .tabla-superior {
       border-collapse: collapse;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 6px;
       table-layout: fixed;
     }
 
@@ -1318,6 +1373,7 @@ export async function exportarHorarioPDF(
       body {
         margin: 0;
         padding: 0;
+        background-color: #ffffff !important;
       }
 
       .header {
@@ -1327,11 +1383,25 @@ export async function exportarHorarioPDF(
       .print-only {
         display: block;
       }
+
+      .page-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+        background: none !important;
+      }
+
+      .page-container + .page-container {
+        page-break-before: always;
+      }
     }
   </style>
 </head>
 <body>
 
+  ${hideGlobalHeaderFooter ? '' : `
   <div class="header print-only">
     <div class="left">
       <div class="title">${titulo}</div>
@@ -1353,6 +1423,7 @@ export async function exportarHorarioPDF(
     })}</div>
     <div>Escuela Profesional de Ingeniería de Sistemas</div>
   </div>
+  `}
 
 ${content}
 
@@ -1360,7 +1431,8 @@ ${content}
 </html>
   `.trim();
 
-  const htmlGrillaFinal = getHtmlBase(`
+  
+  const innerGrilla = `
   <table class="tabla-superior">
     <thead>
       <tr>
@@ -1399,9 +1471,8 @@ ${content}
       ${grillaFilas}
     </tbody>
   </table>
-  `);
-
-  const htmlTablaFinal = getHtmlBase(`
+  `;
+  const innerTabla = `
   <div style="margin-bottom: 20px;">
     <h2 style="color: #1a365d; font-size: 14px; margin-bottom: 15px; border-bottom: 2px solid #1a365d; padding-bottom: 5px;">${titulo}</h2>
   </div>
@@ -1449,34 +1520,163 @@ ${content}
       </table>
     `;
   }).join('')}
-  `);
+  `;
+  const innerContent = format === 'table' ? innerTabla : innerGrilla;
 
-  const htmlCompleto = format === 'table' ? htmlTablaFinal : htmlGrillaFinal;
+  return {
+    content: innerContent,
+    getHtmlBase
+  };
+}
+export async function exportarHorarioPDF(
+  horarios: any[],
+  titulo: string,
+  subtitulo: string,
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
+): Promise<void> {
+  const { content, getHtmlBase } = generarContenidoHorarioPDF(horarios, titulo, subtitulo, diasMostrados, options);
+  let htmlCompleto = getHtmlBase(content);
+  
+  const printImmediately = options?.printImmediately ?? true;
+  if (printImmediately) {
+    htmlCompleto = htmlCompleto.replace(
+      '</body>',
+      '<script>window.onload = () => { setTimeout(() => { window.focus(); window.print(); }, 500); };</script></body>'
+    );
+  }
 
-  const win = window.open('', '_blank');
+  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
 
+  const win = window.open(url, '_blank');
   if (!win) {
     alert('Permite ventanas emergentes para exportar PDF');
     return;
   }
+}
 
-  win.document.open();
-  win.document.write(htmlCompleto);
-  win.document.close();
+const normalizarCicloPDF = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const texto = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/CICLO/g, '')
+    .replace(/SEMESTRE/g, '')
+    .replace(/[^A-Z0-9]/g, '');
 
-  const imprimir = () => {
-    win.focus();
+  if (['I', '1', '01', 'PRIMER', 'PRIMERO'].includes(texto)) return 'I';
+  if (['II', '2', '02', 'SEGUNDO'].includes(texto)) return 'II';
+  if (['III', '3', '03', 'TERCER', 'TERCERO'].includes(texto)) return 'III';
+  if (['IV', '4', '04', 'CUARTO'].includes(texto)) return 'IV';
+  if (['V', '5', '05', 'QUINTO'].includes(texto)) return 'V';
+  if (['VI', '6', '06', 'SEXTO'].includes(texto)) return 'VI';
+  if (['VII', '7', '07', 'SEPTIMO'].includes(texto)) return 'VII';
+  if (['VIII', '8', '08', 'OCTAVO'].includes(texto)) return 'VIII';
+  if (['IX', '9', '09', 'NOVENO'].includes(texto)) return 'IX';
+  if (['X', '10', 'DECIMO'].includes(texto)) return 'X';
 
-    setTimeout(() => {
-      if (printImmediately) {
-        win.print();
-      }
-    }, 800);
-  };
+  return texto;
+};
 
-  if (win.document.readyState === 'complete') {
-    imprimir();
-  } else {
-    win.onload = imprimir;
+export async function exportarHorariosTodosCiclosPDF(
+  horarios: any[],
+  periodoNombre: string,
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
+): Promise<void> {
+  const ciclosUnicos = Array.from(new Set(horarios.map(h => normalizarCicloPDF(h.curso?.ciclo)).filter(Boolean)));
+  const order = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  ciclosUnicos.sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    return a.localeCompare(b);
+  });
+
+  if (ciclosUnicos.length === 0) {
+    return exportarHorarioPDF(horarios, 'HORARIO ACADÉMICO', periodoNombre, diasMostrados, options);
+  }
+
+  let htmlCombinado = '';
+
+  for (let i = 0; i < ciclosUnicos.length; i++) {
+    const ciclo = ciclosUnicos[i];
+    const horariosCiclo = horarios.filter(h => normalizarCicloPDF(h.curso?.ciclo) === ciclo);
+    if (horariosCiclo.length === 0) continue;
+
+    const { content } = generarContenidoHorarioPDF(
+      horariosCiclo,
+      'HORARIO ACADÉMICO',
+      `${periodoNombre} - Ciclo ${ciclo}`,
+      diasMostrados,
+      options
+    );
+
+    const titleText = options?.format === 'table' ? `Listado de Horarios - Ciclo ${ciclo}` : 'HORARIO ACADÉMICO';
+    const cycleHeader = `
+      <div class="cycle-page-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a365d; padding-bottom: 2px; margin-bottom: 6px; padding-top: 2px;">
+          <div>
+            <div style="font-size: 13px; font-weight: bold; color: #1a365d;">${titleText}</div>
+            <div style="font-size: 10px; color: #64748b;">${periodoNombre} - Ciclo ${ciclo}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 9px; font-weight: bold; color: #1a365d;">Universidad Nacional de Trujillo</div>
+            <div style="font-size: 8px;">Facultad de Ingeniería</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const cycleFooter = `
+      <div style="margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 2px; display: flex; justify-content: space-between; font-size: 8px; color: #64748b;">
+        <div>Generado el: ${new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+        <div>Escuela Profesional de Ingeniería de Sistemas</div>
+      </div>
+    `;
+
+    htmlCombinado += `
+      <div class="page-container">
+        ${cycleHeader}
+        ${content}
+        ${cycleFooter}
+      </div>
+    `;
+  }
+
+  const { getHtmlBase: getHtmlGlobal } = generarContenidoHorarioPDF([], 'HORARIO ACADÉMICO', `${periodoNombre} - Todos los ciclos`, diasMostrados, options);
+
+  let htmlCompleto = getHtmlGlobal(htmlCombinado, true);
+
+  const printImmediately = options?.printImmediately ?? true;
+  if (printImmediately) {
+    htmlCompleto = htmlCompleto.replace(
+      '</body>',
+      '<script>window.onload = () => { setTimeout(() => { window.focus(); window.print(); }, 500); };</script></body>'
+    );
+  }
+
+  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const win = window.open(url, '_blank');
+  if (!win) {
+    alert('Permite ventanas emergentes para exportar PDF');
+    return;
   }
 }

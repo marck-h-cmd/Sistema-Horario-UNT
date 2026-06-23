@@ -48,7 +48,7 @@ export default function MatrizDisponibilidadLaboratorios({ periodoId, laboratori
         (d.data ?? []).forEach((h: any) => {
           if (!m[h.dia]) m[h.dia] = {};
           m[h.dia][h.horaInicio] = {
-            cursoNombre: h.curso?.nombre,
+            cursoNombre: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
             docenteNombre: h.docente?.apellidos,
             estado: h.estado,
             esPractica: h.esPractica,

@@ -46,6 +46,17 @@ enum SedeDescentralizada {
   OTRA
 }
 
+enum TipoCursoUNT {
+  O
+  E
+  EG_OB
+  EG_OP
+  EG_EL
+  ES
+  EP
+  EE
+}
+
 enum TipoAmbiente {
   AULA
   LABORATORIO
@@ -260,6 +271,7 @@ model DepartamentoAcademico {
 
   facultad         Facultad @relation(fields: [facultadId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   docentes         Docente[]
+  planesEstudioCursos PlanEstudioCurso[]
 
   @@unique([nombre, facultadId])
   @@map("departamentos_academicos")
@@ -288,7 +300,6 @@ model Docente {
   usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   departamento    DepartamentoAcademico @relation(fields: [departamentoId], references: [id], onDelete: Restrict)
   preferenciasNotificacion PreferenciasNotificacion?
-  horarios        Horario[]
   cursos          CursoDocente[]
   ventanasAtendidas AtencionVentana[]
   disponibilidad  DisponibilidadDocente[]
@@ -392,63 +403,115 @@ model Curso {
   id              String    @id @default(uuid())
   codigo          String    @unique
   nombre          String
-  creditos        Int
-  horasTeoria     Int
-  horasPractica   Int
-  horasLaboratorio Int    @default(0)
-  ciclo           Int
-  planEstudios    String?
   activo          Boolean   @default(true)
   
-  grupos          Grupo[]
-  cursosDocente   CursoDocente[]
-  horarios        Horario[]
-  matriculas      Matricula[]
+  planesEstudio   PlanEstudioCurso[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([codigo])
-  @@index([ciclo])
   @@index([activo])
   @@map("cursos")
 }
 
-model Grupo {
-  id          String   @id @default(uuid())
-  cursoId     String
-  nombre      String
-  capacidad   Int
-  activo      Boolean  @default(true)
+model PlanEstudio {
+  id        String   @id @default(uuid())
+  nombre    String
+  anio      Int
+  activo    Boolean  @default(true)
   
-  curso       Curso    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  horarios    Horario[]
-  matriculas  Matricula[]
+  cursos    PlanEstudioCurso[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([cursoId])
-  @@unique([cursoId, nombre])
-  @@map("grupos")
+  @@map("planes_estudio")
+}
+
+model PlanEstudioCurso {
+  id               String      @id @default(uuid())
+  planEstudioId    String
+  cursoId          String
+  ciclo            Int
+  creditos         Int
+  horasTeoria      Int
+  horasPractica    Int
+  horasLaboratorio Int         @default(0)
+  tipoCurso        TipoCursoUNT?
+  departamentoId   Int?        @map("id_departamento")
+  
+  planEstudio      PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  curso            Curso       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  departamento     DepartamentoAcademico? @relation(fields: [departamentoId], references: [id])
+  
+  cursosDocentes   CursoDocente[]
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([planEstudioId, cursoId])
+  @@index([departamentoId])
+  @@index([ciclo])
+  @@map("plan_estudio_cursos")
 }
 
 model CursoDocente {
-  id            String   @id @default(uuid())
-  cursoId       String
-  docenteId     String
-  horasAsignadas Int    @default(0)
-  activo        Boolean  @default(true)
+  id                 String   @id @default(uuid())
+  planEstudioCursoId String
+  docenteId          String
+  periodoId          String
+  horasAsignadas     Int      @default(0)
+  activo             Boolean  @default(true)
   
-  curso         Curso    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  docente       Docente  @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+  planEstudioCurso   PlanEstudioCurso @relation(fields: [planEstudioCursoId], references: [id], onDelete: Cascade)
+  docente            Docente          @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+  periodo            PeriodoAcademico @relation(fields: [periodoId], references: [id], onDelete: Cascade)
+  
+  cursoDocenteGrupos CursoDocenteGrupo[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  @@unique([cursoId, docenteId])
+  @@unique([planEstudioCursoId, docenteId, periodoId])
   @@index([docenteId])
+  @@index([periodoId])
   @@map("cursos_docentes")
+}
+
+model Grupo {
+  id              String   @id @default(uuid())
+  nombre          String   @unique
+  activo          Boolean  @default(true)
+  
+  cursoDocenteGrupos CursoDocenteGrupo[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("grupos")
+}
+
+model CursoDocenteGrupo {
+  id              String   @id @default(uuid())
+  cursoDocenteId  String
+  grupoId         String
+  capacidad       Int      @default(40)
+  activo          Boolean  @default(true)
+  
+  cursoDocente    CursoDocente @relation(fields: [cursoDocenteId], references: [id], onDelete: Cascade)
+  grupo           Grupo        @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  
+  horarios        Horario[]
+  matriculas      Matricula[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([cursoDocenteId, grupoId])
+  @@index([cursoDocenteId])
+  @@index([grupoId])
+  @@map("curso_docente_grupos")
 }
 
 // ============================================
@@ -497,6 +560,7 @@ model PeriodoAcademico {
   configuraciones ConfiguracionPeriodo?
   distribucionesNoLectiva DistribucionNoLectiva[]
   declaracionesNoLectiva DeclaracionNoLectiva[]
+  cursosDocentes  CursoDocente[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -512,10 +576,8 @@ model PeriodoAcademico {
 
 model Horario {
   id              String        @id @default(uuid())
+  cursoDocenteGrupoId String
   periodoId       String
-  cursoId         String
-  docenteId       String
-  grupoId         String?
   ambienteId      String?
   sede            TipoSede      @default(SEDE_CENTRAL)
   sedeDescentralizadaRef SedeDescentralizada?
@@ -533,10 +595,8 @@ model Horario {
   fechaConfirmacion DateTime?
   
   // Relaciones
+  cursoDocenteGrupo CursoDocenteGrupo @relation(fields: [cursoDocenteGrupoId], references: [id], onDelete: Cascade)
   periodo         PeriodoAcademico @relation(fields: [periodoId], references: [id])
-  curso           Curso            @relation(fields: [cursoId], references: [id])
-  docente         Docente          @relation(fields: [docenteId], references: [id])
-  grupo           Grupo?           @relation(fields: [grupoId], references: [id])
   ambiente        Ambiente?        @relation(fields: [ambienteId], references: [id])
   
   validaciones    ValidacionHorario[]
@@ -549,7 +609,7 @@ model Horario {
   // debido a la necesidad de lógica compleja de superposición parcial
   
   @@index([periodoId, estado])
-  @@index([docenteId, periodoId])
+  @@index([cursoDocenteGrupoId])
   @@index([ambienteId, periodoId])
   @@index([sede])
   @@map("horarios")
@@ -881,7 +941,7 @@ model SeleccionTemporal {
   sessionId   String
   docenteId   String
   periodoId   String
-  cursoId     String
+  grupoId     String
   datos       Json
   expiraEn    DateTime
   
@@ -919,24 +979,22 @@ model Estudiante {
 }
 
 model Matricula {
-  id              String    @id @default(uuid())
-  estudianteId    String
-  cursoId         String
-  grupoId         String
-  periodoId       String
-  estado          String    @default("ACTIVO")
+  id                  String    @id @default(uuid())
+  estudianteId        String
+  cursoDocenteGrupoId String
+  periodoId           String
+  estado              String    @default("ACTIVO")
   
-  estudiante      Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
-  curso           Curso      @relation(fields: [cursoId], references: [id])
-  grupo           Grupo      @relation(fields: [grupoId], references: [id])
-  periodo         PeriodoAcademico @relation(fields: [periodoId], references: [id])
+  estudiante          Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
+  cursoDocenteGrupo   CursoDocenteGrupo @relation(fields: [cursoDocenteGrupoId], references: [id], onDelete: Cascade)
+  periodo             PeriodoAcademico @relation(fields: [periodoId], references: [id])
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  @@unique([estudianteId, cursoId, periodoId])
+  @@unique([estudianteId, cursoDocenteGrupoId, periodoId])
   @@index([estudianteId])
-  @@index([grupoId])
+  @@index([cursoDocenteGrupoId])
   @@index([periodoId])
   @@map("matriculas")
 }

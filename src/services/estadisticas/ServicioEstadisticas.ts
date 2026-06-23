@@ -59,11 +59,17 @@ export class ServicioEstadisticas {
       where: { usuario: { activo: true } },
       include: {
         cursos: {
-          where: { activo: true },
-          include: { curso: true },
-        },
-        horarios: {
-          where: { periodoId, estado: { not: 'CANCELADO' } },
+          where: { activo: true, periodoId },
+          include: { 
+            planEstudioCurso: { include: { curso: true } },
+            cursoDocenteGrupos: {
+              include: {
+                horarios: {
+                  where: { periodoId, estado: { not: 'CANCELADO' } }
+                }
+              }
+            }
+          },
         },
       },
     });
@@ -85,18 +91,29 @@ export class ServicioEstadisticas {
       const cat = porCategoria[docente.categoria];
       cat.totalDocentes++;
       cat.totalCursosAsignados += docente.cursos.length;
-      cat.totalHorariosAsignados += docente.horarios.length;
+      
+      let totalHorariosAsignados = 0;
+      for (const cursoDocente of docente.cursos) {
+        for (const cdg of cursoDocente.cursoDocenteGrupos) {
+          totalHorariosAsignados += cdg.horarios.length;
+        }
+      }
+      cat.totalHorariosAsignados += totalHorariosAsignados;
 
       for (const cursoDocente of docente.cursos) {
         cat.horasRequeridas += cursoDocente.horasAsignadas || 
-          (cursoDocente.curso.horasTeoria + cursoDocente.curso.horasPractica + cursoDocente.curso.horasLaboratorio);
+          (cursoDocente.planEstudioCurso.horasTeoria + cursoDocente.planEstudioCurso.horasPractica + cursoDocente.planEstudioCurso.horasLaboratorio);
       }
 
-      for (const horario of docente.horarios) {
-        if (horario.horaInicio && horario.horaFin) {
-          const [hInicio, mInicio] = horario.horaInicio.split(':').map(Number);
-          const [hFin, mFin] = horario.horaFin.split(':').map(Number);
-          cat.horasAsignadas += (hFin + mFin / 60) - (hInicio + mInicio / 60);
+      for (const cursoDocente of docente.cursos) {
+        for (const cdg of cursoDocente.cursoDocenteGrupos) {
+          for (const horario of cdg.horarios) {
+            if (horario.horaInicio && horario.horaFin) {
+              const [hInicio, mInicio] = horario.horaInicio.split(':').map(Number);
+              const [hFin, mFin] = horario.horaFin.split(':').map(Number);
+              cat.horasAsignadas += (hFin + mFin / 60) - (hInicio + mInicio / 60);
+            }
+          }
         }
       }
     }

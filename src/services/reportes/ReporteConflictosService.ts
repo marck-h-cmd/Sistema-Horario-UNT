@@ -24,9 +24,20 @@ export class ReporteConflictosService {
       include: {
         horario: {
           include: {
-            curso: { select: { codigo: true, nombre: true } },
-            docente: {
-              include: { usuario: { select: { nombre: true, apellidos: true } } },
+            cursoDocenteGrupo: {
+              include: {
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: {
+                      include: { usuario: { select: { nombre: true, apellidos: true } } }
+                    },
+                    planEstudioCurso: {
+                      include: { curso: { select: { codigo: true, nombre: true } } }
+                    }
+                  }
+                }
+              }
             },
             ambiente: { select: { codigo: true, nombre: true } },
           },
@@ -69,14 +80,18 @@ export class ReporteConflictosService {
       );
 
       const filas = lista.slice(0, 30).map((c) => {
-        const dia = c.horario.diaSemana ? UtilidadesFecha.nombreDia(c.horario.diaSemana) : 'Sin día';
-        const inicio = c.horario.horaInicio ? c.horario.horaInicio.slice(0, 5) : '--:--';
-        const fin = c.horario.horaFin ? c.horario.horaFin.slice(0, 5) : '--:--';
-        const ambiente = c.horario.ambiente ? c.horario.ambiente.codigo : 'Sin ambiente';
+        const h = c.horario;
+        if (!h) return ['-', '-', '-', '-', '-', c.mensaje || ''];
+        const dia = h.diaSemana ? UtilidadesFecha.nombreDia(h.diaSemana) : 'Sin día';
+        const inicio = h.horaInicio ? h.horaInicio.slice(0, 5) : '--:--';
+        const fin = h.horaFin ? h.horaFin.slice(0, 5) : '--:--';
+        const ambiente = h.ambiente ? h.ambiente.codigo : 'Sin ambiente';
+        const cursoObj = (h as any).cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || { codigo: '-', nombre: '-' };
+        const docenteObj = (h as any).cursoDocenteGrupo?.cursoDocente?.docente || { usuario: { nombre: '-', apellidos: '-' } };
         return [
-          c.horario.curso.codigo,
-          c.horario.curso.nombre,
-          Formateadores.nombreUsuario(c.horario.docente.usuario),
+          cursoObj.codigo,
+          cursoObj.nombre,
+          Formateadores.nombreUsuario(docenteObj.usuario),
           ambiente,
           `${dia} ${inicio}–${fin}`,
           c.mensaje || 'Sin detalle',

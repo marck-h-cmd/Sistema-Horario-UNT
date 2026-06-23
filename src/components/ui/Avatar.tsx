@@ -33,7 +33,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         {src ? (
           <img src={src} alt={alt || 'Avatar'} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-primary-100 text-primary-700 font-semibold">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary-500 to-primary-600 dark:from-primary-600 dark:to-primary-700 text-white font-semibold shadow-sm">
             {fallback || '?'}
           </div>
         )}

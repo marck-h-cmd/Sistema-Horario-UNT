@@ -159,7 +159,13 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('VALIDATION_ERROR', 'Datos inválidos', 400, validation.error.errors);
     }
 
-    const horario = await servicioHorario.crear(validation.data, user.userId);
+    const { grupoId, ...rest } = validation.data;
+    const dto = {
+      ...rest,
+      cursoDocenteGrupoId: grupoId,
+    };
+
+    const horario = await servicioHorario.crear(dto, user.userId);
 
     return createSuccessResponse(horario, undefined, 201);
   } catch (error: any) {

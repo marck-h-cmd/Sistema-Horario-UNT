@@ -22,10 +22,23 @@ export async function GET(request: NextRequest) {
       include: {
         horario: {
           include: {
-            curso: { select: { codigo: true, nombre: true } },
-            docente: {
+            cursoDocenteGrupo: {
               include: {
-                usuario: { select: { nombre: true, apellidos: true } },
+                grupo: true,
+                cursoDocente: {
+                  include: {
+                    docente: {
+                      include: {
+                        usuario: { select: { nombre: true, apellidos: true } },
+                      },
+                    },
+                    planEstudioCurso: {
+                      include: {
+                        curso: { select: { codigo: true, nombre: true } },
+                      },
+                    },
+                  },
+                },
               },
             },
             ambiente: { select: { codigo: true, nombre: true } },
@@ -46,7 +59,16 @@ export async function GET(request: NextRequest) {
         };
       }
       acc[tipo].cantidad++;
-      acc[tipo].conflictos.push(conflicto);
+      const cMod = {
+        ...conflicto,
+        horario: {
+          ...conflicto.horario,
+          curso: conflicto.horario.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso,
+          docente: conflicto.horario.cursoDocenteGrupo?.cursoDocente?.docente,
+          grupo: conflicto.horario.cursoDocenteGrupo?.grupo,
+        }
+      };
+      acc[tipo].conflictos.push(cMod);
       return acc;
     }, {});
 

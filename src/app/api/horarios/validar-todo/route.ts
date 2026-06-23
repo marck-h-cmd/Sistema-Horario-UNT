@@ -20,17 +20,28 @@ export async function POST(request: NextRequest) {
         periodoId,
         estado: { notIn: ['CANCELADO'] },
       },
+      include: {
+        cursoDocenteGrupo: {
+          include: {
+            grupo: true,
+            cursoDocente: {
+              include: { planEstudioCurso: true }
+            }
+          }
+        }
+      }
     });
 
     // Validar cada horario
     const resultados = [];
     for (const horario of horarios) {
+      const cdg = (horario as any).cursoDocenteGrupo;
       const resultado = await validador.validarHorario(
         periodoId,
-        horario.docenteId,
-        horario.cursoId,
+        cdg?.cursoDocente?.docenteId || '',
+        cdg?.cursoDocente?.planEstudioCurso?.cursoId || '',
         horario.ambienteId || '',
-        horario.grupoId || undefined,
+        cdg?.grupoId || undefined,
         horario.diaSemana || 'LUNES',
         horario.horaInicio || '',
         horario.horaFin || '',

@@ -50,8 +50,8 @@ export default function MatrizDisponibilidadAulas({ periodoId, ambienteId, onCel
         (d.data ?? []).forEach((h: any) => {
           if (!m[h.dia]) m[h.dia] = {};
           m[h.dia][h.horaInicio] = {
-            cursoNombre: h.curso?.nombre,
-            docenteNombre: h.docente ? `${h.docente.apellidos}` : undefined,
+            cursoNombre: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre,
+            docenteNombre: h.docente ? `${h.cursoDocenteGrupo?.cursoDocente?.docente?.apellidos}` : undefined,
             grupoNombre: h.grupo?.nombre,
             estado: h.estado,
           };

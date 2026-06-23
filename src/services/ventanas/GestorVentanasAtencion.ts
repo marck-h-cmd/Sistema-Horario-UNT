@@ -474,7 +474,7 @@ export class GestorVentanasAtencion {
         docente: {
           include: {
             usuario: {
-              select: { id: true, nombre: true, apellidos: true },
+              select: { id: true, nombre: true, apellidos: true, email: true },
             },
           },
         },
@@ -525,11 +525,24 @@ export class GestorVentanasAtencion {
         usuario: { activo: true },
       },
       include: {
-        cursos: true,
-        horarios: {
-          where: {
-            periodoId: ventana.periodoId,
-            estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] }
+        cursos: {
+          where: { activo: true, periodoId: ventana.periodoId },
+          include: {
+            planEstudioCurso: {
+              include: {
+                curso: true
+              }
+            },
+            cursoDocenteGrupos: {
+              include: {
+                horarios: {
+                  where: {
+                    periodoId: ventana.periodoId,
+                    estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -539,7 +552,18 @@ export class GestorVentanasAtencion {
     // Filtrar docentes que tengan horas pendientes
     const docentes = docentesQuery.filter((docente) => {
       const horasAsignadas = docente.cursos.reduce((sum, c) => sum + c.horasAsignadas, 0);
-      const horasProgramadas = docente.horarios.reduce((sum, h) => sum + calcularHorasEntre(h.horaInicio || '', h.horaFin || ''), 0);
+      const horasProgramadas = docente.cursos.reduce((sum, c: any) => {
+        const horariosDeCurso = (c.cursoDocenteGrupos ?? []).flatMap((cdg: any) => 
+          (cdg.horarios ?? []).map((h: any) => ({
+            ...h,
+            grupo: cdg.grupo,
+            docente,
+            curso: c.planEstudioCurso?.curso
+          }))
+        );
+        const horasProgramadasCurso = horariosDeCurso.reduce((sumH: number, h: any) => sumH + calcularHorasEntre(h.horaInicio || '', h.horaFin || ''), 0);
+        return sum + horasProgramadasCurso;
+      }, 0);
       return horasAsignadas > horasProgramadas;
     });
 

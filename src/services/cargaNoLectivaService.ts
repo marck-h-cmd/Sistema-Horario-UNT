@@ -31,19 +31,33 @@ export class CargaNoLectivaService {
     // 2. Calcular horas lectivas (desde Horarios del periodo)
     const horarios = await prisma.horario.findMany({
       where: {
-        docenteId,
+        cursoDocenteGrupo: {
+          cursoDocente: { docenteId }
+        },
         periodoId,
         estado: { not: 'CANCELADO' },
       },
-      include: { curso: true }
+      include: {
+        cursoDocenteGrupo: {
+          include: {
+            cursoDocente: {
+              include: {
+                planEstudioCurso: true
+              }
+            }
+          }
+        }
+      }
     });
     
     let horasLectivas = 0;
     for (const h of horarios) {
+      const plan = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
+      if (!plan) continue;
       switch (h.tipoComponente) {
-        case 'TEORIA': horasLectivas += h.curso.horasTeoria; break;
-        case 'PRACTICA': horasLectivas += h.curso.horasPractica; break;
-        case 'LABORATORIO': horasLectivas += h.curso.horasLaboratorio; break;
+        case 'TEORIA': horasLectivas += plan.horasTeoria; break;
+        case 'PRACTICA': horasLectivas += plan.horasPractica; break;
+        case 'LABORATORIO': horasLectivas += plan.horasLaboratorio; break;
       }
     }
 
@@ -112,16 +126,34 @@ export class CargaNoLectivaService {
     // 1. Calcular horas disponibles
     const horasDedicacion = this.obtenerHorasDedicacion(docente.dedicacion);
     const horarios = await prisma.horario.findMany({
-      where: { docenteId, periodoId, estado: { not: 'CANCELADO' } },
-      include: { curso: true }
+      where: {
+        cursoDocenteGrupo: {
+          cursoDocente: { docenteId }
+        },
+        periodoId,
+        estado: { not: 'CANCELADO' }
+      },
+      include: {
+        cursoDocenteGrupo: {
+          include: {
+            cursoDocente: {
+              include: {
+                planEstudioCurso: true
+              }
+            }
+          }
+        }
+      }
     });
     
     let horasLectivas = 0;
     for (const h of horarios) {
+      const plan = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
+      if (!plan) continue;
       switch (h.tipoComponente) {
-        case 'TEORIA': horasLectivas += h.curso.horasTeoria; break;
-        case 'PRACTICA': horasLectivas += h.curso.horasPractica; break;
-        case 'LABORATORIO': horasLectivas += h.curso.horasLaboratorio; break;
+        case 'TEORIA': horasLectivas += plan.horasTeoria; break;
+        case 'PRACTICA': horasLectivas += plan.horasPractica; break;
+        case 'LABORATORIO': horasLectivas += plan.horasLaboratorio; break;
       }
     }
     const horasNoLectivasDisponibles = Math.max(0, horasDedicacion - horasLectivas);
