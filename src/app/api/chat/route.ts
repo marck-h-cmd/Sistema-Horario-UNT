@@ -253,31 +253,9 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
       }
     });
 
-    console.log('[DEBUG] LLM Result:', {
-      text: result.text,
-      finishReason: result.finishReason,
-      steps: result.steps.map(s => ({
-        text: s.text,
-        toolCalls: s.toolCalls,
-        finishReason: s.finishReason
-      }))
-    });
+    const finalText = result.text || '';
 
-    let finalText = result.text ?? '';
-    if (!finalText.trim()) {
-      for (let i = result.steps.length - 1; i >= 0; i--) {
-        if (result.steps[i]?.text?.trim()) {
-          finalText = result.steps[i].text;
-          break;
-        }
-      }
-    }
-
-    if (!finalText.trim()) {
-      finalText = 'Lo siento, no pude generar una respuesta. Por favor intenta de nuevo con otra pregunta.';
-    }
-
-    // 4. Guardar la respuesta del chatbot en la base de datos
+    // Guardar la respuesta del chatbot en la base de datos
     const assistantMessage = await prisma.chatMensaje.create({
       data: {
         sesionId: session.id,
