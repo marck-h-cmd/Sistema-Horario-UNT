@@ -1,4 +1,4 @@
-# Sistema de Gestión de Horarios – UNT
+# Sistema de Gestión de Horarios – UNT - v3
 
 Aplicación full-stack construida con Next.js (App Router) para gestionar la planificación, asignación y publicación de horarios académicos, incluyendo notificaciones, reportes y monitoreo en tiempo real.
 
