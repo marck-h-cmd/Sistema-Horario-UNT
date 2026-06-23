@@ -425,6 +425,16 @@ export default function HorariosPage() {
   };
 
   const handleEditOpen = (h: HorarioCell) => {
+    const isBorrador = h.estado === 'BORRADOR';
+    const canEdit = h.estado === 'PUBLICADO'
+      ? user?.rol === 'SUPER_ADMIN'
+      : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
+
+    if (!canEdit) {
+      toast.error('No tiene permisos para modificar este horario');
+      return;
+    }
+
     setEditingId(h.id);
     setForm({
       cursoId: h.curso?.id || h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.cursoId || '',
@@ -439,6 +449,16 @@ export default function HorariosPage() {
   };
 
   const handleDelete = async (h: HorarioCell) => {
+    const isBorrador = h.estado === 'BORRADOR';
+    const canDelete = h.estado === 'PUBLICADO'
+      ? user?.rol === 'SUPER_ADMIN'
+      : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
+
+    if (!canDelete) {
+      toast.error('No tiene permisos para eliminar este horario');
+      return;
+    }
+
     if (!confirm('¿Está seguro de eliminar este horario?')) return;
     try {
       await apiDelete(`/api/horarios/${h.id}`);
@@ -1143,6 +1163,9 @@ export default function HorariosPage() {
                                         const col = getColorForCurso(h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo);
                                         const esLab = h.ambiente?.codigo?.toUpperCase().includes('LAB') || h.ambiente?.tipo === 'LABORATORIO';
                                         const isBorrador = h.estado === 'BORRADOR';
+                                        const canEditOrDelete = h.estado === 'PUBLICADO'
+                                          ? user?.rol === 'SUPER_ADMIN'
+                                          : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
 
                                         const laneCount = lanes.length;
                                         const isCompact = laneCount > 1;
@@ -1174,7 +1197,7 @@ export default function HorariosPage() {
                                                       {esLab ? 'LAB' : 'TEO'}
                                                     </span>
                                                     
-                                                    {(isBorrador || isAdmin) && (
+                                                    {canEditOrDelete && (
                                                       <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
                                                         {isBorrador && (
                                                           <button
@@ -1249,7 +1272,7 @@ export default function HorariosPage() {
                                                       {h.horaInicio} - {h.horaFin}
                                                     </span>
                                                     
-                                                    {(isBorrador || isAdmin) && (
+                                                    {canEditOrDelete && (
                                                       <div className="flex items-center gap-0.5 bg-white/70 p-0.5 rounded shadow-sm opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
                                                         {isBorrador && (
                                                           <button

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const periodoId = searchParams.get('periodoId');
-    const cursoId = searchParams.get('cursoId');
+    const cursoId = searchParams.get('cursoId') ?? searchParams.get('id');
     const todos =
       searchParams.get('todos') === 'true' ||
       cursoId === 'todos' ||

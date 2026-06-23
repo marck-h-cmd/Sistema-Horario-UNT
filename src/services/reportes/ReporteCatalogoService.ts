@@ -188,7 +188,7 @@ export class ReporteCatalogoService {
     if (registroId) where.id = registroId;
     if (createdAt) where.createdAt = createdAt;
     if (ciclo && ciclo > 0) where.ciclo = ciclo;
-    const cursos = await prisma.planEstudioCurso.findMany({
+    let cursos = await prisma.planEstudioCurso.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
       include: { 
         curso: true,
@@ -196,6 +196,25 @@ export class ReporteCatalogoService {
       },
       orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
     }) as any[];
+
+    // Si el frontend pasó el id del `Curso` en lugar del id de `PlanEstudioCurso`,
+    // intentamos buscar por `cursoId` para evitar "Curso no encontrado".
+    if ((cursos.length === 0 || !cursos) && registroId) {
+      const whereByCurso: Record<string, unknown> = {};
+      if (createdAt) whereByCurso.createdAt = createdAt;
+      if (ciclo && ciclo > 0) whereByCurso.ciclo = ciclo;
+      // buscar planes donde cursoId = registroId
+      whereByCurso['cursoId'] = registroId;
+      cursos = await prisma.planEstudioCurso.findMany({
+        where: Object.keys(whereByCurso).length > 0 ? whereByCurso : undefined,
+        include: {
+          curso: true,
+          _count: { select: { cursosDocentes: true } }
+        },
+        orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
+      }) as any[];
+    }
+
     this.validarEncontrado(cursos, registroId, 'Curso');
 
     const activos = cursos.filter((c) => c.curso.activo).length;

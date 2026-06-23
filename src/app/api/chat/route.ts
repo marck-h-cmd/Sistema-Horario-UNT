@@ -120,6 +120,20 @@ export async function POST(req: Request) {
       content: m.contenido
     }));
 
+    // Si no hay ninguna API key configurada para proveedores LLM, devolver mensaje amigable
+    const aiKey = process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
+    if (!aiKey) {
+      const assistantMessage = await prisma.chatMensaje.create({
+        data: {
+          sesionId: session.id,
+          role: 'assistant',
+          contenido: '⚠️ El servicio de IA no está configurado en el servidor. Contacta al administrador para añadir la clave de API.'
+        }
+      });
+      await prisma.chatSesion.update({ where: { id: session.id }, data: { updatedAt: new Date() } });
+      return Response.json({ text: assistantMessage.contenido, sessionId: session.id, createdAt: assistantMessage.createdAt });
+    }
+
     const result = await generateText({
       model: groq('llama-3.3-70b-versatile'),
       stopWhen: stepCountIs(3),
@@ -279,12 +293,30 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
   } catch (error: any) {
     console.error('[Chat API] Error:', error.stack || error.message);
 
-    if (error.message?.includes('quota') || error.message?.includes('rate') || error.message?.includes('429')) {
+    const msg = (error && error.message) ? String(error.message) : '';
+
+    if (msg.includes('Invalid API Key') || msg.includes('invalid_api_key') || msg.includes('401')) {
+      try {
+        const assistantMessage = await prisma.chatMensaje.create({
+          data: {
+            sesionId: session?.id ?? 'unknown',
+            role: 'assistant',
+            contenido: '⚠️ Error de configuración: la clave de API del servicio de IA es inválida. Contacta al administrador.'
+          }
+        });
+        return Response.json({ text: assistantMessage.contenido, sessionId: session?.id, createdAt: assistantMessage.createdAt }, { status: 200 });
+      } catch (e) {
+        console.error('[Chat API] Error saving invalid-key message:', e);
+        return Response.json({ text: '⚠️ El servicio de IA no está disponible. Contacta al administrador.' }, { status: 200 });
+      }
+    }
+
+    if (msg.includes('quota') || msg.includes('rate') || msg.includes('429')) {
       return Response.json({
         text: '⏳ El servicio de IA está temporalmente limitado por cuota. Por favor espera unos segundos y vuelve a intentarlo.'
       }, { status: 200 });
     }
 
-    return Response.json({ text: `Error: ${error.message}` }, { status: 500 });
+    return Response.json({ text: `Error: ${msg || 'Error interno del servidor'}` }, { status: 500 });
   }
 }

@@ -109,6 +109,14 @@ export default function PlanEstudiosPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CursoRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planNombre, setPlanNombre] = useState('');
+  const [planAnio, setPlanAnio] = useState<number>(new Date().getFullYear());
+  const [allCursos, setAllCursos] = useState<CursoRow[]>([]);
+  const [planCursos, setPlanCursos] = useState<Array<CursoRow & { selected?: boolean }>>([]);
+  const [creatingCurso, setCreatingCurso] = useState(false);
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const [nuevoCursoForm, setNuevoCursoForm] = useState({ codigo: '', nombre: '', ciclo: 1, departamentoId: '' as number | '', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, tipoCurso: 'OB' });
   const [form, setForm] = useState({
     codigo: '',
     nombre: '',
@@ -227,6 +235,103 @@ export default function PlanEstudiosPage() {
     }
   };
 
+  // --- Plan modal helpers ---
+  const loadAllCursos = async () => {
+    try {
+      const res = await apiGet<CursoRow[]>('/api/cursos', { limit: 10000, page: 1 });
+      setAllCursos(res.data ?? []);
+    } catch (e) {
+      console.error('Error cargando cursos:', e);
+    }
+  };
+
+  const toggleCursoSeleccion = (curso: CursoRow, checked: boolean) => {
+    if (checked) {
+      setPlanCursos((prev) => [...prev, { ...curso, selected: true }]);
+    } else {
+      setPlanCursos((prev) => prev.filter((p) => p.id !== curso.id));
+    }
+  };
+
+  const updateHoras = (id: string, field: 'horasTeoria' | 'horasPractica' | 'horasLaboratorio' | 'creditos', value: number) => {
+    setPlanCursos((prev) => prev.map((p) => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const removeCursoFromPlan = (id: string) => {
+    setPlanCursos((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleCreateCursoFromModal = async () => {
+    setCreatingCurso(true);
+    try {
+      const payload = {
+        codigo: nuevoCursoForm.codigo,
+        nombre: nuevoCursoForm.nombre,
+        ciclo: Number(nuevoCursoForm.ciclo),
+        tipoCurso: nuevoCursoForm.tipoCurso,
+        creditos: Number(nuevoCursoForm.creditos),
+        horasTeoria: Number(nuevoCursoForm.horasTeoria),
+        horasPractica: Number(nuevoCursoForm.horasPractica),
+        horasLaboratorio: Number(nuevoCursoForm.horasLaboratorio),
+        departamentoId: nuevoCursoForm.departamentoId || undefined,
+      };
+      const res = await apiPost('/api/cursos', payload);
+      if (res?.data) {
+        const created = res.data as CursoRow;
+        setAllCursos((prev) => [created, ...prev]);
+        // auto seleccionar
+        toggleCursoSeleccion(created, true);
+        toast.success('Curso creado y añadido al plan');
+        setNuevoCursoForm({ codigo: '', nombre: '', ciclo: 1, departamentoId: '' as number | '', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, tipoCurso: 'OB' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error creando curso');
+    } finally {
+      setCreatingCurso(false);
+    }
+  };
+
+  const confirmAndCreateCurso = async () => {
+    const ok = await confirm({
+      title: 'Confirmar creación',
+      message: `¿Crear el curso "${nuevoCursoForm.codigo} - ${nuevoCursoForm.nombre}"?`,
+      confirmLabel: 'Crear',
+    });
+    if (!ok) return;
+    await handleCreateCursoFromModal();
+    setShowInlineCreate(false);
+  };
+
+  const handleCreatePlan = async () => {
+    if (!planNombre) {
+      toast.error('Ingrese un nombre para el plan');
+      return;
+    }
+    if (planCursos.length === 0) {
+      toast.error('Seleccione al menos un curso para el plan');
+      return;
+    }
+    try {
+      const payload = {
+        nombre: planNombre,
+        anio: Number(planAnio),
+        cursos: planCursos.map((c) => ({ cursoId: c.id, creditos: c.creditos, horasTeoria: c.horasTeoria, horasPractica: c.horasPractica, horasLaboratorio: c.horasLaboratorio })),
+      };
+      const res = await apiPost('/api/planes-estudio', payload);
+      if (res) {
+        toast.success('Plan de estudio creado');
+        setPlanModalOpen(false);
+        // refrescar lista de planes
+        const planesRes = await apiGet<PlanEstudioRow[]>('/api/planes-estudio');
+        if (planesRes?.data) setPlanesEstudio(planesRes.data);
+      }
+    } catch (e) {
+      console.error('Error creando plan:', e);
+      toast.error('Error creando plan de estudio');
+    }
+  };
+
   const columns: Column<CursoRow>[] = [
     {
       header: 'Código',
@@ -318,6 +423,10 @@ export default function PlanEstudiosPage() {
               <FileDown className="h-4 w-4" />
               Exportar PDF
             </Button>
+              <Button variant="secondary" onClick={() => setPlanModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Crear Plan de Estudio
+              </Button>
             <Button onClick={openCreate} className="gap-2">
               <Plus className="h-4 w-4" />
               Nuevo Curso
@@ -558,6 +667,103 @@ export default function PlanEstudiosPage() {
             onSubmit={handleSave}
             saving={saving}
             submitLabel={editing ? 'Guardar Cambios' : 'Crear Curso'}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={planModalOpen} onOpenChange={(v) => { setPlanModalOpen(v); if (v) loadAllCursos(); }}>
+        <DialogContent className="lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Crear Plan de Estudio</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <Label>Nombre del Plan</Label>
+                <Input value={planNombre} onChange={(e) => setPlanNombre(e.target.value)} placeholder="Ej. Ingeniería - 2026" />
+              </div>
+              <div>
+                <Label>Año</Label>
+                <Input type="number" value={planAnio} onChange={(e) => setPlanAnio(Number(e.target.value))} />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button variant="outline" onClick={() => { setPlanNombre(''); setPlanAnio(new Date().getFullYear()); setPlanCursos([]); }}>Limpiar</Button>
+                <Button variant="default" onClick={() => setShowInlineCreate(true)}>Crear curso</Button>
+              </div>
+            </div>
+
+            <div className="border rounded p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Cursos disponibles</h4>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setPlanCursos([])}>Quitar seleccionados</Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto max-h-64">
+                <table className="w-full text-sm table-auto">
+                  <thead>
+                    <tr className="text-left">
+                      <th className="px-2 py-1">Sel</th>
+                      <th className="px-2 py-1">Código</th>
+                      <th className="px-2 py-1">Nombre</th>
+                      <th className="px-2 py-1">Ciclo</th>
+                      <th className="px-2 py-1">Horas T</th>
+                      <th className="px-2 py-1">Horas P</th>
+                      <th className="px-2 py-1">Horas L</th>
+                      <th className="px-2 py-1">Créditos</th>
+                      <th className="px-2 py-1">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {showInlineCreate && (
+                      <tr className="bg-slate-50 dark:bg-slate-800">
+                        <td className="px-2 py-1">&nbsp;</td>
+                        <td className="px-2 py-1"><input className="w-full border rounded px-2 py-1" placeholder="Código" value={nuevoCursoForm.codigo} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, codigo: e.target.value })} /></td>
+                        <td className="px-2 py-1"><input className="w-full border rounded px-2 py-1" placeholder="Nombre" value={nuevoCursoForm.nombre} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, nombre: e.target.value })} /></td>
+                        <td className="px-2 py-1"><input className="w-16 border rounded px-2 py-1" type="number" value={nuevoCursoForm.ciclo} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, ciclo: Number(e.target.value) })} /></td>
+                        <td className="px-2 py-1"><input className="w-16 border rounded px-2 py-1" type="number" value={nuevoCursoForm.horasTeoria} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, horasTeoria: Number(e.target.value) })} /></td>
+                        <td className="px-2 py-1"><input className="w-16 border rounded px-2 py-1" type="number" value={nuevoCursoForm.horasPractica} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, horasPractica: Number(e.target.value) })} /></td>
+                        <td className="px-2 py-1"><input className="w-16 border rounded px-2 py-1" type="number" value={nuevoCursoForm.horasLaboratorio} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, horasLaboratorio: Number(e.target.value) })} /></td>
+                        <td className="px-2 py-1"><input className="w-16 border rounded px-2 py-1" type="number" value={nuevoCursoForm.creditos} onChange={(e) => setNuevoCursoForm({ ...nuevoCursoForm, creditos: Number(e.target.value) })} /></td>
+                        <td className="px-2 py-1 flex gap-2">
+                          <Button size="sm" variant="default" onClick={confirmAndCreateCurso}>Confirmar</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setShowInlineCreate(false); setNuevoCursoForm({ codigo: '', nombre: '', ciclo: 1, departamentoId: '' as number | '', creditos: 3, horasTeoria: 2, horasPractica: 2, horasLaboratorio: 0, tipoCurso: 'OB' }); }}>Cancelar</Button>
+                        </td>
+                      </tr>
+                    )}
+                    {allCursos.map((c) => {
+                      const selected = planCursos.find(pc => pc.id === c.id);
+                      return (
+                        <tr key={c.id} className="border-t">
+                          <td className="px-2 py-1">
+                            <input type="checkbox" checked={!!selected} onChange={(e) => toggleCursoSeleccion(c, e.target.checked)} />
+                          </td>
+                          <td className="px-2 py-1">{c.codigo}</td>
+                          <td className="px-2 py-1">{c.nombre}</td>
+                          <td className="px-2 py-1">{c.ciclo}</td>
+                          <td className="px-2 py-1">{selected ? <input className="w-16" type="number" value={selected.horasTeoria} onChange={(e) => updateHoras(selected.id, 'horasTeoria', Number(e.target.value))} /> : c.horasTeoria}</td>
+                          <td className="px-2 py-1">{selected ? <input className="w-16" type="number" value={selected.horasPractica} onChange={(e) => updateHoras(selected.id, 'horasPractica', Number(e.target.value))} /> : c.horasPractica}</td>
+                          <td className="px-2 py-1">{selected ? <input className="w-16" type="number" value={selected.horasLaboratorio} onChange={(e) => updateHoras(selected.id, 'horasLaboratorio', Number(e.target.value))} /> : c.horasLaboratorio}</td>
+                          <td className="px-2 py-1">{selected ? <input className="w-16" type="number" value={selected.creditos} onChange={(e) => updateHoras(selected.id, 'creditos', Number(e.target.value))} /> : c.creditos}</td>
+                          <td className="px-2 py-1"><Button size="sm" variant="ghost" onClick={() => removeCursoFromPlan(c.id)}>Quitar</Button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Inline create handled inside the courses table */}
+          </div>
+
+          <FormModalFooter
+            onCancel={() => setPlanModalOpen(false)}
+            onSubmit={handleCreatePlan}
+            saving={false}
+            submitLabel="Crear Plan"
           />
         </DialogContent>
       </Dialog>

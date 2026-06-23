@@ -52,11 +52,15 @@ export class ReporteCursoService {
       throw new Error('Curso no encontrado en el plan de estudios');
     }
 
-    const horariosDelCurso = planCurso.cursosDocentes.flatMap(cd => cd.cursoDocenteGrupos.flatMap(cdg => cdg.horarios.map(h => ({
-      ...h,
-      grupo: h.cursoDocenteGrupo.grupo,
-      docente: h.cursoDocenteGrupo.cursoDocente.docente
-    }))));
+    const horariosDelCurso = (planCurso.cursosDocentes ?? []).flatMap((cd) =>
+      (cd.cursoDocenteGrupos ?? []).flatMap((cdg) =>
+        (cdg.horarios ?? []).map((h) => ({
+          ...h,
+          grupo: h.cursoDocenteGrupo?.grupo ?? null,
+          docente: h.cursoDocenteGrupo?.cursoDocente?.docente ?? null,
+        }))
+      )
+    );
 
     const curso = {
       ...planCurso.curso,
@@ -99,14 +103,18 @@ export class ReporteCursoService {
       orderBy: [{ ciclo: 'asc' }, { curso: { codigo: 'asc' } }],
     });
 
-    const cursos = planesCursos.map(planCurso => ({
+    const cursos = (planesCursos ?? []).map((planCurso) => ({
       ...planCurso.curso,
       ciclo: planCurso.ciclo,
-      horarios: planCurso.cursosDocentes.flatMap(cd => cd.cursoDocenteGrupos.flatMap(cdg => cdg.horarios.map(h => ({
-        ...h,
-        grupo: h.cursoDocenteGrupo.grupo,
-        docente: h.cursoDocenteGrupo.cursoDocente.docente
-      }))))
+      horarios: (planCurso.cursosDocentes ?? []).flatMap((cd) =>
+        (cd.cursoDocenteGrupos ?? []).flatMap((cdg) =>
+          (cdg.horarios ?? []).map((h) => ({
+            ...h,
+            grupo: h.cursoDocenteGrupo?.grupo ?? null,
+            docente: h.cursoDocenteGrupo?.cursoDocente?.docente ?? null,
+          }))
+        )
+      ),
     })) as any[];
 
     const conHorario = cursos.filter((c) => c.horarios.length > 0);

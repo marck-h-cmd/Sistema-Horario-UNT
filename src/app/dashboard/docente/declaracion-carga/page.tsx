@@ -435,9 +435,8 @@ export default function DeclaracionCargaPage() {
                   <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Escuela Prof.</th>
                   <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Año o Ciclo</th>
                   <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Nro Tot. Alumnos</th>
-                  <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsTeo</th>
-                  <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsPra</th>
-                  <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">HrsLab</th>
+                  <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Hrs Teo + Pra</th>
+                  <th className="p-3 border-r border-blue-500 dark:border-blue-800 text-center">Hrs Lab</th>
                   <th className="p-3 text-center">Total Hrs.</th>
                 </tr>
               </thead>
@@ -453,8 +452,7 @@ export default function DeclaracionCargaPage() {
                       <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Ingeniería de Sistemas</td>
                       <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">{c.ciclo}</td>
                       <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center">Aprox. {c.alumnos}</td>
-                      <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-sky-50/50 dark:bg-sky-900/20">{c.teo}</td>
-                      <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-purple-50/50 dark:bg-purple-900/20">{c.pra}</td>
+                      <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-sky-50/50 dark:bg-sky-900/20">{c.teo + c.pra}</td>
                       <td className="p-3 border-r border-slate-200 dark:border-slate-700 text-center bg-indigo-50/50 dark:bg-indigo-900/20">{c.lab}</td>
                       <td className="p-3 text-center font-bold text-blue-600 dark:text-blue-400">{totalHrs}</td>
                     </tr>
@@ -462,11 +460,11 @@ export default function DeclaracionCargaPage() {
                 })}
                 {lineasCursos.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="p-6 text-center text-slate-500">No tiene carga lectiva asignada.</td>
+                    <td colSpan={10} className="p-6 text-center text-slate-500">No tiene carga lectiva asignada.</td>
                   </tr>
                 )}
                 <tr className="bg-slate-50 dark:bg-slate-800 font-bold border-t-2 border-slate-300 dark:border-slate-600">
-                  <td colSpan={10} className="p-3 text-right text-slate-700 dark:text-slate-300">TOTAL HORAS LECTIVAS:</td>
+                  <td colSpan={9} className="p-3 text-right text-slate-700 dark:text-slate-300">TOTAL HORAS LECTIVAS:</td>
                   <td className="p-3 text-center text-blue-700 dark:text-blue-400">{dataLectiva!.totalHorasLectivas}</td>
                 </tr>
               </tbody>
