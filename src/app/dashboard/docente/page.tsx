@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { CargaHorariaModal } from '@/components/docentes/CargaHorariaModal';
 import { BarChartCard } from '@/components/charts/BarChartCard';
 import { PieChartCard } from '@/components/charts/PieChartCard';
 import { Badge } from '@/components/ui/Badge';
@@ -136,6 +138,7 @@ export default function DocenteDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [docenteId, setDocenteId] = useState<string | undefined>(undefined);
+  const [showCargaHorariaModal, setShowCargaHorariaModal] = useState(false);
   
   const [showJustifyModal, setShowJustifyModal] = useState(false);
   const [justifying, setJustifying] = useState(false);
@@ -469,12 +472,21 @@ export default function DocenteDashboardPage() {
       <PageHeader
         title={`Bienvenido, ${user?.nombre} ${user?.apellidos}`}
         actions={
-          <Link
-            href="/dashboard/docente/cursos"
-            className="inline-flex items-center gap-2 rounded-lg bg-unt-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-unt-blue/90"
-          >
-            Mis cursos y grupos
-          </Link>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowCargaHorariaModal(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-750"
+            >
+              <FileText className="h-4 w-4 text-slate-500" />
+              Formatos de Carga Horaria
+            </Button>
+            <Link
+              href="/dashboard/docente/cursos"
+              className="inline-flex items-center gap-2 rounded-lg bg-unt-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-unt-blue/90"
+            >
+              Mis cursos y grupos
+            </Link>
+          </div>
         }
       />
 
@@ -988,6 +1000,12 @@ export default function DocenteDashboardPage() {
           </div>
         </div>
       )}
+
+      <CargaHorariaModal
+        docenteId={docenteId || null}
+        isOpen={showCargaHorariaModal}
+        onClose={() => setShowCargaHorariaModal(false)}
+      />
     </div>
   );
 }

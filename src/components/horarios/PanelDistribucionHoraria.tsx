@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Loader2, Plus, Trash2, Save, Calendar, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiGet, apiPost, ApiClientError, downloadFile } from '@/lib/api-client';
+import { cn } from '@/lib/cn';
 
 const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const DIAS_LABEL: Record<string, string> = {
@@ -45,6 +46,12 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
   const [horaFin, setHoraFin] = useState('08:00');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Estados para modalidad y arrastre
+  const [modalidad, setModalidad] = useState<'formulario' | 'arrastre'>('arrastre');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ dia: string; horaIndex: number } | null>(null);
+  const [dragEnd, setDragEnd] = useState<{ dia: string; horaIndex: number } | null>(null);
 
   useEffect(() => {
     cargarDistribucion();
@@ -276,6 +283,119 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
     if (asignadas >= item.horasSemanales) setSelectedItemId('');
   }, [selectedItemId, declaracionItems, horasAsignadasPorActividad]);
 
+  // Validar arrastre en tiempo real
+  const checkIsDragValid = (dia: string, startIdx: number, endIdx: number) => {
+    if (!selectedItemId) return false;
+    const itemDeclaracion = declaracionItems.find(i => i.id === selectedItemId);
+    if (!itemDeclaracion) return false;
+
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+    const duracion = maxIdx - minIdx + 1;
+
+    // Verificar horas restantes
+    const asignadas = horasAsignadasPorActividad[selectedItemId] || 0;
+    if (asignadas + duracion > itemDeclaracion.horasSemanales) {
+      return false;
+    }
+
+    // Verificar cruces con lectivas y no lectivas
+    for (let idx = minIdx; idx <= maxIdx; idx++) {
+      const horaStr = HORAS[idx];
+      const hour = hourStrToInt(horaStr);
+      
+      const colLectiva = horariosLectivos.some(
+        h =>
+          h.diaSemana === dia &&
+          typeof h.horaInicio === 'string' &&
+          typeof h.horaFin === 'string' &&
+          hourStrToInt(h.horaInicio) <= hour &&
+          hourStrToInt(h.horaFin) > hour
+      );
+      
+      const colNoLectiva = distribuciones.some(
+        d =>
+          d.diaSemana === dia &&
+          typeof d.horaInicio === 'string' &&
+          typeof d.horaFin === 'string' &&
+          hourStrToInt(d.horaInicio) <= hour &&
+          hourStrToInt(d.horaFin) > hour
+      );
+
+      if (colLectiva || colNoLectiva) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleMouseDown = (dia: string, horaIndex: number) => {
+    if (!selectedItemId) {
+      setError('Seleccione una actividad no lectiva en el menú superior antes de arrastrar en el horario.');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setIsDragging(true);
+    setDragStart({ dia, horaIndex });
+    setDragEnd({ dia, horaIndex });
+  };
+
+  const handleMouseEnterCell = (dia: string, horaIndex: number) => {
+    if (!isDragging || !dragStart) return;
+    setDragEnd({ dia: dragStart.dia, horaIndex });
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        if (dragStart && dragEnd) {
+          const startIdx = Math.min(dragStart.horaIndex, dragEnd.horaIndex);
+          const endIdx = Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+          
+          if (checkIsDragValid(dragStart.dia, startIdx, endIdx)) {
+            const hStart = HORAS[startIdx];
+            const hEnd = HORAS[endIdx + 1];
+            const itemDeclaracion = declaracionItems.find(i => i.id === selectedItemId);
+            
+            if (itemDeclaracion) {
+              const nuevo = {
+                id: `temp-${Date.now()}`,
+                declaracionItemId: selectedItemId,
+                diaSemana: dragStart.dia,
+                horaInicio: hStart,
+                horaFin: hEnd,
+                tipoActividad: itemDeclaracion.tipoActividad
+              };
+              setDistribuciones(prev => [...prev, nuevo]);
+            }
+          } else {
+            if (selectedItemId) {
+              const itemDeclaracion = declaracionItems.find(i => i.id === selectedItemId);
+              const duracion = endIdx - startIdx + 1;
+              const asignadas = horasAsignadasPorActividad[selectedItemId] || 0;
+              
+              if (itemDeclaracion && asignadas + duracion > itemDeclaracion.horasSemanales) {
+                setError(`La selección de ${duracion}h excede las ${itemDeclaracion.horasSemanales - asignadas}h restantes de la actividad.`);
+              } else {
+                setError('No se pudo programar el bloque por cruce de horarios.');
+              }
+            }
+          }
+        }
+        setIsDragging(false);
+        setDragStart(null);
+        setDragEnd(null);
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, dragStart, dragEnd, selectedItemId, declaracionItems, distribuciones, horasAsignadasPorActividad]);
+
   const handleExportarPDF = async () => {
     setExportando(true);
     setError('');
@@ -315,6 +435,68 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
           </div>
         )}
         
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Método de Registro:</span>
+            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setModalidad('arrastre')}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                  modalidad === 'arrastre'
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Arrastre en Horario
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalidad('formulario')}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                  modalidad === 'formulario'
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-semibold"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Formulario Manual
+              </button>
+            </div>
+          </div>
+          {selectedItemId && (
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5 rounded-md">
+              {(() => {
+                const item = declaracionItems.find(i => i.id === selectedItemId);
+                if (!item) return null;
+                const asignadas = horasAsignadasPorActividad[item.id] || 0;
+                const restantes = item.horasSemanales - asignadas;
+                
+                if (isDragging && dragStart && dragEnd) {
+                  const sIdx = Math.min(dragStart.horaIndex, dragEnd.horaIndex);
+                  const eIdx = Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+                  const dragged = eIdx - sIdx + 1;
+                  const restTemp = restantes - dragged;
+                  
+                  return (
+                    <span className="flex items-center gap-1.5 animate-pulse">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                      Arrastrando: {dragged}h ({HORAS[sIdx]} - {HORAS[eIdx + 1]}) | Pendientes: {restTemp >= 0 ? `${restTemp}h` : 'Excedido'}
+                    </span>
+                  );
+                }
+                
+                return (
+                  <span>
+                    Actividad: <strong className="text-blue-950 dark:text-blue-200 font-bold uppercase">{item.tipoActividad}</strong> | Pendientes: {restantes}h
+                  </span>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 mb-6 flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Actividad No Lectiva</label>
@@ -335,39 +517,51 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
               })}
             </select>
           </div>
-          <div className="w-32">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Día</label>
-            <select
-              value={selectedDia}
-              onChange={e => setSelectedDia(e.target.value)}
-              className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-            >
-              {DIAS.map(d => <option key={d} value={d}>{DIAS_LABEL[d]}</option>)}
-            </select>
-          </div>
-          <div className="w-24">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Inicio</label>
-            <select
-              value={horaInicio}
-              onChange={e => setHoraInicio(e.target.value)}
-              className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-            >
-              {HORAS.slice(0, -1).map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
-          <div className="w-24">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Fin</label>
-            <select
-              value={horaFin}
-              onChange={e => setHoraFin(e.target.value)}
-              className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-            >
-              {HORAS.slice(1).map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
-          <Button onClick={handleAgregar} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" /> Añadir
-          </Button>
+          
+          {modalidad === 'arrastre' ? (
+            <div className="flex-[2] min-w-[300px] text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/40 p-2.5 rounded border border-dashed border-slate-300 dark:border-slate-700 flex items-center gap-2">
+              <span className="text-base">👉</span>
+              <span>
+                <strong>Modo Arrastre:</strong> Seleccione una actividad no lectiva a la izquierda, ubique el día y <strong>arrastre de arriba a abajo</strong> sobre los casilleros vacíos del horario.
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="w-32">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Día</label>
+                <select
+                  value={selectedDia}
+                  onChange={e => setSelectedDia(e.target.value)}
+                  className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                >
+                  {DIAS.map(d => <option key={d} value={d}>{DIAS_LABEL[d]}</option>)}
+                </select>
+              </div>
+              <div className="w-24">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Inicio</label>
+                <select
+                  value={horaInicio}
+                  onChange={e => setHoraInicio(e.target.value)}
+                  className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                >
+                  {HORAS.slice(0, -1).map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <div className="w-24">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Fin</label>
+                <select
+                  value={horaFin}
+                  onChange={e => setHoraFin(e.target.value)}
+                  className="w-full rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+                >
+                  {HORAS.slice(1).map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <Button onClick={handleAgregar} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" /> Añadir
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
@@ -401,11 +595,29 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
                     if (cell.skip) return null; // Oculto porque otra celda ocupa este espacio con rowSpan
 
                     if (cell.empty) {
+                      const isSelectedInDrag = isDragging && 
+                        dragStart && 
+                        dragEnd && 
+                        dragStart.dia === dia && 
+                        idx >= Math.min(dragStart.horaIndex, dragEnd.horaIndex) && 
+                        idx <= Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+
+                      const isDragValid = isSelectedInDrag ? checkIsDragValid(dia, dragStart.horaIndex, dragEnd.horaIndex) : true;
+
                       return (
                         <td
                           key={dia}
-                          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                          style={{ height: 60 }}
+                          onMouseDown={() => modalidad === 'arrastre' && handleMouseDown(dia, idx)}
+                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
+                          className={cn(
+                            "border border-slate-200 dark:border-slate-700 transition-all select-none",
+                            isSelectedInDrag 
+                              ? (isDragValid 
+                                  ? "bg-amber-100/60 dark:bg-amber-950/40 border-dashed border-amber-500 border-2" 
+                                  : "bg-red-100/60 dark:bg-red-950/40 border-dashed border-red-500 border-2")
+                              : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          )}
+                          style={{ height: 60, cursor: modalidad === 'arrastre' ? 'cell' : 'default' }}
                         />
                       );
                     }
@@ -415,6 +627,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
                         <td
                           key={dia}
                           rowSpan={cell.rowSpan}
+                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
                           className="border border-slate-200 dark:border-slate-700 bg-blue-50/80 dark:bg-blue-950/35 p-0 align-top"
                           style={{ height: 60 * cell.rowSpan }}
                         >
@@ -434,6 +647,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
                         <td
                           key={dia}
                           rowSpan={cell.rowSpan}
+                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
                           className="border border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/25 p-0 align-top relative group"
                           style={{ height: 60 * cell.rowSpan }}
                         >
