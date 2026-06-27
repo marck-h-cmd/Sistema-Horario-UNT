@@ -157,6 +157,62 @@ export default function CargaAcademicaAdminPage() {
     return { ok: true as const };
   };
 
+  const obtenerDescripcionSencilla = (actId: string, metadata: any) => {
+    const lectivas = dataLectiva?.totalHorasLectivas ?? 0;
+    const restr = obtenerRestriccionHoras(actId, metadata);
+    const maxHoras = restr.max;
+
+    if (esTiempoParcial) {
+      switch (actId) {
+        case 'PREPARACION_Y_EVALUACION':
+          return `Regla para Tiempo Parcial: Requiere al menos 12 horas lectivas y se deben asignar exactamente 4 horas. (Tus horas lectivas actuales: ${lectivas}h).`;
+        case 'CONSEJERIA':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales.';
+        case 'INVESTIGACION':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 3 horas semanales. Requiere contar con un proyecto de investigación VRI registrado.';
+        case 'CAPACITACION':
+          return 'Regla para Tiempo Parcial: No se permiten asignar horas de capacitación en esta modalidad.';
+        case 'ACTIVIDADES_DE_GOBIERNO':
+        case 'ACTIVIDADES_DE_ADMINISTRACION':
+          return 'Regla para Tiempo Parcial: Esta actividad no está disponible para docentes a tiempo parcial.';
+        case 'ASESORIA_DE_TESIS':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales. Es necesario indicar el N° de Resolución o Constancia.';
+        case 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales. Requiere ingresar el código o nombre del proyecto RSU.';
+        case 'COMITES_TECNICOS_Y_COMISIONES':
+          return 'Regla para Tiempo Parcial: No se permiten asignar horas para comisiones en esta modalidad.';
+        default:
+          return 'No disponible para tu modalidad actual.';
+      }
+    }
+
+    if (esTiempoCompleto) {
+      switch (actId) {
+        case 'PREPARACION_Y_EVALUACION':
+          return `Regla para Tiempo Completo / DE: Se permite asignar hasta el 50% de tus horas de clases asignadas (Máximo actual permitido: ${maxHoras}h, basado en tus ${lectivas}h de clases).`;
+        case 'CONSEJERIA':
+          return `Regla para Tiempo Completo / DE: Máximo 2 horas semanales (puede extenderse hasta 3 horas si marcas abajo la opción de acreditación).`;
+        case 'INVESTIGACION':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 6 horas semanales. Requiere contar con un proyecto de investigación VRI registrado.';
+        case 'CAPACITACION':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 2 horas semanales para capacitación o formación.';
+        case 'ACTIVIDADES_DE_GOBIERNO':
+        case 'ACTIVIDADES_DE_ADMINISTRACION':
+          return `Regla para Tiempo Completo / DE: El límite de horas se define por tu cargo administrativo activo (Decanos y Postgrado: máx 20h; Directores y Jefes: máx 10h; miembros de Consejo de Facultad: máx 3h; otros cargos: máx 2h). Máximo actual: ${maxHoras}h.`;
+        case 'ASESORIA_DE_TESIS':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 2 horas semanales. Requiere ingresar el N° de Resolución o Constancia.';
+        case 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA':
+          return `Regla para Tiempo Completo / DE: Máximo 2 horas semanales (puede extenderse hasta 3 horas si marcas abajo la opción de acreditación). Requiere indicar el nombre o código del proyecto RSU.`;
+        case 'COMITES_TECNICOS_Y_COMISIONES':
+          return `Regla para Tiempo Completo / DE: Disponible para presidentes de comités o miembros de comisiones. Permite hasta 10 horas si eres Presidente de Calidad/COTECU, o hasta 6 horas para comisiones especiales (selecciona tu caso abajo). Requiere número de Resolución.`;
+        default:
+          return 'No disponible para tu modalidad actual.';
+      }
+    }
+
+    return '';
+  };
+
   // 1. Cargar Períodos
   useEffect(() => {
     async function loadPeriodos() {
@@ -786,7 +842,9 @@ export default function CargaAcademicaAdminPage() {
                         <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                           <div className="flex-1 space-y-1">
                             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">{act.num}. {act.name}</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">{act.desc}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-455 font-medium bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded border border-slate-100 dark:border-slate-800/60 leading-relaxed mt-1 text-justify">
+                              {obtenerDescripcionSencilla(act.id, data.metadata)}
+                            </p>
                           </div>
                           <div className="flex-[1.3] flex gap-4 items-start justify-end">
                             <div className="flex-1 space-y-2">
