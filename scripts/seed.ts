@@ -3,6 +3,38 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function execRaw(sql: string, maxRetries = 5) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await prisma.$executeRawUnsafe(sql);
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      const backoff = 200 * attempt;
+      console.warn(`Retrying raw SQL (attempt ${attempt}) after ${backoff}ms due to error: ${err?.message || err}`);
+      await wait(backoff);
+    }
+  }
+}
+
+async function safe<T>(fn: () => Promise<T>, maxRetries = 5): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      const backoff = 200 * attempt + Math.floor(Math.random() * 200);
+      console.warn(`Safe retry (attempt ${attempt}) after ${backoff}ms: ${err?.message || err}`);
+      await wait(backoff);
+    }
+  }
+}
+
 // ==================== INFORMACIÓN DE HORARIOS VÁLIDOS ====================
 // Formato: codigo_horario \t nombre_curso \t ciclo_romano \t docente \t ambiente \t dia \t inicio \t fin \t grupo \t estado
 const rawSchedulesText = `IS-101	Introducción a la Programación	I	Marcelino Torres Villanueva	Posgrado A-307	LUNES	07:00	09:00	A	CONFIRMADO
@@ -344,35 +376,35 @@ async function main() {
   // ==================== LIMPIEZA COMPLETA ====================
   console.log('🗑️  Limpiando datos anteriores...');
   // Limpiar en orden correcto respetando dependencias de FK (CASCADE lo maneja todo desde las raíces)
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE horarios, validaciones_horarios, incumplimientos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE matriculas CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE curso_docente_grupos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE cursos_docentes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE plan_estudio_cursos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE planes_estudio CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE cursos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE estudiantes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE disponibilidad_docentes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE preferencias_notificaciones CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE atencion_ventanas CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE ventanas_atencion CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE declaraciones_no_lectiva CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE distribuciones_no_lectivas CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE cargos_administrativos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE becas_docentes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE comisiones_servicio CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE docentes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE ambientes CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE periodos_academicos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE grupos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE selecciones_temporales CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE notificaciones CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE chat_sesiones CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE registros_auditoria CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE sesiones CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE usuarios CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE departamentos_academicos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE facultades CASCADE');
+  await execRaw('TRUNCATE TABLE horarios, validaciones_horarios, incumplimientos CASCADE');
+  await execRaw('TRUNCATE TABLE matriculas CASCADE');
+  await execRaw('TRUNCATE TABLE curso_docente_grupos CASCADE');
+  await execRaw('TRUNCATE TABLE cursos_docentes CASCADE');
+  await execRaw('TRUNCATE TABLE plan_estudio_cursos CASCADE');
+  await execRaw('TRUNCATE TABLE planes_estudio CASCADE');
+  await execRaw('TRUNCATE TABLE cursos CASCADE');
+  await execRaw('TRUNCATE TABLE estudiantes CASCADE');
+  await execRaw('TRUNCATE TABLE disponibilidad_docentes CASCADE');
+  await execRaw('TRUNCATE TABLE preferencias_notificaciones CASCADE');
+  await execRaw('TRUNCATE TABLE atencion_ventanas CASCADE');
+  await execRaw('TRUNCATE TABLE ventanas_atencion CASCADE');
+  await execRaw('TRUNCATE TABLE declaraciones_no_lectiva CASCADE');
+  await execRaw('TRUNCATE TABLE distribuciones_no_lectivas CASCADE');
+  await execRaw('TRUNCATE TABLE cargos_administrativos CASCADE');
+  await execRaw('TRUNCATE TABLE becas_docentes CASCADE');
+  await execRaw('TRUNCATE TABLE comisiones_servicio CASCADE');
+  await execRaw('TRUNCATE TABLE docentes CASCADE');
+  await execRaw('TRUNCATE TABLE ambientes CASCADE');
+  await execRaw('TRUNCATE TABLE periodos_academicos CASCADE');
+  await execRaw('TRUNCATE TABLE grupos CASCADE');
+  await execRaw('TRUNCATE TABLE selecciones_temporales CASCADE');
+  await execRaw('TRUNCATE TABLE notificaciones CASCADE');
+  await execRaw('TRUNCATE TABLE chat_sesiones CASCADE');
+  await execRaw('TRUNCATE TABLE registros_auditoria CASCADE');
+  await execRaw('TRUNCATE TABLE sesiones CASCADE');
+  await execRaw('TRUNCATE TABLE usuarios CASCADE');
+  await execRaw('TRUNCATE TABLE departamentos_academicos CASCADE');
+  await execRaw('TRUNCATE TABLE facultades CASCADE');
   console.log('✅ Limpieza completa');
 
   // ==================== PARSEO DE TABLA DE HORARIOS ====================
@@ -407,7 +439,7 @@ async function main() {
   console.log(`📊 Total registros de horario: ${parsedSchedules.length}, mapeados: ${parsedSchedules.filter(s => s.codigoOficial).length}`);
 
   // ==================== PERIODO Y PLAN DE ESTUDIOS ====================
-  const periodo = await prisma.periodoAcademico.create({
+  const periodo = await safe(() => prisma.periodoAcademico.create({
     data: {
       nombre: '2026-I',
       fechaInicio: new Date('2026-04-01'),
@@ -415,22 +447,22 @@ async function main() {
       estado: EstadoPeriodo.ACTIVO,
       activo: true,
     }
-  });
+  }));
   console.log(`✅ Período académico creado: ${periodo.nombre}`);
 
-  const planEstudio = await prisma.planEstudio.create({
+  const planEstudio = await safe(() => prisma.planEstudio.create({
     data: {
       nombre: 'PLAN DE ESTUDIOS DE INGENIERIA DE SISTEMAS 2018',
       anio: 2018,
       activo: true,
     }
-  });
+  }));
   console.log(`✅ Plan de estudios creado: ${planEstudio.nombre}`);
 
   // ==================== GRUPOS ESTÁTICOS ====================
   const gruposEstaticos = [];
   for (const nombre of ['A', 'B', 'C']) {
-    const g = await prisma.grupo.create({ data: { nombre } });
+    const g = await safe(() => prisma.grupo.create({ data: { nombre } }));
     gruposEstaticos.push(g);
   }
   console.log('✅ Grupos estáticos creados: A, B, C');
@@ -438,18 +470,18 @@ async function main() {
   // ==================== USUARIOS ADMINISTRATIVOS ====================
   const passwordHash = await bcrypt.hash('unt123456', 12);
 
-  const adminUser = await prisma.usuario.create({
+  const adminUser = await safe(() => prisma.usuario.create({
     data: { email: 'admin@unitru.edu.pe', password: passwordHash, nombre: 'Administrador', apellidos: 'Sistema', rol: Rol.ADMINISTRADOR, verificado: true }
-  });
-  await prisma.usuario.create({
+  }));
+  await safe(() => prisma.usuario.create({
     data: { email: 'operador@unitru.edu.pe', password: passwordHash, nombre: 'Operador', apellidos: 'Sistema', rol: Rol.OPERADOR, verificado: true }
-  });
-  await prisma.usuario.create({
+  }));
+  await safe(() => prisma.usuario.create({
     data: { email: 'superadmin@unitru.edu.pe', password: passwordHash, nombre: 'Super', apellidos: 'Admin', rol: Rol.SUPER_ADMIN, verificado: true }
-  });
-  await prisma.usuario.create({
+  }));
+  await safe(() => prisma.usuario.create({
     data: { email: 'monitor@unitru.edu.pe', password: passwordHash, nombre: 'Monitor', apellidos: 'Sistema', rol: Rol.MONITOR, verificado: true }
-  });
+  }));
   console.log('✅ Usuarios administrativos creados');
 
   // ==================== FACULTADES ====================
@@ -590,6 +622,7 @@ async function main() {
         departamentoId: getDeptId(cData.departamento),
       }
     });
+    await wait(8);
     cursosOficialMap.set(cData.codigo, { ...curso, planEstudioCursoId: planCur.id, ciclo: cData.ciclo, horasTotal: cData.t + cData.p + cData.l });
   }
   console.log(`✅ ${cursosOficialMap.size} cursos del Plan de Estudios 2018 creados`);
@@ -667,6 +700,7 @@ async function main() {
         data: { cursoDocenteId: cd.id, grupoId: gEstatico.id, capacidad: 40 }
       });
       cdgIndexMap.set(`${val.planEstudioCursoId}_${val.docenteId}_${grupoNombre}`, cdg.id);
+      await wait(25);
     }
     totalAsignaciones++;
   }
@@ -679,6 +713,7 @@ async function main() {
       await prisma.disponibilidadDocente.create({
         data: { docenteId: docente.id, diaSemana: dia, horaInicio: '07:00', horaFin: '21:00', prioridad: 1 }
       });
+      await wait(8);
     }
   }
   console.log('✅ Disponibilidad de docentes creada');
@@ -724,6 +759,7 @@ async function main() {
           fechaConfirmacion: new Date(),
         }
       });
+      await wait(6);
       totalHorariosCreados++;
     } catch (err: any) {
       console.warn(`⚠️  Error al crear horario ${item.codigoHorario} (${item.dia} ${item.inicio}-${item.fin}): ${err.message}`);
