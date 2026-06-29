@@ -186,8 +186,16 @@ export class CargaLectivaService {
       });
 
       let horasLectivasAsignadas = 0;
+      const parseTime = (t: string) => {
+        const parts = t.split(':');
+        return parseInt(parts[0]) + (parseInt(parts[1] || '0') / 60);
+      };
+
       for (const h of horarios) {
-        horasLectivasAsignadas += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+        const horas = h.horaInicio && h.horaFin 
+          ? parseTime(h.horaFin) - parseTime(h.horaInicio)
+          : this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+        horasLectivasAsignadas += horas;
       }
 
       result.push({
@@ -288,9 +296,14 @@ export class CargaLectivaService {
     });
 
     let horasLectivasAsignadas = 0;
+    const componentesVistos = new Set<string>();
     for (const h of horariosExistentes) {
       if (h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso) {
-        horasLectivasAsignadas += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+        const key = `${h.cursoDocenteGrupoId}-${h.tipoComponente}`;
+        if (!componentesVistos.has(key)) {
+          horasLectivasAsignadas += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+          componentesVistos.add(key);
+        }
       }
     }
 
@@ -456,8 +469,13 @@ export class CargaLectivaService {
       });
 
       let totalHorasCursoDocente = 0;
+      const componentesVistos2 = new Set<string>();
       for (const h of todosHorariosCursoDocente) {
-        totalHorasCursoDocente += this.obtenerHorasComponente(planEstudioCurso, h.tipoComponente);
+        const key = `${h.cursoDocenteGrupoId}-${h.tipoComponente}`;
+        if (!componentesVistos2.has(key)) {
+          totalHorasCursoDocente += this.obtenerHorasComponente(planEstudioCurso, h.tipoComponente);
+          componentesVistos2.add(key);
+        }
       }
 
       // Update CursoDocente
@@ -542,8 +560,13 @@ export class CargaLectivaService {
       });
 
       let totalHorasCursoDocente = 0;
+      const componentesVistos3 = new Set<string>();
       for (const h of todosHorariosCursoDocente) {
-        totalHorasCursoDocente += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+        const key = `${h.cursoDocenteGrupoId}-${h.tipoComponente}`;
+        if (!componentesVistos3.has(key)) {
+          totalHorasCursoDocente += this.obtenerHorasComponente(h.cursoDocenteGrupo.cursoDocente.planEstudioCurso, h.tipoComponente);
+          componentesVistos3.add(key);
+        }
       }
 
       if (totalHorasCursoDocente > 0) {

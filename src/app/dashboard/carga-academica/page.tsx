@@ -585,7 +585,7 @@ export default function CargaAcademicaAdminPage() {
   const totalNoLectivas = calcularTotalHoras();
 
   const cursosAgrupados = asignaciones.reduce((acc: any, asig: any) => {
-    const key = `${asig.cursoCodigo}-${asig.grupoNombre}`;
+    const key = asig.cursoCodigo;
     if (!acc[key]) {
       acc[key] = {
         ids: [],
@@ -594,7 +594,7 @@ export default function CargaAcademicaAdminPage() {
         codigo: asig.cursoCodigo,
         nombre: asig.cursoNombre,
         ciclo: asig.ciclo,
-        seccion: asig.grupoNombre,
+        secciones: new Set<string>(),
         teo: 0,
         pra: 0,
         lab: 0,
@@ -603,6 +603,8 @@ export default function CargaAcademicaAdminPage() {
       };
     }
     acc[key].ids.push(asig.id);
+    if (asig.grupoNombre) acc[key].secciones.add(asig.grupoNombre);
+    
     if (asig.tipoComponente === 'TEORIA') acc[key].teo += asig.horas;
     if (asig.tipoComponente === 'PRACTICA') acc[key].pra += asig.horas;
     if (asig.tipoComponente === 'LABORATORIO') acc[key].lab += asig.horas;
@@ -771,7 +773,7 @@ export default function CargaAcademicaAdminPage() {
                             <tr key={i} className="group">
                               <td className="text-center font-mono text-xs text-slate-500 dark:text-slate-400 py-3">{c.codigo}</td>
                               <td className="font-semibold text-slate-800 dark:text-slate-100 py-3">{c.nombre}</td>
-                              <td className="text-center font-bold text-primary py-3">{c.seccion || '-'}</td>
+                              <td className="text-center font-bold text-primary py-3">{Array.from(c.secciones).join(', ') || '-'}</td>
                               <td className="text-center py-3"><span className="badge badge-gray">OB</span></td>
                               <td className="text-center text-slate-500 dark:text-slate-400 py-3">Ing. Sistemas</td>
                               <td className="text-center font-medium py-3">{c.ciclo}</td>

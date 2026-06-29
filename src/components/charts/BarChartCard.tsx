@@ -142,7 +142,6 @@ export function BarChartCard({
               <Bar
                 dataKey={dataKey}
                 radius={isVertical ? [0, 6, 6, 0] : [6, 6, 0, 0]}
-                layout={layout}
                 maxBarSize={isVertical ? 24 : 48}
                 isAnimationActive
                 animationBegin={0}
