@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen, Edit2, UserX, AlertCircle } from 'lucide-react';
+import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen, Edit2, UserX, AlertCircle, Calendar } from 'lucide-react';
 import PanelDistribucionHoraria from '@/components/horarios/PanelDistribucionHoraria';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -83,6 +83,13 @@ export default function CargaAcademicaAdminPage() {
 
   const [formData, setFormData] = useState<Record<string, { horas: number; descripcion: string; metadata: any }>>({});
   const [isEditing, setIsEditing] = useState(true);
+  const [horarioHabilitado, setHorarioHabilitado] = useState(false);
+
+  useEffect(() => {
+    if (dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0) {
+      setHorarioHabilitado(true);
+    }
+  }, [dataLectiva]);
   
   // Estado para Modal de Asignar Curso
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -332,7 +339,7 @@ export default function CargaAcademicaAdminPage() {
 
   useEffect(() => {
     if (isModalOpen && selectedPeriodoId && selectedPlanEstudioId) {
-      async function loadCursos() {
+      const loadCursos = async () => {
         try {
           const res = await apiGet<CursoDisponible[]>('/api/asignacion/cursos-disponibles', { 
             periodoId: selectedPeriodoId,
@@ -342,7 +349,7 @@ export default function CargaAcademicaAdminPage() {
         } catch (error) {
           toast.error('Error al cargar cursos disponibles');
         }
-      }
+      };
       loadCursos();
     }
   }, [isModalOpen, selectedPeriodoId, selectedPlanEstudioId]);
@@ -571,6 +578,16 @@ export default function CargaAcademicaAdminPage() {
     }
   };
 
+  const clickHorario = async () => {
+    if (isEditing) {
+      await handleGuardarNoLectiva();
+    }
+    setHorarioHabilitado(true);
+    setTimeout(() => {
+      document.getElementById('horario-personal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const docentesFiltrados = useMemo(() => {
     return docentes.filter(d => 
       d.nombreCompleto.toLowerCase().includes(searchDocente.toLowerCase()) || 
@@ -738,8 +755,11 @@ export default function CargaAcademicaAdminPage() {
 
                 {/* 1. TRABAJO LECTIVO */}
                 <div className="p-5 sm:px-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">1. TRABAJO LECTIVO.- Datos completos y con claridad</h2>
+                  <div className="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <span className="h-4 w-1 bg-blue-600 rounded"></span>
+                      Carga horaria lectiva
+                    </h2>
                     <Button 
                       size="sm" 
                       onClick={abrirModalAsignacion} 
@@ -820,6 +840,10 @@ export default function CargaAcademicaAdminPage() {
 
               {/* SECCIONES 2-10: ACTIVIDADES NO LECTIVAS */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-5 sm:p-6 shadow-sm space-y-8">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 border-b pb-2 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-amber-500 rounded"></span>
+                  Carga horaria no lectiva
+                </h2>
                 <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-900/30 rounded-xl p-4 flex items-start gap-3">
                   <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-slate-705 dark:text-slate-350">
@@ -1061,13 +1085,22 @@ export default function CargaAcademicaAdminPage() {
                       {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Guardar Declaración
                     </Button>
+
+                    <Button
+                      onClick={clickHorario}
+                      disabled={totalNoLectivas !== dataLectiva.horasNoLectivasDisponibles || guardando}
+                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 font-bold h-10 px-4 rounded-md inline-flex items-center justify-center text-sm"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Horario
+                    </Button>
                   </div>
                 </div>
               </div>
               
               {/* 3. HORARIO PERSONAL */}
               <div id="horario-personal">
-                {dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0 && (
+                {horarioHabilitado && dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0 && (
                   <PanelDistribucionHoraria
                     docenteId={docenteInfo.id}
                     periodoId={dataLectiva.periodo.id}
