@@ -90,11 +90,20 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    const parseTime = (t: string) => {
+      const parts = t.split(':');
+      return parseInt(parts[0]) + (parseInt(parts[1] || '0') / 60);
+    };
+
     // 4. Mapear horarios y calcular horas por componente
     const asignaciones = horarios.map((h) => {
       const planCurso = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
       if (!planCurso) return null;
-      const horas = service.obtenerHorasComponente(planCurso as any, h.tipoComponente);
+      
+      const horas = h.horaInicio && h.horaFin 
+        ? parseTime(h.horaFin) - parseTime(h.horaInicio)
+        : service.obtenerHorasComponente(planCurso as any, h.tipoComponente);
+
       return {
         id: h.id,
         cursoId: planCurso.cursoId,

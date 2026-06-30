@@ -79,10 +79,11 @@ export function CargaHorariaModal({ docenteId, isOpen, onClose }: CargaHorariaMo
     try {
       const filename = `${nombre.replace(/[()#]/g, '').trim().replace(/\s+/g, '_')}.pdf`;
 
-      let tipo: 'carga' | 'dj-central' | 'dj-desconcentrada' | 'horario' = 'carga';
+      let tipo: 'carga' | 'dj-central' | 'dj-desconcentrada' | 'horario' | 'filiales' = 'carga';
       if (num === 2) tipo = 'dj-central';
       else if (num === 4) tipo = 'dj-desconcentrada';
       else if (num === 5) tipo = 'horario';
+      else if (num === 6) tipo = 'filiales';
 
       const res = await apiPost<Blob>('/api/docente/generate-pdf', {
         tipo,
@@ -118,6 +119,7 @@ export function CargaHorariaModal({ docenteId, isOpen, onClose }: CargaHorariaMo
     { num: 3, nombre: '(FORMATO # 1) Carga Horaria Asignada (Sedes Desconcentradas)', sede: 'Sedes Desconcentradas', estado: 'Iniciado' },
     { num: 4, nombre: '(FORMATO # 2) Declaración Jurada (Sedes Desconcentradas)', sede: 'Sedes Desconcentradas', estado: 'Iniciado' },
     { num: 5, nombre: '(FORMATO # 3) Horario Semanal del Personal Docente', sede: 'Central', estado: 'Iniciado' },
+    { num: 6, nombre: 'Declaración de Carga Horaria (Filiales y Posgrado)', sede: 'Filiales/Posgrado', estado: 'Iniciado' },
   ];
 
   return (

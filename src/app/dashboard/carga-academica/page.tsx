@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen, Edit2, UserX, AlertCircle } from 'lucide-react';
+import { Loader2, Search, Save, ArrowLeft, Info, Plus, Trash2, BookOpen, Edit2, UserX, AlertCircle, Calendar } from 'lucide-react';
 import PanelDistribucionHoraria from '@/components/horarios/PanelDistribucionHoraria';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -83,6 +83,13 @@ export default function CargaAcademicaAdminPage() {
 
   const [formData, setFormData] = useState<Record<string, { horas: number; descripcion: string; metadata: any }>>({});
   const [isEditing, setIsEditing] = useState(true);
+  const [horarioHabilitado, setHorarioHabilitado] = useState(false);
+
+  useEffect(() => {
+    if (dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0) {
+      setHorarioHabilitado(true);
+    }
+  }, [dataLectiva]);
   
   // Estado para Modal de Asignar Curso
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,6 +162,62 @@ export default function CargaAcademicaAdminPage() {
     if (max === 0) return { ok: false as const, mensaje: 'Esta actividad no aplica para la dedicación actual.' };
     if (horas > max) return { ok: false as const, mensaje: `El máximo permitido es ${max} horas.` };
     return { ok: true as const };
+  };
+
+  const obtenerDescripcionSencilla = (actId: string, metadata: any) => {
+    const lectivas = dataLectiva?.totalHorasLectivas ?? 0;
+    const restr = obtenerRestriccionHoras(actId, metadata);
+    const maxHoras = restr.max;
+
+    if (esTiempoParcial) {
+      switch (actId) {
+        case 'PREPARACION_Y_EVALUACION':
+          return `Regla para Tiempo Parcial: Requiere al menos 12 horas lectivas y se deben asignar exactamente 4 horas. (Tus horas lectivas actuales: ${lectivas}h).`;
+        case 'CONSEJERIA':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales.';
+        case 'INVESTIGACION':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 3 horas semanales. Requiere contar con un proyecto de investigación VRI registrado.';
+        case 'CAPACITACION':
+          return 'Regla para Tiempo Parcial: No se permiten asignar horas de capacitación en esta modalidad.';
+        case 'ACTIVIDADES_DE_GOBIERNO':
+        case 'ACTIVIDADES_DE_ADMINISTRACION':
+          return 'Regla para Tiempo Parcial: Esta actividad no está disponible para docentes a tiempo parcial.';
+        case 'ASESORIA_DE_TESIS':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales. Es necesario indicar el N° de Resolución o Constancia.';
+        case 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA':
+          return 'Regla para Tiempo Parcial: Se permite asignar un máximo de 2 horas semanales. Requiere ingresar el código o nombre del proyecto RSU.';
+        case 'COMITES_TECNICOS_Y_COMISIONES':
+          return 'Regla para Tiempo Parcial: No se permiten asignar horas para comisiones en esta modalidad.';
+        default:
+          return 'No disponible para tu modalidad actual.';
+      }
+    }
+
+    if (esTiempoCompleto) {
+      switch (actId) {
+        case 'PREPARACION_Y_EVALUACION':
+          return `Regla para Tiempo Completo / DE: Se permite asignar hasta el 50% de tus horas de clases asignadas (Máximo actual permitido: ${maxHoras}h, basado en tus ${lectivas}h de clases).`;
+        case 'CONSEJERIA':
+          return `Regla para Tiempo Completo / DE: Máximo 2 horas semanales (puede extenderse hasta 3 horas si marcas abajo la opción de acreditación).`;
+        case 'INVESTIGACION':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 6 horas semanales. Requiere contar con un proyecto de investigación VRI registrado.';
+        case 'CAPACITACION':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 2 horas semanales para capacitación o formación.';
+        case 'ACTIVIDADES_DE_GOBIERNO':
+        case 'ACTIVIDADES_DE_ADMINISTRACION':
+          return `Regla para Tiempo Completo / DE: El límite de horas se define por tu cargo administrativo activo (Decanos y Postgrado: máx 20h; Directores y Jefes: máx 10h; miembros de Consejo de Facultad: máx 3h; otros cargos: máx 2h). Máximo actual: ${maxHoras}h.`;
+        case 'ASESORIA_DE_TESIS':
+          return 'Regla para Tiempo Completo / DE: Se permite asignar un máximo de 2 horas semanales. Requiere ingresar el N° de Resolución o Constancia.';
+        case 'RESPONSABILIDAD_SOCIAL_UNIVERSITARIA':
+          return `Regla para Tiempo Completo / DE: Máximo 2 horas semanales (puede extenderse hasta 3 horas si marcas abajo la opción de acreditación). Requiere indicar el nombre o código del proyecto RSU.`;
+        case 'COMITES_TECNICOS_Y_COMISIONES':
+          return `Regla para Tiempo Completo / DE: Disponible para presidentes de comités o miembros de comisiones. Permite hasta 10 horas si eres Presidente de Calidad/COTECU, o hasta 6 horas para comisiones especiales (selecciona tu caso abajo). Requiere número de Resolución.`;
+        default:
+          return 'No disponible para tu modalidad actual.';
+      }
+    }
+
+    return '';
   };
 
   // 1. Cargar Períodos
@@ -276,7 +339,7 @@ export default function CargaAcademicaAdminPage() {
 
   useEffect(() => {
     if (isModalOpen && selectedPeriodoId && selectedPlanEstudioId) {
-      async function loadCursos() {
+      const loadCursos = async () => {
         try {
           const res = await apiGet<CursoDisponible[]>('/api/asignacion/cursos-disponibles', { 
             periodoId: selectedPeriodoId,
@@ -286,7 +349,7 @@ export default function CargaAcademicaAdminPage() {
         } catch (error) {
           toast.error('Error al cargar cursos disponibles');
         }
-      }
+      };
       loadCursos();
     }
   }, [isModalOpen, selectedPeriodoId, selectedPlanEstudioId]);
@@ -515,6 +578,16 @@ export default function CargaAcademicaAdminPage() {
     }
   };
 
+  const clickHorario = async () => {
+    if (isEditing) {
+      await handleGuardarNoLectiva();
+    }
+    setHorarioHabilitado(true);
+    setTimeout(() => {
+      document.getElementById('horario-personal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const docentesFiltrados = useMemo(() => {
     return docentes.filter(d => 
       d.nombreCompleto.toLowerCase().includes(searchDocente.toLowerCase()) || 
@@ -529,7 +602,7 @@ export default function CargaAcademicaAdminPage() {
   const totalNoLectivas = calcularTotalHoras();
 
   const cursosAgrupados = asignaciones.reduce((acc: any, asig: any) => {
-    const key = `${asig.cursoCodigo}-${asig.grupoNombre}`;
+    const key = asig.cursoCodigo;
     if (!acc[key]) {
       acc[key] = {
         ids: [],
@@ -538,7 +611,7 @@ export default function CargaAcademicaAdminPage() {
         codigo: asig.cursoCodigo,
         nombre: asig.cursoNombre,
         ciclo: asig.ciclo,
-        seccion: asig.grupoNombre,
+        secciones: new Set<string>(),
         teo: 0,
         pra: 0,
         lab: 0,
@@ -547,6 +620,8 @@ export default function CargaAcademicaAdminPage() {
       };
     }
     acc[key].ids.push(asig.id);
+    if (asig.grupoNombre) acc[key].secciones.add(asig.grupoNombre);
+    
     if (asig.tipoComponente === 'TEORIA') acc[key].teo += asig.horas;
     if (asig.tipoComponente === 'PRACTICA') acc[key].pra += asig.horas;
     if (asig.tipoComponente === 'LABORATORIO') acc[key].lab += asig.horas;
@@ -680,8 +755,11 @@ export default function CargaAcademicaAdminPage() {
 
                 {/* 1. TRABAJO LECTIVO */}
                 <div className="p-5 sm:px-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-[10px] font-extrabold text-slate-400 dark:text-slate-550 uppercase tracking-wider">1. TRABAJO LECTIVO.- Datos completos y con claridad</h2>
+                  <div className="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <span className="h-4 w-1 bg-blue-600 rounded"></span>
+                      Carga horaria lectiva
+                    </h2>
                     <Button 
                       size="sm" 
                       onClick={abrirModalAsignacion} 
@@ -715,7 +793,7 @@ export default function CargaAcademicaAdminPage() {
                             <tr key={i} className="group">
                               <td className="text-center font-mono text-xs text-slate-500 dark:text-slate-400 py-3">{c.codigo}</td>
                               <td className="font-semibold text-slate-800 dark:text-slate-100 py-3">{c.nombre}</td>
-                              <td className="text-center font-bold text-primary py-3">{c.seccion || '-'}</td>
+                              <td className="text-center font-bold text-primary py-3">{Array.from(c.secciones).join(', ') || '-'}</td>
                               <td className="text-center py-3"><span className="badge badge-gray">OB</span></td>
                               <td className="text-center text-slate-500 dark:text-slate-400 py-3">Ing. Sistemas</td>
                               <td className="text-center font-medium py-3">{c.ciclo}</td>
@@ -762,6 +840,10 @@ export default function CargaAcademicaAdminPage() {
 
               {/* SECCIONES 2-10: ACTIVIDADES NO LECTIVAS */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-5 sm:p-6 shadow-sm space-y-8">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 border-b pb-2 flex items-center gap-2">
+                  <span className="h-4 w-1 bg-amber-500 rounded"></span>
+                  Carga horaria no lectiva
+                </h2>
                 <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-900/30 rounded-xl p-4 flex items-start gap-3">
                   <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-slate-705 dark:text-slate-350">
@@ -786,7 +868,9 @@ export default function CargaAcademicaAdminPage() {
                         <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                           <div className="flex-1 space-y-1">
                             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">{act.num}. {act.name}</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">{act.desc}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-455 font-medium bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded border border-slate-100 dark:border-slate-800/60 leading-relaxed mt-1 text-justify">
+                              {obtenerDescripcionSencilla(act.id, data.metadata)}
+                            </p>
                           </div>
                           <div className="flex-[1.3] flex gap-4 items-start justify-end">
                             <div className="flex-1 space-y-2">
@@ -1001,13 +1085,22 @@ export default function CargaAcademicaAdminPage() {
                       {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Guardar Declaración
                     </Button>
+
+                    <Button
+                      onClick={clickHorario}
+                      disabled={totalNoLectivas !== dataLectiva.horasNoLectivasDisponibles || guardando}
+                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 font-bold h-10 px-4 rounded-md inline-flex items-center justify-center text-sm"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Horario
+                    </Button>
                   </div>
                 </div>
               </div>
               
               {/* 3. HORARIO PERSONAL */}
               <div id="horario-personal">
-                {dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0 && (
+                {horarioHabilitado && dataLectiva?.declaracion && dataLectiva.declaracion.items.length > 0 && (
                   <PanelDistribucionHoraria
                     docenteId={docenteInfo.id}
                     periodoId={dataLectiva.periodo.id}
