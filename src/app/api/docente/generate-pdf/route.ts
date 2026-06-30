@@ -8,6 +8,7 @@ import { FormatoCargaHoraria } from '@/components/pdf/FormatoCargaHoraria';
 import { DeclaracionJuradaCentral } from '@/components/pdf/DeclaracionJuradaCentral';
 import { DeclaracionJuradaDesconcentrada } from '@/components/pdf/DeclaracionJuradaDesconcentrada';
 import { FormatoHorarioSemanal } from '@/components/pdf/FormatoHorarioSemanal';
+import { FormatoCargaFiliales } from '@/components/pdf/FormatoCargaFiliales';
 import { TipoActividadNoLectiva } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
@@ -15,9 +16,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { tipo, docenteId, periodoId } = body;
 
-    if (!tipo || !docenteId || !periodoId) {
+    const validTipos = ['carga', 'dj-central', 'dj-desconcentrada', 'horario', 'filiales'];
+    if (!tipo || !docenteId || !periodoId || !validTipos.includes(tipo)) {
       return NextResponse.json(
-        { success: false, message: 'Faltan parámetros requeridos: tipo, docenteId, periodoId' },
+        { success: false, message: 'Faltan parámetros requeridos: tipo, docenteId, periodoId o tipo inválido' },
         { status: 400 }
       );
     }
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
       fecha_inicio: new Date(periodoDb.fechaInicio).toLocaleDateString('es-PE'),
       fecha_fin: new Date(periodoDb.fechaFin).toLocaleDateString('es-PE'),
     };
+    
+    const fechaActual = new Date().toLocaleDateString('es-PE');
 
     // 3. Consultar horarios asignados (activos y no cancelados)
     const horariosDb = await prisma.horario.findMany({
@@ -331,9 +335,12 @@ export async function POST(req: NextRequest) {
 
       pdfElement = React.createElement(FormatoHorarioSemanal, {
         docente: {
-          ...docenteAdaptado,
-          nombreCompleto: `${docenteAdaptado.nombres} ${docenteAdaptado.apellidos}`,
-          categoriaDedicacion: `${docenteAdaptado.categoria}\n${docenteDb.dedicacion === 'TIEMPO_COMPLETO_40H' ? 'TC' : docenteDb.dedicacion === 'TIEMPO_PARCIAL_20H' ? 'TP' : 'DE'}`,
+          dni: docenteDb.dni || 'N/A',
+          nombreCompleto: `${docenteDb.usuario.nombre} ${docenteDb.usuario.apellidos}`,
+          departamento: docenteAdaptado.departamento,
+          facultad: docenteAdaptado.facultad,
+          categoriaDedicacion: `${docenteAdaptado.categoria} - ${docenteAdaptado.dedicacion_horas}HS`,
+          email: docenteDb.usuario.email || undefined,
         },
         periodo: {
           anio: periodoAdaptado.anio,
@@ -344,6 +351,48 @@ export async function POST(req: NextRequest) {
         cargaLectiva: cargaLectivaHorarioList,
         cargaNoLectiva: cargaNoLectivaHorarioList,
         totalHoras: totalLectivas + totalNoLectivas,
+        fechaRegistro: fechaActual,
+      });
+    } else if (tipo === 'filiales') {
+      // Mapear carga de cursos para filiales
+      const formatDia = (d: string) => d.substring(0, 2).toUpperCase();
+      const cursosFiliales = Object.values(hashCursos).map((curso: any) => {
+        const hs = (horariosDb as any[]).filter(h => h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.codigo === curso.codigo && (h.cursoDocenteGrupo?.grupo?.nombre || 'A') === curso.seccion);
+        
+        let horarioStr = '';
+        hs.forEach(h => {
+          horarioStr += `${formatDia(h.diaSemana || '')} ${h.horaInicio}-${h.horaFin} `;
+        });
+
+        return {
+          curso: curso.nombre,
+          dependencia: docenteAdaptado.facultad,
+          fechaInicio: periodoAdaptado.fecha_inicio,
+          fechaFin: periodoAdaptado.fecha_fin,
+          horarioSemanal: horarioStr.trim(),
+          totalHoras: `${curso.horas_teoria + curso.horas_practica + curso.horas_laboratorio} HORAS`
+        };
+      });
+
+      pdfElement = React.createElement(FormatoCargaFiliales, {
+        docente: {
+          nombresApellidos: `${docenteDb.usuario.nombre} ${docenteDb.usuario.apellidos}`,
+          codigo: docenteDb.codigo || docenteDb.id,
+          condicion: docenteAdaptado.condicion,
+          categoria: docenteAdaptado.categoria,
+          modalidad: docenteAdaptado.modalidad || 'TC',
+          horasTp: docenteAdaptado.dedicacion_horas,
+          facultad: docenteAdaptado.facultad,
+          departamento: docenteAdaptado.departamento,
+        },
+        periodo: {
+          anio: periodoAdaptado.anio,
+          semestre: periodoAdaptado.ciclo,
+          inicio: periodoAdaptado.fecha_inicio,
+          final: periodoAdaptado.fecha_fin,
+        },
+        cursos: cursosFiliales,
+        fechaEmision: fechaActual,
       });
     } else {
       return NextResponse.json(

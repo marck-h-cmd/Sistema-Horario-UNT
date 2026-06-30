@@ -19,7 +19,7 @@ import { DiaSemana, Rol } from '@prisma/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useFiltrosHorario } from '@/hooks/useFiltrosHorario';
-import { ExportOptionsModal } from '@/components/horarios/ExportOptionsModal';
+import { ExportOptionsModal } from '@/components/forms/ExportOptionsModal';
 import { exportarHorarioPDF, exportarHorariosTodosCiclosPDF } from '@/utils/exportarHorarioPDF';
 import { exportarHorarioExcel, exportarHorariosTodosCiclosExcel } from '@/utils/exportarHorarioExcel';
 
