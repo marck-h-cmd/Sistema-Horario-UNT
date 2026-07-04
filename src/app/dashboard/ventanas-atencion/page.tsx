@@ -46,8 +46,8 @@ interface VentanaRow {
 
 export default function VentanasAtencionPage() {
   const { loading: authLoading } = useRequireAuth([
-    Rol.SUPER_ADMIN,
     Rol.ADMINISTRADOR,
+    Rol.SECRETARIA,
     Rol.OPERADOR,
   ]);
   const { periodoSeleccionado, loading: periodoLoading } = usePeriodo();

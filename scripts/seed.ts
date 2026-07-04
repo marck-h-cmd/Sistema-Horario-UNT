@@ -439,13 +439,13 @@ async function main() {
   const passwordHash = await bcrypt.hash('unt123456', 12);
 
   const adminUser = await prisma.usuario.create({
-    data: { email: 'admin@unitru.edu.pe', password: passwordHash, nombre: 'Administrador', apellidos: 'Sistema', rol: Rol.ADMINISTRADOR, verificado: true }
+    data: { email: 'secretaria@unitru.edu.pe', password: passwordHash, nombre: 'Secretaria', apellidos: 'Sistema', rol: Rol.SECRETARIA, verificado: true }
   });
   await prisma.usuario.create({
     data: { email: 'operador@unitru.edu.pe', password: passwordHash, nombre: 'Operador', apellidos: 'Sistema', rol: Rol.OPERADOR, verificado: true }
   });
   await prisma.usuario.create({
-    data: { email: 'superadmin@unitru.edu.pe', password: passwordHash, nombre: 'Super', apellidos: 'Admin', rol: Rol.SUPER_ADMIN, verificado: true }
+    data: { email: 'admin@unitru.edu.pe', password: passwordHash, nombre: 'Administrador', apellidos: 'Sistema', rol: Rol.ADMINISTRADOR, verificado: true }
   });
   await prisma.usuario.create({
     data: { email: 'monitor@unitru.edu.pe', password: passwordHash, nombre: 'Monitor', apellidos: 'Sistema', rol: Rol.MONITOR, verificado: true }

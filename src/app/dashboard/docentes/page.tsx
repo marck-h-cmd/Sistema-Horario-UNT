@@ -53,7 +53,7 @@ interface DocenteRow {
 const CATEGORIAS = Object.values(CategoriaDocente);
 
 export default function DocentesPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
 
   const [qInput, setQInput] = useState('');

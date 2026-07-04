@@ -74,7 +74,7 @@ export function withOwnershipOrAdmin(
     }
 
     // Admins pueden acceder a todo
-    if (user.rol === ROLES.SUPER_ADMIN || user.rol === ROLES.ADMINISTRADOR) {
+    if (user.rol === ROLES.ADMINISTRADOR || user.rol === ROLES.SECRETARIA) {
       return null;
     }
 
@@ -148,7 +148,7 @@ export function checkOwnershipOrAdmin(
     throw new Error('Usuario no autenticado');
   }
 
-  const isAdmin = user.rol === ROLES.SUPER_ADMIN || user.rol === ROLES.ADMINISTRADOR;
+  const isAdmin = user.rol === ROLES.ADMINISTRADOR || user.rol === ROLES.SECRETARIA;
   const isOwner = user.userId === ownerId;
 
   if (!isAdmin && !isOwner) {

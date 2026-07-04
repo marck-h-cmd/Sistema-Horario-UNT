@@ -6,7 +6,7 @@ import { withAuth } from '@/middleware/auth';
 const service = new CargaLectivaService();
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['SECRETARIA', 'OPERADOR', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   try {

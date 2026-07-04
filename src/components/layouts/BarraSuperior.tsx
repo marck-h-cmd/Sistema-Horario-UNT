@@ -41,7 +41,7 @@ export function BarraSuperior({ onMenuClick, titulo }: BarraSuperiorProps) {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-[#1a365d] leading-tight">
-              UNT
+              Universidad Nacional de Trujillo
             </span>
             <span className="text-xs text-gray-600 leading-tight">
               Facultad de Ingeniería

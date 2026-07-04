@@ -4,7 +4,7 @@ import { createSuccessResponse, createErrorResponse } from '@/lib/respuestas';
 import { withAuth } from '@/middleware/auth';
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['DOCENTE', 'SECRETARIA', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;

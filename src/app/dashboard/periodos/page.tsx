@@ -38,7 +38,8 @@ interface PeriodoRow {
 }
 
 export default function PeriodosPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.OPERADOR]);
+  const { user, loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA, Rol.OPERADOR]);
+  const canEdit = user?.rol === Rol.ADMINISTRADOR || user?.rol === Rol.SECRETARIA;
   const { refresh: refreshPeriodoCtx } = usePeriodo();
 
   const listParams = useMemo(() => ({}), []);
@@ -159,16 +160,16 @@ export default function PeriodosPage() {
         </span>
       ),
     },
-    {
+    ...(canEdit ? [{
       key: 'acc',
       header: '',
       className: 'w-24 text-right',
-      cell: (r) => (
+      cell: (r: PeriodoRow) => (
         <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       ),
-    },
+    }] : []),
   ];
 
   if (authLoading) {
@@ -185,13 +186,15 @@ export default function PeriodosPage() {
         title="Períodos académicos"
         description="Alta y edición de ciclos para planificación de horarios."
         actions={
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="bg-unt-blue hover:bg-unt-blue/90 text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo período
-          </Button>
+          canEdit ? (
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="bg-unt-blue hover:bg-unt-blue/90 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Nuevo período
+            </Button>
+          ) : undefined
         }
       />
 

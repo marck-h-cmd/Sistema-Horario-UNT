@@ -40,7 +40,7 @@ interface AmbienteRow {
 type TabTipo = 'AULA' | 'LABORATORIO';
 
 export default function AmbientesPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
 
   const [tab, setTab] = useState<TabTipo>('AULA');

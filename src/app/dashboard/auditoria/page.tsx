@@ -30,7 +30,7 @@ interface AuditoriaRow {
 }
 
 export default function AuditoriaPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR]);
 
   const [accion, setAccion] = useState('');
   const [entidad, setEntidad] = useState('');

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Eye, EyeOff, LogIn, Loader2,
   CalendarDays, Shield, GraduationCap, CheckCircle2,
@@ -15,8 +16,8 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import type { DemoUser } from '@/lib/demo-users';
 
 const ROLE_COLORS: Record<string, { dot: string; initials: string }> = {
-  super: { dot: '#a78bfa', initials: 'SA' },
-  admin: { dot: '#3b82f6', initials: 'AD' },
+  admin: { dot: '#a78bfa', initials: 'AD' },
+  secretaria: { dot: '#3b82f6', initials: 'SE' },
   operador: { dot: '#f59e0b', initials: 'OP' },
   docente: { dot: '#10b981', initials: 'DC' },
   monitor: { dot: '#ec4899', initials: 'MO' },
@@ -154,19 +155,19 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col gap-4 p-8 pt-8 xl:p-10 xl:pt-8">
           <div className="flex items-center gap-4">
             <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-[#c9a84c]/5"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-lg shadow-[#c9a84c]/5"
               style={{
-                background:
-                  'linear-gradient(135deg, rgba(201,168,76,0.15) 0%, rgba(201,168,76,0.05) 100%)',
+                background: 'white',
                 border: '1px solid rgba(201,168,76,0.3)',
               }}
             >
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="1" y="1" width="9" height="9" rx="2" fill="#c9a84c" />
-                <rect x="12" y="1" width="9" height="9" rx="2" fill="rgba(255,255,255,0.4)" />
-                <rect x="1" y="12" width="9" height="9" rx="2" fill="rgba(255,255,255,0.2)" />
-                <rect x="12" y="12" width="9" height="9" rx="2" fill="#378add" />
-              </svg>
+              <Image
+                src="/logo-unt.png"
+                alt="Logo Universidad Nacional de Trujillo"
+                width={36}
+                height={36}
+                className="object-contain"
+              />
             </div>
 
             <div>
@@ -179,7 +180,7 @@ export default function LoginPage() {
                   fontWeight: 700,
                 }}
               >
-                UNT · Ingeniería de Sistemas
+                Universidad Nacional de Trujillo · Sistemas
               </p>
               <p
                 style={{
@@ -262,133 +263,10 @@ export default function LoginPage() {
             </h2>
           </div>
 
-          <p
-            style={{
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: 'rgba(255,255,255,0.58)',
-              maxWidth: 430,
-            }}
-          >
-            Plataforma institucional unificada para la programación y optimización
-            de clases, distribución de aulas, laboratorios y atención docente en
-            Ingeniería de Sistemas.
-          </p>
-
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} className="mt-1">
-            {[
-              {
-                n: '01',
-                icon: CalendarDays,
-                text: 'Calendario semanal interactivo y libre de conflictos',
-              },
-              {
-                n: '02',
-                icon: Shield,
-                text: 'Accesos seguros para Directores, Docentes y Alumnos',
-              },
-              {
-                n: '03',
-                icon: GraduationCap,
-                text: 'Reportes oficiales, notificaciones y control de colas',
-              },
-            ].map(({ n, icon: Icon, text }) => (
-              <div
-                key={n}
-                className="group flex cursor-default items-center gap-4 transition-all duration-300 hover:pl-2"
-                style={{
-                  borderBottom: '1px solid rgba(255,255,255,0.07)',
-                  padding: '9px 0',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    color: 'rgba(201,168,76,0.42)',
-                    minWidth: 18,
-                  }}
-                  className="transition-colors group-hover:text-[#c9a84c]"
-                >
-                  {n}
-                </span>
-
-                <div
-                  style={{
-                    width: 1,
-                    height: 14,
-                    background: 'rgba(255,255,255,0.09)',
-                    flexShrink: 0,
-                  }}
-                />
-
-                <Icon
-                  style={{ width: 14, height: 14, flexShrink: 0 }}
-                  className="text-white/25 transition-colors duration-300 group-hover:text-white/80"
-                />
-
-                <span
-                  style={{ fontSize: 12.5, lineHeight: 1.4 }}
-                  className="text-white/50 transition-colors duration-300 group-hover:text-white/85"
-                >
-                  {text}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="relative z-10 px-8 pb-6 xl:px-10">
-          <div
-            className="mb-4 grid grid-cols-4 rounded-2xl p-4 backdrop-blur-md"
-            style={{
-              background: 'rgba(255, 255, 255, 0.025)',
-              border: '1px solid rgba(255, 255, 255, 0.07)',
-              boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.02)',
-            }}
-          >
-            {[
-              { n: '30', l: 'Docentes' },
-              { n: '82', l: 'Cursos' },
-              { n: '12', l: 'Ambientes' },
-              { n: '246', l: 'Grupos' },
-            ].map((s, i) => (
-              <div
-                key={s.l}
-                className="group text-center"
-                style={{
-                  borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 800,
-                    letterSpacing: -0.5,
-                  }}
-                  className="inline-block bg-gradient-to-b from-[#e4c975] to-[#c9a84c] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-110"
-                >
-                  {s.n}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: 'rgba(255,255,255,0.36)',
-                    letterSpacing: 1.5,
-                    textTransform: 'uppercase',
-                    marginTop: 3,
-                    fontWeight: 650,
-                  }}
-                >
-                  {s.l}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mb-3 flex items-center gap-4">
+          <div className="mb-3 flex items-center gap-4 mt-auto">
             {['Soporte', 'Documentación', 'Privacidad'].map((link) => (
               <button
                 key={link}
@@ -426,21 +304,19 @@ export default function LoginPage() {
         {/* LOGO MOBILE */}
         <div className="relative z-10 mb-6 text-center lg:hidden">
           <div
-            className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/50 shadow-md dark:border-slate-700"
-            style={{
-              background: 'linear-gradient(135deg, #091326 0%, #030712 100%)',
-            }}
+            className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/50 shadow-md dark:border-slate-700 bg-white"
           >
-            <svg width="26" height="26" viewBox="0 0 22 22" fill="none">
-              <rect x="1" y="1" width="9" height="9" rx="2" fill="#c9a84c" />
-              <rect x="12" y="1" width="9" height="9" rx="2" fill="rgba(255,255,255,0.45)" />
-              <rect x="1" y="12" width="9" height="9" rx="2" fill="rgba(255,255,255,0.2)" />
-              <rect x="12" y="12" width="9" height="9" rx="2" fill="#378add" />
-            </svg>
+            <Image
+              src="/logo-unt.png"
+              alt="Logo Universidad Nacional de Trujillo"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
           </div>
 
           <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            UNT · Ingeniería de Sistemas
+            Universidad Nacional de Trujillo · Sistemas
           </h2>
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-[1.5px] text-[#c9a84c]">

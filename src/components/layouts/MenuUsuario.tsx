@@ -10,22 +10,17 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Boton } from '@/components/ui/Boton';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function MenuUsuario() {
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
-
-  // Mock data - en producción vendría del contexto de autenticación
-  const usuario = {
-    nombre: 'Admin Sistema',
-    email: 'admin@sistemas.unt.edu.pe',
-    rol: 'Administrador',
-    avatar: null,
-  };
+  
+  const { user, logout } = useAuth();
 
   const handleLogout = async () => {
-    // Aquí iría la lógica de logout real
+    await logout();
     router.push('/auth/login');
   };
 
@@ -52,12 +47,12 @@ export function MenuUsuario() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-          {usuario.nombre.charAt(0)}
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white uppercase">
+          {user?.nombre?.charAt(0) || 'U'}
         </div>
         <div className="hidden text-left sm:block">
-          <p className="text-sm font-medium text-gray-900">{usuario.nombre}</p>
-          <p className="text-xs text-gray-500">{usuario.rol}</p>
+          <p className="text-sm font-medium text-gray-900">{user?.nombre} {user?.apellidos}</p>
+          <p className="text-xs text-gray-500 capitalize">{user?.rol?.toLowerCase()}</p>
         </div>
         <ChevronDown className="h-4 w-4 text-gray-500" />
       </button>
@@ -65,8 +60,8 @@ export function MenuUsuario() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
           <div className="border-b border-gray-200 p-3">
-            <p className="text-sm font-medium text-gray-900">{usuario.nombre}</p>
-            <p className="text-xs text-gray-500">{usuario.email}</p>
+            <p className="text-sm font-medium text-gray-900">{user?.nombre} {user?.apellidos}</p>
+            <p className="text-xs text-gray-500">{user?.email}</p>
           </div>
 
           <div className="p-2">

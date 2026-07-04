@@ -16,8 +16,8 @@ const confirmarSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const authResult = await withAuth(request, [
-    ROLES.SUPER_ADMIN,
     ROLES.ADMINISTRADOR,
+    ROLES.SECRETARIA,
     ROLES.OPERADOR,
   ]);
   if (authResult) return authResult;

@@ -16,7 +16,7 @@ const asignacionSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const authResult = await withAuth(request, ['ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['SECRETARIA', 'OPERADOR', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;

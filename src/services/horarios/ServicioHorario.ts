@@ -346,7 +346,7 @@ export class ServicioHorario {
   async actualizar(id: string, datos: Partial<CrearHorarioDTO>, usuarioRol?: string) {
     const horario = await this.obtenerPorId(id);
 
-    if (horario.estado === 'PUBLICADO' && usuarioRol !== 'SUPER_ADMIN') {
+    if (horario.estado === 'PUBLICADO' && usuarioRol !== 'ADMINISTRADOR') {
       throw new AppError('No se puede modificar un horario publicado', 400, 'HORARIO_PUBLICADO');
     }
 
@@ -383,7 +383,7 @@ export class ServicioHorario {
   async eliminar(id: string, usuarioRol?: string) {
     const horario = await this.obtenerPorId(id);
 
-    if (horario.estado === 'PUBLICADO' && usuarioRol !== 'SUPER_ADMIN') {
+    if (horario.estado === 'PUBLICADO' && usuarioRol !== 'ADMINISTRADOR') {
       throw new AppError('No se puede eliminar un horario publicado', 400, 'HORARIO_PUBLICADO');
     }
 

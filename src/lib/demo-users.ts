@@ -13,20 +13,20 @@ export interface DemoUser {
 /** Usuarios de demostración (contraseña común: unt123456) */
 export const DEMO_USERS: DemoUser[] = [
   {
-    id: 'super',
-    label: 'Super Admin',
-    email: 'superadmin@unitru.edu.pe',
-    password: 'unt123456',
-    rol: 'SUPER_ADMIN',
-    description: 'Control total del sistema',
-    accentClass: 'border-violet-500 bg-violet-50 text-violet-900 hover:bg-violet-100',
-  },
-  {
     id: 'admin',
     label: 'Administrador',
     email: 'admin@unitru.edu.pe',
     password: 'unt123456',
     rol: 'ADMINISTRADOR',
+    description: 'Control total del sistema',
+    accentClass: 'border-violet-500 bg-violet-50 text-violet-900 hover:bg-violet-100',
+  },
+  {
+    id: 'secretaria',
+    label: 'Secretaria',
+    email: 'secretaria@unitru.edu.pe',
+    password: 'unt123456',
+    rol: 'SECRETARIA',
     description: 'Gestión académica y horarios',
     accentClass: 'border-unt-blue bg-blue-50 text-unt-blue hover:bg-blue-100',
   },

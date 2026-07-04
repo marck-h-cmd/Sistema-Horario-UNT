@@ -11,8 +11,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const authResult = await withAuth(request, [
-    ROLES.SUPER_ADMIN,
     ROLES.ADMINISTRADOR,
+    ROLES.SECRETARIA,
     ROLES.OPERADOR,
   ]);
   if (authResult) return authResult;

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Buscar administradores y superadministradores
     const administradores = await prisma.usuario.findMany({
       where: {
-        rol: { in: ['ADMINISTRADOR', 'SUPER_ADMIN'] },
+        rol: { in: ['SECRETARIA', 'ADMINISTRADOR'] },
         activo: true,
       },
       select: { id: true },

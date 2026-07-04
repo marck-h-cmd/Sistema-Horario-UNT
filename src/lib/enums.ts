@@ -2,8 +2,8 @@
 // Estas enums reflejan y extienden las definidas en Prisma
 
 export enum Roles {
-  SUPER_ADMIN = 'SUPER_ADMIN',
   ADMINISTRADOR = 'ADMINISTRADOR',
+  SECRETARIA = 'SECRETARIA',
   OPERADOR = 'OPERADOR',
   DOCENTE = 'DOCENTE',
   MONITOR = 'MONITOR',
