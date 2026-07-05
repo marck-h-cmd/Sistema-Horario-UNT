@@ -24,8 +24,8 @@ export function ThemeToggle({ className, variant = 'default' }: ThemeToggleProps
       type="button"
       onClick={toggleTheme}
       className={cn(base, className)}
-      title={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
-      aria-label={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
+      title="Cambiar tema"
+      aria-label="Cambiar tema"
       aria-pressed={isDark}
     >
       {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
