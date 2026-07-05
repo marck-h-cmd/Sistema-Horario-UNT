@@ -18,7 +18,7 @@ export default function RecuperarContrasenaPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // Simulate API ó replace with real endpoint when available
+    // Simulate API - replace with real endpoint when available
     await new Promise((resolve) => setTimeout(resolve, 1200));
     // TODO: await apiClient.post('/auth/recuperar-contrasena', { email });
     setSent(true);
@@ -52,9 +52,9 @@ export default function RecuperarContrasenaPage() {
         <div className="rcp-card">
           {!sent ? (
             <>
-              <h1 className="rcp-title">Recuperar contraseÒa</h1>
+              <h1 className="rcp-title">Recuperar contrase√±a</h1>
               <p className="rcp-subtitle">
-                Ingresa tu correo institucional y te enviaremos un enlace para restablecer tu contraseÒa.
+                Ingresa tu correo institucional y te enviaremos un enlace para restablecer tu contrase√±a.
               </p>
 
               {error && (
@@ -67,7 +67,7 @@ export default function RecuperarContrasenaPage() {
               <form onSubmit={handleSubmit} className="rcp-form">
                 <div>
                   <label htmlFor="recovery-email" className="rcp-label">
-                    Correo electrÛnico institucional
+                    Correo electr√≥nico institucional
                   </label>
                   <div className="rcp-input-wrap">
                     <Mail className="rcp-input-icon" />
@@ -96,7 +96,7 @@ export default function RecuperarContrasenaPage() {
                       <span>Enviando enlace...</span>
                     </>
                   ) : (
-                    <span>Enviar enlace de recuperaciÛn</span>
+                    <span>Enviar enlace de recuperaci√≥n</span>
                   )}
                 </Button>
               </form>
@@ -108,8 +108,8 @@ export default function RecuperarContrasenaPage() {
               </div>
               <h2 className="rcp-success-title">Enlace enviado</h2>
               <p className="rcp-success-msg">
-                Si el correo <strong>{email}</strong> est· registrado en el sistema, recibir·s un
-                enlace de recuperaciÛn en los prÛximos minutos. Revisa tambiÈn tu carpeta de spam.
+                Si el correo <strong>{email}</strong> est√° registrado en el sistema, recibir√°s un
+                enlace de recuperaci√≥n en los pr√≥ximos minutos. Revisa tambi√©n tu carpeta de spam.
               </p>
               <Button
                 onClick={() => { setSent(false); setEmail(''); }}
@@ -124,7 +124,7 @@ export default function RecuperarContrasenaPage() {
           <div className="rcp-footer">
             <Link href="/auth/login" className="rcp-back-link">
               <ArrowLeft className="h-3.5 w-3.5" />
-              Volver al inicio de sesiÛn
+              Volver al inicio de sesi√≥n
             </Link>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function RecuperarContrasenaPage() {
           width: 100%;
           border-radius: 24px;
           border: 1px solid rgba(226,232,240,0.9);
-          background: rgba(255,255,255,0.97);
+          background: rgba(255, 255, 255, 0.97);
           box-shadow: 0 24px 65px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
           padding: 32px 36px 28px;
           backdrop-filter: blur(18px);
