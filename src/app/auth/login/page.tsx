@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   Eye, EyeOff, LogIn, Loader2,
-  CalendarDays, Shield, GraduationCap, CheckCircle2,
+  CalendarDays, GraduationCap, CheckCircle2,
   ShieldUser, UserStar, UserCog, BookUser, UserCheck, Lock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -304,7 +304,7 @@ export default function LoginPage() {
     setError('');
     setLoginError(false);
     
-    // Clear previous typing intervals
+    // Clear previous typing intervals (safety/cleanup)
     if (typingTimerRef.current.emailTimeouts) {
       typingTimerRef.current.emailTimeouts.forEach(clearTimeout);
     }
@@ -312,17 +312,9 @@ export default function LoginPage() {
       typingTimerRef.current.passwordTimeouts.forEach(clearTimeout);
     }
 
+    // Explicitly reset visible inputs so they do not show credentials
     setEmail('');
     setPassword('');
-    
-    setTimeout(() => {
-      const emailTimeouts = typeInput(u.email, setEmail, 0, () => {
-        setHighlightInputs(true);
-      });
-      const passwordTimeouts = typeInput(u.password, setPassword, 0);
-
-      typingTimerRef.current = { emailTimeouts, passwordTimeouts };
-    }, 200);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -336,7 +328,18 @@ export default function LoginPage() {
     await new Promise((resolve) => setTimeout(resolve, 900));
 
     try {
-      await login(email, password);
+      let loginEmail = email;
+      let loginPassword = password;
+
+      if (selectedDemo) {
+        const demoUser = DEMO_USERS.find((u) => u.id === selectedDemo);
+        if (demoUser) {
+          loginEmail = demoUser.email;
+          loginPassword = demoUser.password;
+        }
+      }
+
+      await login(loginEmail, loginPassword);
       // On success, store rememberMe preference and reset failed attempts
       setFailedAttempts(0);
       if (rememberMe) {
@@ -590,14 +593,14 @@ export default function LoginPage() {
               </div>
 
               {/* ROLES */}
-              <div className="mb-4">
+              <div className="mb-6">
                 <div className="login-section-title">
                   <div />
                   <span>Acceso rápido por rol</span>
                   <div />
                 </div>
 
-                <div className="role-cards-grid grid grid-cols-2 gap-3 lg:grid-cols-6 mb-5">
+                <div className="role-cards-grid grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {DEMO_USERS.map((u, idx) => {
                     const c = ROLE_DETAILS[u.id] ?? ROLE_DETAILS.admin;
                     const IconComponent = c.icon;
@@ -633,25 +636,13 @@ export default function LoginPage() {
                             {u.label}
                           </span>
                         </div>
-
-                        <span className="role-card-arrow text-[#c9a84c] dark:text-[#e2c66e] text-sm font-bold ml-auto pointer-events-none transition-all duration-300">
-                          →
-                        </span>
                       </button>
                     );
                   })}
                 </div>
-
-                {/* AVISO DE ENTORNO DE DEMOSTRACIÓN DESTACADO */}
-                <div className="demo-alert mb-5">
-                  <Shield className="h-4 w-4 shrink-0 text-[#c9a84c] mt-0.5" />
-                  <span>
-                    <strong>Entorno de demostración:</strong> Las credenciales se autocompletan de manera segura al seleccionar un rol rápido.
-                  </span>
-                </div>
               </div>
 
-              <div className="login-section-title mb-5">
+              <div className="login-section-title mb-4">
                 <div />
                 <span>O ingrese manualmente</span>
                 <div />
@@ -699,7 +690,7 @@ export default function LoginPage() {
 
                 {/* Password */}
                 <div>
-                  <div className="mb-2 flex items-center justify-between">
+                  <div className="mb-1.5 flex items-center justify-between">
                     <label htmlFor="password" className="login-label mb-0">
                       Contraseña
                     </label>
@@ -801,7 +792,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  disabled={loading || !email || !password || (!!lockUntil && lockSecondsLeft > 0)}
+                  disabled={loading || (!selectedDemo && (!email || !password)) || (!!lockUntil && lockSecondsLeft > 0)}
                   className="login-button"
                 >
                   <span className="login-button-shine" />
@@ -1134,36 +1125,6 @@ export default function LoginPage() {
           color: #f1f5f9;
         }
 
-        .role-card-arrow {
-          opacity: 0.5;
-          transform: translateX(0);
-          color: #64748b;
-          transition: transform 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out;
-        }
-
-        .dark .role-card-arrow {
-          color: #94a3b8;
-        }
-
-        .role-card:hover .role-card-arrow {
-          opacity: 1;
-          transform: translateX(2px);
-          color: #334155;
-        }
-
-        .dark .role-card:hover .role-card-arrow {
-          color: #cbd5e1;
-        }
-
-        .role-card-selected .role-card-arrow {
-          opacity: 1;
-          color: #c9a84c !important;
-        }
-
-        .dark .role-card-selected .role-card-arrow {
-          color: #e2c66e !important;
-        }
-
         .role-toast-box {
           display: flex;
           align-items: center;
@@ -1180,20 +1141,6 @@ export default function LoginPage() {
           border-color: rgba(36, 50, 78, 0.85);
           background: rgba(15, 23, 42, 0.95);
           box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .demo-alert {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          color: #64748b;
-          font-size: 11.5px;
-          line-height: 1.45;
-          font-weight: 550;
-        }
-
-        .dark .demo-alert {
-          color: #94a3b8;
         }
 
         .login-label {
@@ -1391,11 +1338,6 @@ export default function LoginPage() {
 
           .role-card {
             padding: 7px 10px;
-          }
-
-          .demo-alert {
-            margin-top: 12px;
-            padding: 10px 13px;
           }
 
           .login-input {

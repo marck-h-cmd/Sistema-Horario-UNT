@@ -10,7 +10,6 @@ export interface DemoUser {
   accentClass: string;
 }
 
-/** Usuarios de demostración (contraseña común: unt123456) */
 export const DEMO_USERS: DemoUser[] = [
   {
     id: 'admin',
