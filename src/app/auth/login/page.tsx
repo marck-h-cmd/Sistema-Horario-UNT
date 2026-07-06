@@ -73,7 +73,6 @@ export default function LoginPage() {
     message: '',
   });
 
-  const [highlightInputs, setHighlightInputs] = useState(false);
   const [clickedRole, setClickedRole] = useState<string | null>(null);
   const [roleToast, setRoleToast] = useState<{ visible: boolean; message: string }>({
     visible: false,
@@ -254,12 +253,6 @@ export default function LoginPage() {
     }
   }, [toast.visible]);
 
-  useEffect(() => {
-    if (highlightInputs) {
-      const t = setTimeout(() => setHighlightInputs(false), 800);
-      return () => clearTimeout(t);
-    }
-  }, [highlightInputs]);
 
   // Lockout countdown
   useEffect(() => {
@@ -594,12 +587,6 @@ export default function LoginPage() {
 
               {/* ROLES */}
               <div className="mb-6">
-                <div className="login-section-title">
-                  <div />
-                  <span>Acceso rápido por rol</span>
-                  <div />
-                </div>
-
                 <div className="role-cards-grid grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {DEMO_USERS.map((u, idx) => {
                     const c = ROLE_DETAILS[u.id] ?? ROLE_DETAILS.admin;
@@ -642,11 +629,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="login-section-title mb-4">
-                <div />
-                <span>O ingrese manualmente</span>
-                <div />
-              </div>
+
 
               {/* Network/server error box (above form) */}
               {error && (
@@ -678,13 +661,12 @@ export default function LoginPage() {
                       setSelectedDemo(null);
                       if (loginError) setLoginError(false);
                     }}
+                    onFocus={() => setSelectedDemo(null)}
                     required
                     autoComplete="email"
                     aria-describedby={loginError ? 'login-error-msg' : undefined}
                     aria-invalid={loginError}
-                    className={`login-input ${
-                      highlightInputs ? 'login-input-highlight' : ''
-                    } ${loginError ? 'login-input-error' : ''}`}
+                    className={`login-input ${loginError ? 'login-input-error' : ''}`}
                   />
                 </div>
 
@@ -713,15 +695,14 @@ export default function LoginPage() {
                         setSelectedDemo(null);
                         if (loginError) setLoginError(false);
                       }}
+                      onFocus={() => setSelectedDemo(null)}
                       onKeyUp={detectCapsLock}
                       onKeyDown={detectCapsLock}
                       required
                       autoComplete="current-password"
                       aria-describedby={loginError ? 'login-error-msg' : undefined}
                       aria-invalid={loginError}
-                      className={`login-input ${capsLock ? 'pr-24' : 'pr-12'} ${
-                        highlightInputs ? 'login-input-highlight' : ''
-                      } ${loginError ? 'login-input-error' : ''}`}
+                      className={`login-input ${capsLock ? 'pr-24' : 'pr-12'} ${loginError ? 'login-input-error' : ''}`}
                     />
 
                     {capsLock && (
