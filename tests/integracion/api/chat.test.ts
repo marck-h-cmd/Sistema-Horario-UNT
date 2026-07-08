@@ -57,6 +57,7 @@ vi.mock('ai', () => ({
 describe('Chat API & History Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.GROQ_API_KEY = 'fake-key';
   });
 
   describe('GET /api/chat/history', () => {

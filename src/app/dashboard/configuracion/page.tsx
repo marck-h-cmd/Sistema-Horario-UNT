@@ -22,7 +22,7 @@ interface ConfigSistema {
 }
 
 export default function ConfiguracionPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR]);
 
   const [cfg, setCfg] = useState<ConfigSistema>({});
   const [loading, setLoading] = useState(true);

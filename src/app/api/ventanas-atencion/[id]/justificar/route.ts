@@ -91,7 +91,7 @@ export async function POST(
 
     const admins = await prisma.usuario.findMany({
       where: { 
-        rol: { in: ['ADMINISTRADOR', 'SUPER_ADMIN'] }, 
+        rol: { in: ['SECRETARIA', 'ADMINISTRADOR'] }, 
         activo: true 
       }
     });

@@ -7,7 +7,7 @@ import { withAuth } from '@/middleware/auth';
 const validatorService = new ValidacionHorarioService();
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR']);
+  const authResult = await withAuth(request, ['DOCENTE', 'SECRETARIA', 'OPERADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;

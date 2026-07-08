@@ -97,7 +97,7 @@ const SELECT_CLS =
   'input mt-1 h-9 text-sm dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600';
 
 export default function ReportesPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
   const { periodoSeleccionado, loading: periodoLoading } = usePeriodo();
   const periodoId = periodoSeleccionado?.id ?? '';
 

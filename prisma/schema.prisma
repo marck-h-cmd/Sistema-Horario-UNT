@@ -12,8 +12,8 @@ datasource db {
 // ============================================
 
 enum Rol {
-  SUPER_ADMIN
   ADMINISTRADOR
+  SECRETARIA
   OPERADOR
   DOCENTE
   MONITOR

@@ -31,7 +31,7 @@ const saveSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['DOCENTE', 'SECRETARIA', 'OPERADOR', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['DOCENTE', 'SECRETARIA', 'OPERADOR', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;

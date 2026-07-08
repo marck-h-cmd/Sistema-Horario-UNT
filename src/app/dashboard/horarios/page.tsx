@@ -149,11 +149,11 @@ const getColorForCurso = (cursoId: string) => {
 
 export default function HorariosPage() {
   const { loading: authLoading } = useRequireAuth([
-    Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.OPERADOR,
+    Rol.ADMINISTRADOR, Rol.SECRETARIA, Rol.OPERADOR,
   ]);
   const { can, user } = useAuth();
   const puedePublicar = can('PUBLICAR_HORARIOS');
-  const isAdmin = user?.rol === 'SUPER_ADMIN' || user?.rol === 'ADMINISTRADOR';
+  const isAdmin = user?.rol === 'ADMINISTRADOR' || user?.rol === 'SECRETARIA';
   const { periodoSeleccionado, loading: periodoLoading } = usePeriodo();
   const periodoId = periodoSeleccionado?.id ?? '';
 
@@ -427,7 +427,7 @@ export default function HorariosPage() {
   const handleEditOpen = (h: HorarioCell) => {
     const isBorrador = h.estado === 'BORRADOR';
     const canEdit = h.estado === 'PUBLICADO'
-      ? user?.rol === 'SUPER_ADMIN'
+      ? user?.rol === 'ADMINISTRADOR'
       : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
 
     if (!canEdit) {
@@ -451,7 +451,7 @@ export default function HorariosPage() {
   const handleDelete = async (h: HorarioCell) => {
     const isBorrador = h.estado === 'BORRADOR';
     const canDelete = h.estado === 'PUBLICADO'
-      ? user?.rol === 'SUPER_ADMIN'
+      ? user?.rol === 'ADMINISTRADOR'
       : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
 
     if (!canDelete) {
@@ -1164,7 +1164,7 @@ export default function HorariosPage() {
                                         const esLab = h.ambiente?.codigo?.toUpperCase().includes('LAB') || h.ambiente?.tipo === 'LABORATORIO';
                                         const isBorrador = h.estado === 'BORRADOR';
                                         const canEditOrDelete = h.estado === 'PUBLICADO'
-                                          ? user?.rol === 'SUPER_ADMIN'
+                                          ? user?.rol === 'ADMINISTRADOR'
                                           : (h.estado === 'CONFIRMADO' ? isAdmin : (isBorrador || isAdmin));
 
                                         const laneCount = lanes.length;

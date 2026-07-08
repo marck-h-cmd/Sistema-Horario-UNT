@@ -24,7 +24,7 @@ function parseTimeToDecimal(timeStr: string): number {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await withAuth(request, ['DOCENTE', 'ADMINISTRADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['DOCENTE', 'SECRETARIA', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;

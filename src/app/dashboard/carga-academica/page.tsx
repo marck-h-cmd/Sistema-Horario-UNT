@@ -68,7 +68,7 @@ interface PlanEstudio {
 }
 
 export default function CargaAcademicaAdminPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR, Rol.OPERADOR]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA, Rol.OPERADOR]);
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodoId, setSelectedPeriodoId] = useState<string>('');
@@ -560,7 +560,7 @@ export default function CargaAcademicaAdminPage() {
       await apiPost(`/api/declaracion/no-lectiva?docenteId=${selectedDocenteId}`, {
         periodoId: selectedPeriodoId,
         items: itemsParaGuardar,
-        observaciones: 'Guardado por el Administrador.',
+        observaciones: 'Guardado por el Secretaria.',
       });
       toast.success('Declaración guardada exitosamente.');
       setIsEditing(false);

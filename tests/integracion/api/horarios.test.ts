@@ -61,6 +61,11 @@ vi.mock('@/lib/prisma', () => ({
         docenteId: 'docente-1',
         horasAsignadas: 6,
       }),
+      findFirst: vi.fn().mockResolvedValue({
+        cursoId: 'curso-1',
+        docenteId: 'docente-1',
+        horasAsignadas: 6,
+      }),
       findMany: vi.fn().mockResolvedValue([]),
     },
     grupo: {
@@ -85,6 +90,40 @@ vi.mock('@/lib/prisma', () => ({
     validacionHorario: {
       create: vi.fn().mockResolvedValue({}),
     },
+    planEstudioCurso: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: 'curso-1',
+        horasLaboratorio: 0,
+        horasTeoria: 2,
+        horasPractica: 4,
+      }),
+      findFirst: vi.fn().mockResolvedValue({
+        id: 'curso-1',
+        horasLaboratorio: 0,
+        horasTeoria: 2,
+        horasPractica: 4,
+      }),
+    },
+    cursoDocenteGrupo: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: 'cdg-1',
+        cursoDocente: {
+          docenteId: 'docente-1',
+          planEstudioCurso: {
+            cursoId: 'curso-1',
+          }
+        }
+      }),
+      findFirst: vi.fn().mockResolvedValue({
+        id: 'cdg-1',
+        cursoDocente: {
+          docenteId: 'docente-1',
+          planEstudioCurso: {
+            cursoId: 'curso-1',
+          }
+        }
+      }),
+    },
   },
 }));
 
@@ -107,11 +146,23 @@ describe('ServicioHorario - Integración', () => {
           horaInicio: '08:00',
           horaFin: '10:00',
           estado: 'CONFIRMADO',
-          curso: { id: 'c1', codigo: 'IS101', nombre: 'Programación' },
-          docente: {
-            usuario: { id: 'u1', nombre: 'Juan', apellidos: 'Pérez' },
+          cursoDocenteGrupo: {
+            grupo: { id: 'g1', nombre: 'A' },
+            cursoDocente: {
+              docente: {
+                id: 'doc-1',
+                usuario: { id: 'u1', nombre: 'Juan', apellidos: 'Pérez' },
+              },
+              planEstudioCurso: {
+                ciclo: 1,
+                horasTeoria: 2,
+                horasPractica: 4,
+                horasLaboratorio: 0,
+                creditos: 4,
+                curso: { id: 'c1', codigo: 'IS101', nombre: 'Programación' }
+              }
+            }
           },
-          grupo: { id: 'g1', nombre: 'A' },
           ambiente: { id: 'a1', codigo: 'A101', nombre: 'Aula 101', tipo: 'AULA' },
           periodo: { id: 'p1', nombre: '2024-II' },
         },
@@ -146,7 +197,11 @@ describe('ServicioHorario - Integración', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             periodoId: 'periodo-1',
-            docenteId: 'docente-1',
+            cursoDocenteGrupo: {
+              cursoDocente: {
+                docenteId: 'docente-1',
+              },
+            },
             diaSemana: 'LUNES',
             estado: 'CONFIRMADO',
           }),
@@ -160,7 +215,7 @@ describe('ServicioHorario - Integración', () => {
       periodoId: 'periodo-1',
       cursoId: 'curso-1',
       docenteId: 'docente-1',
-      grupoId: undefined,
+      cursoDocenteGrupoId: 'cdg-1',
       ambienteId: 'ambiente-1',
       diaSemana: 'LUNES' as DiaSemana,
       horaInicio: '08:00',
@@ -200,11 +255,19 @@ describe('ServicioHorario - Integración', () => {
     });
 
     it('debe rechazar si el docente no tiene el curso asignado', async () => {
-      (prisma.cursoDocente.findUnique as any).mockResolvedValueOnce(null);
+      (prisma.cursoDocenteGrupo.findUnique as any).mockResolvedValueOnce({
+        id: 'cdg-1',
+        cursoDocente: {
+          docenteId: 'otro-docente',
+          planEstudioCurso: {
+            cursoId: 'curso-1',
+          }
+        }
+      });
 
       await expect(
         servicio.crear(datosCrear, 'user-admin')
-      ).rejects.toThrow('El docente no tiene asignado este curso');
+      ).rejects.toThrow('El docente no está asignado a este grupo');
     });
 
     it('debe rechazar si el ambiente no existe', async () => {
@@ -261,6 +324,7 @@ describe('MotorAsignacion - Integración', () => {
       periodoId: 'periodo-1',
       cursoId: 'curso-1',
       docenteId: 'docente-1',
+      grupoId: 'grupo-1',
       diaSemana: 'LUNES' as DiaSemana,
       horaInicio: '08:00',
       horaFin: '10:00',

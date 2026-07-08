@@ -49,7 +49,8 @@ interface CursoRow {
 }
 
 export default function PlanEstudiosPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { user, loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
+  const canEdit = user?.rol === Rol.ADMINISTRADOR;
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
 
   const [search, setSearch] = useState('');
@@ -385,11 +386,11 @@ export default function PlanEstudiosPage() {
         </Badge>
       ),
     },
-    {
+    ...(canEdit ? [{
       header: 'Acciones',
       key: 'actions',
       className: 'text-right',
-      cell: (row) => (
+      cell: (row: CursoRow) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="icon" onClick={() => openEdit(row)} title="Editar Curso">
             <Pencil className="h-4 w-4 text-blue-600" />
@@ -401,7 +402,7 @@ export default function PlanEstudiosPage() {
           )}
         </div>
       ),
-    },
+    }] : []),
   ];
 
   if (authLoading) {
@@ -423,14 +424,18 @@ export default function PlanEstudiosPage() {
               <FileDown className="h-4 w-4" />
               Exportar PDF
             </Button>
-              <Button variant="secondary" onClick={() => setPlanModalOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Crear Plan de Estudio
-              </Button>
-            <Button onClick={openCreate} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nuevo Curso
-            </Button>
+            {canEdit && (
+              <>
+                <Button variant="secondary" onClick={() => setPlanModalOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Crear Plan de Estudio
+                </Button>
+                <Button onClick={openCreate} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nuevo Curso
+                </Button>
+              </>
+            )}
           </div>
         }
       />

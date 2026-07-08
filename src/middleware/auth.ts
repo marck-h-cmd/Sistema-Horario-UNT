@@ -32,7 +32,7 @@ const tokenService = new TokenService();
  * 
  * Con roles requeridos:
  * ```typescript
- * const authResult = await withAuth(request, ['ADMINISTRADOR', 'SUPER_ADMIN']);
+ * const authResult = await withAuth(request, ['SECRETARIA', 'ADMINISTRADOR']);
  * ```
  */
 export async function withAuth(
@@ -110,7 +110,7 @@ export async function withAuth(
  * 
  * Uso:
  * ```typescript
- * export const GET = withAuthWrapper(['ADMINISTRADOR'])(async (request) => {
+ * export const GET = withAuthWrapper(['SECRETARIA'])(async (request) => {
  *   // Ya autenticado y autorizado
  * });
  * ```
@@ -161,12 +161,12 @@ export function tieneRol(user: TokenPayload | undefined, roles: string[]): boole
  * Verifica si el usuario es administrador (Super Admin o Admin)
  */
 export function esAdmin(user: TokenPayload | undefined): boolean {
-  return tieneRol(user, [ROLES.SUPER_ADMIN, ROLES.ADMINISTRADOR]);
+  return tieneRol(user, [ROLES.ADMINISTRADOR, ROLES.SECRETARIA]);
 }
 
 /**
  * Verifica si el usuario tiene acceso a gestión de horarios
  */
 export function puedeGestionarHorarios(user: TokenPayload | undefined): boolean {
-  return tieneRol(user, [ROLES.SUPER_ADMIN, ROLES.ADMINISTRADOR, ROLES.OPERADOR]);
+  return tieneRol(user, [ROLES.ADMINISTRADOR, ROLES.SECRETARIA, ROLES.OPERADOR]);
 }

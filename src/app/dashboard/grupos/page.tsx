@@ -42,7 +42,7 @@ interface GrupoRow {
 }
 
 function GruposInner() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
   const searchParams = useSearchParams();
   const initialCursoId = searchParams.get('cursoId') || '';

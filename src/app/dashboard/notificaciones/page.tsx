@@ -102,7 +102,7 @@ export default function NotificacionesPage() {
             >
               Mis notificaciones
             </Button>
-            {user?.rol === Rol.SUPER_ADMIN || user?.rol === Rol.ADMINISTRADOR ? (
+            {user?.rol === Rol.ADMINISTRADOR || user?.rol === Rol.SECRETARIA ? (
               <Button
                 type="button"
                 variant={!soloMis ? 'default' : 'outline'}

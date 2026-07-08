@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { ItemSidebar, ItemSidebarProps } from './ItemSidebar';
 import { cn } from '@/lib/utilidades';
+import { useAuth } from '@/contexts/AuthContext';
+import { Rol } from '@prisma/client';
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -27,12 +29,19 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
+  const { user } = useAuth();
+  
   const menuItems: ItemSidebarProps[] = [
     {
       icono: LayoutDashboard,
       label: 'Dashboard',
       href: '/dashboard',
     },
+    ...(user?.rol === Rol.ADMINISTRADOR ? [{
+      icono: Users, // Or Shield
+      label: 'Usuarios',
+      href: '/dashboard/usuarios',
+    }] : []),
     {
       icono: Calendar,
       label: 'Períodos',

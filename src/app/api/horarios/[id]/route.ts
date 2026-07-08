@@ -32,8 +32,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const authResult = await withAuth(request, [
-    ROLES.SUPER_ADMIN,
     ROLES.ADMINISTRADOR,
+    ROLES.SECRETARIA,
     ROLES.OPERADOR,
   ]);
   if (authResult) return authResult;
@@ -62,8 +62,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const authResult = await withAuth(request, [
-    ROLES.SUPER_ADMIN,
     ROLES.ADMINISTRADOR,
+    ROLES.SECRETARIA,
     ROLES.OPERADOR,
   ]);
   if (authResult) return authResult;

@@ -52,7 +52,7 @@ export class ManejadorEventos {
 
     // Evento de horario creado
     this.on('horario:creado', (datos, servidor) => {
-      servidor.enviarARol('ADMINISTRADOR', {
+      servidor.enviarARol('SECRETARIA', {
         type: 'horario:creado',
         data: datos,
         timestamp: new Date().toISOString(),

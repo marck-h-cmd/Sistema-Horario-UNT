@@ -42,7 +42,8 @@ interface CursoRow {
 }
 
 export default function CursosPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.SUPER_ADMIN, Rol.ADMINISTRADOR]);
+  const { user, loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
+  const canEdit = user?.rol === Rol.ADMINISTRADOR;
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
 
   const [qInput, setQInput] = useState('');
@@ -221,11 +222,11 @@ export default function CursosPage() {
         </Link>
       ),
     },
-    {
+    ...(canEdit ? [{
       key: 'acciones',
       header: '',
       className: 'w-28 text-right',
-      cell: (r) => (
+      cell: (r: CursoRow) => (
         <div className="flex justify-end gap-1">
           <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
@@ -235,7 +236,7 @@ export default function CursosPage() {
           </Button>
         </div>
       ),
-    },
+    }] : []),
   ];
 
   if (authLoading) {
@@ -252,10 +253,12 @@ export default function CursosPage() {
         title="Cursos"
         description="Catálogo de asignaturas y enlace a grupos."
         actions={
-          <Button onClick={openCreate} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
-            <Plus className="h-4 w-4" />
-            Nuevo curso
-          </Button>
+          canEdit ? (
+            <Button onClick={openCreate} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
+              <Plus className="h-4 w-4" />
+              Nuevo curso
+            </Button>
+          ) : undefined
         }
       />
 

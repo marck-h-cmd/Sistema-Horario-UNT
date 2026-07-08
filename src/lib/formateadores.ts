@@ -99,8 +99,8 @@ export class Formateadores {
   // Formatear rol de usuario
   static rolUsuario(rol: string): string {
     const mapa: Record<string, string> = {
-      'SUPER_ADMIN': 'Super Administrador',
       'ADMINISTRADOR': 'Administrador',
+      'SECRETARIA': 'Secretaria',
       'OPERADOR': 'Operador',
       'DOCENTE': 'Docente',
       'MONITOR': 'Monitor',

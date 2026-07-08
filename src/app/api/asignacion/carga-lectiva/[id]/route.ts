@@ -19,7 +19,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const authResult = await withAuth(request, ['ADMINISTRADOR', 'SUPER_ADMIN', 'OPERADOR']);
+  const authResult = await withAuth(request, ['SECRETARIA', 'ADMINISTRADOR', 'OPERADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
@@ -53,7 +53,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await withAuth(request, ['ADMINISTRADOR', 'OPERADOR', 'SUPER_ADMIN']);
+  const authResult = await withAuth(request, ['SECRETARIA', 'OPERADOR', 'ADMINISTRADOR']);
   if (authResult) return authResult;
 
   const user = (request as any).user;
