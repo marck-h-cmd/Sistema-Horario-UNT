@@ -26,7 +26,9 @@ import {
   AlertTriangle,
   MapPin,
   Check,
+  Lock,
 } from 'lucide-react';
+import { useConfirmacion } from '@/components/ui/ConfirmacionDialogo';
 
 interface Docente {
   id: string;
@@ -103,6 +105,7 @@ const clearTimerData = (ventanaId: string) => {
 };
 
 export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAtencionProps) {
+  const { confirmar } = useConfirmacion();
   // Estados de carga y ventana
   const [loading, setLoading] = React.useState(true);
   const [ventana, setVentana] = React.useState<any>(null);
@@ -143,6 +146,12 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Estados para arrastre en el horario
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragStart, setDragStart] = React.useState<{ dia: string; horaIndex: number } | null>(null);
+  const [dragEnd, setDragEnd] = React.useState<{ dia: string; horaIndex: number } | null>(null);
+  const [selectedSlotRange, setSelectedSlotRange] = React.useState<{ dia: string; startHour: number; endHour: number } | null>(null);
 
   const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
   const HORAS_NUM = Array.from({ length: 14 }, (_, i) => i + 7); // 7 to 20
@@ -360,6 +369,193 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       setLastLlamadoSlot(null);
     }
   }, [ventanaId]);
+
+  // --- Lógica de arrastre de carga lectiva ---
+  const handleMouseDown = (e: React.MouseEvent, dia: string, horaIndex: number) => {
+    if (!formState.cursoId || !formState.grupoId) {
+      NotificacionToast.error('Seleccione curso y grupo antes de arrastrar en el horario.');
+      return;
+    }
+    e.preventDefault(); // Prevent text selection / native drag
+    setIsDragging(true);
+    setDragStart({ dia, horaIndex });
+    setDragEnd({ dia, horaIndex });
+    setSelectedSlotRange(null);
+
+    // Set time range in formState instantly
+    const hStartStr = horaIndex.toString().padStart(2, '0') + ':00';
+    const hEndStr = (horaIndex + 1).toString().padStart(2, '0') + ':00';
+    setFormState((prev) => ({
+      ...prev,
+      diaSemana: dia,
+      horaInicio: hStartStr,
+      horaFin: hEndStr,
+    }));
+  };
+
+  const handleMouseEnterCell = (dia: string, horaIndex: number) => {
+    if (!isDragging || !dragStart) return;
+    setDragEnd({ dia: dragStart.dia, horaIndex });
+
+    // Update time range in formState in real-time as user drags
+    const startIdx = Math.min(dragStart.horaIndex, horaIndex);
+    const endIdx = Math.max(dragStart.horaIndex, horaIndex);
+    const hStartStr = startIdx.toString().padStart(2, '0') + ':00';
+    const hEndStr = (endIdx + 1).toString().padStart(2, '0') + ':00';
+    setFormState((prev) => ({
+      ...prev,
+      diaSemana: dragStart.dia,
+      horaInicio: hStartStr,
+      horaFin: hEndStr,
+    }));
+  };
+
+  const crearBloqueHorario = async (dia: string, startHour: number, endHour: number) => {
+    if (!formState.cursoId || !formState.grupoId || !formState.ambienteId) {
+      NotificacionToast.error('Por favor seleccione asignatura, grupo y ambiente.');
+      return;
+    }
+
+    // Validar cruce de docente
+    const cruceDoc = allHorariosDocente.find((h: any) => {
+      if (h.diaSemana !== dia) return false;
+      if (h.estado === 'CANCELADO') return false;
+      if (!h.horaInicio || !h.horaFin) return false;
+      const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+      const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+      return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+    });
+
+    // Validar cruce de ambiente
+    const cruceAmb = todosLosHorarios.find((h: any) => {
+      if (h.diaSemana !== dia) return false;
+      if (h.estado === 'CANCELADO') return false;
+      if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
+      if (!h.horaInicio || !h.horaFin) return false;
+      const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
+      const hFin = parseInt(h.horaFin.split(':')[0], 10);
+      return Math.max(hInicio, startHour) < Math.min(hFin, endHour);
+    });
+
+    // Validar límite de horas del curso
+    const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
+    const horasAsignadas = cursoCarga?.horasAsignadas || 0;
+    const horasProgramadas = allHorariosDocente
+      .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin)
+      .reduce((sum, h) => {
+        const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
+        const hFin = parseInt(h.horaFin.split(':')[0], 10);
+        return sum + (hFin - hInicio);
+      }, 0);
+    const duracion = endHour - startHour;
+
+    let isValid = true;
+    let errorMsg = '';
+    if (cruceDoc) {
+      isValid = false;
+      errorMsg = `El docente ya tiene una clase programada en este horario: ${cruceDoc.curso?.codigo || ''} (${cruceDoc.horaInicio} - ${cruceDoc.horaFin}).`;
+    } else if (cruceAmb) {
+      isValid = false;
+      errorMsg = `El ambiente ya está ocupado en este horario por ${cruceAmb.curso?.codigo || ''} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin}).`;
+    } else if (horasProgramadas + duracion > horasAsignadas) {
+      isValid = false;
+      errorMsg = `Se superaría el límite de horas asignadas (${horasProgramadas + duracion}h de ${horasAsignadas}h).`;
+    }
+
+    if (isValid) {
+      setIsSubmitting(true);
+      const hStartStr = startHour.toString().padStart(2, '0') + ':00';
+      const hEndStr = endHour.toString().padStart(2, '0') + ':00';
+
+      try {
+        const payload: any = {
+          periodoId: ventana.periodoId,
+          cursoId: formState.cursoId,
+          docenteId: docenteActual.id,
+          ambienteId: formState.ambienteId,
+          diaSemana: dia,
+          horaInicio: hStartStr,
+          horaFin: hEndStr,
+        };
+        if (formState.grupoId) payload.grupoId = formState.grupoId;
+
+        const res = await fetch('/api/horarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          NotificacionToast.exito('Bloque horario programado correctamente.');
+          setSelectedSlotRange(null);
+          setFormState((prev) => ({ ...prev, ambienteId: '' }));
+
+          // reload docente schedules
+          const resHorarios = await fetch(
+            `/api/horarios?docenteId=${docenteActual.id}&periodoId=${ventana.periodoId}&limit=100`
+          );
+          if (resHorarios.ok) {
+            const dataHorarios = await resHorarios.json();
+            const items = dataHorarios.data || [];
+            setAllHorariosDocente(items);
+            setHorariosBorrador(items.filter((h) => h.estado === 'BORRADOR'));
+          }
+
+          // reload all schedules list
+          const resTodosHor = await fetch(`/api/horarios?periodoId=${ventana.periodoId}&limit=2000`);
+          if (resTodosHor.ok) {
+            const dataTodos = await resTodosHor.json();
+            setTodosLosHorarios(dataTodos.data || []);
+          }
+        } else {
+          NotificacionToast.error(data.error?.message || data.message || 'Error al validar o registrar horario');
+        }
+      } catch (err) {
+        NotificacionToast.error('Error de red al registrar horario.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      NotificacionToast.error(errorMsg);
+    }
+  };
+
+  React.useEffect(() => {
+    const handleGlobalMouseUp = async () => {
+      if (isDragging) {
+        if (dragStart && dragEnd) {
+          const startIdx = Math.min(dragStart.horaIndex, dragEnd.horaIndex);
+          const endIdx = Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+
+          const startHour = startIdx;
+          const endHour = endIdx + 1;
+          const dia = dragStart.dia;
+
+          setSelectedSlotRange({ dia, startHour, endHour });
+          setFormState((prev) => ({
+            ...prev,
+            diaSemana: dia,
+            horaInicio: startHour.toString().padStart(2, '0') + ':00',
+            horaFin: endHour.toString().padStart(2, '0') + ':00',
+          }));
+
+          if (formState.ambienteId) {
+            await crearBloqueHorario(dia, startHour, endHour);
+          } else {
+            NotificacionToast.exito(`Horario seleccionado: ${dia} ${startHour}:00 - ${endHour}:00. Elija un ambiente para programar.`);
+          }
+        }
+        setIsDragging(false);
+        setDragStart(null);
+        setDragEnd(null);
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, dragStart, dragEnd, formState, allHorariosDocente, todosLosHorarios, cursosCarga, docenteActual, ventana]);
 
   // Temporizadores
   React.useEffect(() => {
@@ -634,8 +830,15 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           setAllHorariosDocente(items);
           setHorariosBorrador(items.filter((h: any) => h.estado === 'BORRADOR'));
         }
+
+        // reload all schedules list
+        const resTodosHor = await fetch(`/api/horarios?periodoId=${ventana.periodoId}&limit=2000`);
+        if (resTodosHor.ok) {
+          const dataTodos = await resTodosHor.json();
+          setTodosLosHorarios(dataTodos.data || []);
+        }
       } else {
-        setFormError(data.message || 'Error al validar o registrar horario');
+        setFormError(data.error?.message || data.message || 'Error al validar o registrar horario');
       }
     } catch (err: any) {
       setFormError('Error de red al registrar horario.');
@@ -659,13 +862,21 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   };
 
   const handleEliminarBloque = async (id: string) => {
-    if (!confirm('¿Está seguro de eliminar este bloque horario del borrador?')) return;
+    const confirmado = await confirmar({
+      titulo: 'Eliminar Bloque Horario',
+      mensaje: '¿Está seguro de eliminar este bloque horario del borrador?',
+      tipo: 'danger',
+      textoConfirmar: 'Eliminar',
+      textoCancelar: 'Cancelar',
+    });
+    if (!confirmado) return;
     try {
       const res = await fetch(`/api/horarios/${id}`, { method: 'DELETE' });
       if (res.ok) {
         NotificacionToast.exito('Bloque horario eliminado');
         setHorariosBorrador((prev) => prev.filter((h) => h.id !== id));
         setAllHorariosDocente((prev) => prev.filter((h) => h.id !== id));
+        setTodosLosHorarios((prev) => prev.filter((h) => h.id !== id));
         if (formState.id === id) {
           setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
           setIsEditing(false);
@@ -679,7 +890,14 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   };
 
   const handleConfirmarBloque = async (id: string) => {
-    if (!confirm('¿Está seguro de confirmar este bloque horario?')) return;
+    const confirmado = await confirmar({
+      titulo: 'Confirmar Bloque Horario',
+      mensaje: '¿Está seguro de confirmar este bloque horario?',
+      tipo: 'warning',
+      textoConfirmar: 'Confirmar',
+      textoCancelar: 'Cancelar',
+    });
+    if (!confirmado) return;
     try {
       const res = await fetch(`/api/horarios/${id}/confirmar`, { method: 'POST' });
       if (res.ok) {
@@ -1192,136 +1410,88 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                     required
                   >
                     <option value="">Seleccionar ambiente...</option>
-                    {ambientes.map((amb) => (
-                      <option key={amb.id} value={amb.id}>
-                        [{amb.tipo}] {amb.codigo} - {amb.nombre}
-                      </option>
-                    ))}
+                    {ambientes.map((amb) => {
+                      const disponibilidad = getDisponibilidadAmbiente(amb.id);
+                      const isOcupado = !disponibilidad.disponible && disponibilidad.mensaje.startsWith('Ocupado');
+                      return (
+                        <option key={amb.id} value={amb.id} disabled={isOcupado}>
+                          [{amb.tipo}] {amb.codigo} - {amb.nombre} {isOcupado ? `(Ocupado: ${disponibilidad.mensaje.replace('Ocupado (', '').replace(')', '')})` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
-                {/* Día */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Día de la Semana *
-                  </label>
-                  <select
-                    value={formState.diaSemana}
-                    onChange={(e) => setFormState({ ...formState, diaSemana: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent"
-                    required
-                  >
-                    {DIAS.map((dia) => (
-                      <option key={dia} value={dia}>
-                        {DIA_LABEL[dia]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Horas */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Hora Inicio *
-                    </label>
-                    <select
-                      value={formState.horaInicio}
-                      onChange={(e) => setFormState({ ...formState, horaInicio: e.target.value })}
-                      className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent"
-                      required
-                    >
-                      {HORAS.slice(0, -1).map((hora) => (
-                        <option key={hora} value={hora}>
-                          {hora}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Hora Fin *
-                    </label>
-                    <select
-                      value={formState.horaFin}
-                      onChange={(e) => setFormState({ ...formState, horaFin: e.target.value })}
-                      className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent"
-                      required
-                    >
-                      {HORAS.slice(1).map((hora) => (
-                        <option key={hora} value={hora}>
-                          {hora}
-                        </option>
-                      ))}
-                    </select>
+                {/* Instrucciones de Programación mediante Arrastre */}
+                <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl p-4 flex items-start gap-3 mt-4">
+                  <CalendarIcon className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">¿Cómo programar?</p>
+                    <p>1. Seleccione la <strong>Asignatura</strong>, el <strong>Grupo</strong> y el <strong>Ambiente</strong> de arriba.</p>
+                    <p>2. Haga clic y arrastre sobre las celdas vacías del calendario de la derecha en el rango de horas que desee programar.</p>
+                    <p>3. El bloque se validará y se guardará automáticamente en estado borrador.</p>
                   </div>
                 </div>
 
-                {/* Validador en vivo */}
-                {formState.cursoId && formState.ambienteId && (
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50 p-4 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <AlertCircle className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                      Estado de Validación en Vivo:
-                    </h4>
-                    <div className="space-y-2 text-xs">
-                      {/* Rango */}
-                      <div className="flex items-start gap-2">
-                        {validacionEnVivo.rangoOk ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <p className={`font-semibold ${validacionEnVivo.rangoOk ? 'text-green-800' : 'text-red-700'}`}>
-                            Rango Horario
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{validacionEnVivo.mensajeRango}</p>
-                        </div>
-                      </div>
-                      {/* Docente */}
-                      <div className="flex items-start gap-2 border-t pt-2 border-slate-100 dark:border-slate-700">
-                        {validacionEnVivo.docenteOk ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <p className={`font-semibold ${validacionEnVivo.docenteOk ? 'text-green-800' : 'text-red-700'}`}>
-                            Disponibilidad del Docente
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{validacionEnVivo.mensajeDocente}</p>
-                        </div>
-                      </div>
-                      {/* Ambiente */}
-                      <div className="flex items-start gap-2 border-t pt-2 border-slate-100 dark:border-slate-700">
-                        {validacionEnVivo.ambienteOk ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <p className={`font-semibold ${validacionEnVivo.ambienteOk ? 'text-green-800' : 'text-red-700'}`}>
-                            Disponibilidad del Ambiente
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{validacionEnVivo.mensajeAmbiente}</p>
-                        </div>
-                      </div>
-                      {/* Horas */}
-                      <div className="flex items-start gap-2 border-t pt-2 border-slate-100 dark:border-slate-700">
-                        {validacionEnVivo.horasOk ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <p className={`font-semibold ${validacionEnVivo.horasOk ? 'text-green-800' : 'text-red-700'}`}>
-                            Límite de Horas Curso
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{validacionEnVivo.mensajeHoras}</p>
-                        </div>
+                {/* Rango de tiempo seleccionado en calendario */}
+                {selectedSlotRange && (
+                  <div className="bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/20 dark:border-sky-500/30 rounded-xl p-4 space-y-3 mt-4">
+                    <div className="flex items-start gap-2.5">
+                      <Clock className="h-5 w-5 text-sky-500 mt-0.5 shrink-0" />
+                      <div className="text-xs text-slate-600 dark:text-slate-300">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">Horario Seleccionado</p>
+                        <p className="mt-0.5">
+                          <strong>Día:</strong> {selectedSlotRange.dia}
+                        </p>
+                        <p>
+                          <strong>Rango:</strong> {selectedSlotRange.startHour}:00 - {selectedSlotRange.endHour}:00 ({selectedSlotRange.endHour - selectedSlotRange.startHour}h)
+                        </p>
                       </div>
                     </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => crearBloqueHorario(selectedSlotRange.dia, selectedSlotRange.startHour, selectedSlotRange.endHour)}
+                      disabled={!formState.ambienteId || isSubmitting}
+                      className="w-full flex items-center justify-center gap-2 bg-[#1a365d] hover:bg-[#254d84] text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <span className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Programar en este Horario
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSlotRange(null);
+                        setFormState(prev => ({ ...prev, diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' }));
+                      }}
+                      className="w-full px-3 py-1.5 border dark:border-slate-600 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 transition-colors text-center"
+                    >
+                      Limpiar Selección
+                    </button>
+                  </div>
+                )}
+
+                {isEditing && (
+                  <div className="mt-4 flex flex-col gap-2 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 dark:border-blue-500/30 rounded-xl p-4">
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      <strong>Modo Edición Activo:</strong> Puede cambiar el curso, grupo o ambiente arriba y luego arrastrar en el horario para guardarlo, o presione el botón de abajo para salir.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
+                        setFormError(null);
+                      }}
+                      className="w-full px-3 py-1.5 border dark:border-slate-600 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 transition-colors"
+                    >
+                      Cancelar Edición
+                    </button>
                   </div>
                 )}
 
@@ -1436,43 +1606,6 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   );
                 })()}
 
-                <div className="flex gap-2">
-                  {isEditing && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
-                        setFormError(null);
-                      }}
-                      className="flex-1 px-4 py-2 border dark:border-slate-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-sm font-medium text-gray-700 dark:text-slate-300 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={
-                      isSubmitting ||
-                      (formState.cursoId !== '' &&
-                        formState.ambienteId !== '' &&
-                        (!validacionEnVivo.docenteOk ||
-                          !validacionEnVivo.ambienteOk ||
-                          !validacionEnVivo.horasOk ||
-                          !validacionEnVivo.rangoOk))
-                    }
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#1a365d] hover:bg-[#254d84] text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <span className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
-                    ) : isEditing ? (
-                      <Save className="h-4 w-4" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    {isEditing ? 'Actualizar' : 'Agregar'}
-                  </button>
-                </div>
               </form>
             </div>
 
@@ -1678,6 +1811,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       <td
                                         key={`${dia}-${horaNum}`}
                                         rowSpan={cellRowSpan}
+                                        onMouseEnter={() => handleMouseEnterCell(dia, horaNum)}
                                         className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-top relative"
                                       >
                                         {/* Contenedor flex para múltiples clases en el mismo slot */}
@@ -1817,12 +1951,113 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                   }
 
                                   // Celda vacía
-                                  return (
-                                    <td
-                                      key={`${dia}-${horaNum}`}
-                                      className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-top transition-colors bg-white dark:bg-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 min-h-[50px]"
-                                    />
-                                  );
+                                  return (() => {
+                                    const isCellOcupadaPorAmbiente = formState.ambienteId ? todosLosHorarios.some((h) => {
+                                      if (formState.id && h.id === formState.id) return false;
+                                      if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
+                                      if (h.diaSemana !== dia) return false;
+                                      if (h.estado === 'CANCELADO') return false;
+                                      if (!h.horaInicio || !h.horaFin) return false;
+                                      const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+                                      const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+                                      return horaNum >= hStart && horaNum < hEnd;
+                                    }) : false;
+
+                                    if (isCellOcupadaPorAmbiente) {
+                                      return (
+                                        <td
+                                          key={`${dia}-${horaNum}`}
+                                          onMouseEnter={() => handleMouseEnterCell(dia, horaNum)}
+                                          className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-middle text-center bg-red-500/5 dark:bg-red-500/10 relative cursor-not-allowed select-none min-h-[50px]"
+                                          style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.08) 5px, transparent 5px, transparent 10px)'
+                                          }}
+                                          title="Ambiente ocupado por otra asignatura"
+                                        >
+                                          <div className="flex items-center justify-center h-full w-full opacity-60">
+                                            <Lock className="h-3.5 w-3.5 text-red-500/70 dark:text-red-400/60" />
+                                          </div>
+                                        </td>
+                                      );
+                                    }
+
+                                    const isSelectedInDrag = isDragging &&
+                                      dragStart &&
+                                      dragEnd &&
+                                      dragStart.dia === dia &&
+                                      horaNum >= Math.min(dragStart.horaIndex, dragEnd.horaIndex) &&
+                                      horaNum <= Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+
+                                    const isSelectedInSelectedRange = selectedSlotRange &&
+                                      selectedSlotRange.dia === dia &&
+                                      horaNum >= selectedSlotRange.startHour &&
+                                      horaNum < selectedSlotRange.endHour;
+
+                                    const isDragValid = isSelectedInDrag ? (() => {
+                                      const startHour = Math.min(dragStart.horaIndex, dragEnd.horaIndex);
+                                      const endHour = Math.max(dragStart.horaIndex, dragEnd.horaIndex) + 1;
+                                      
+                                      // Cruce docente
+                                      const cruceDoc = allHorariosDocente.some((h) => {
+                                        if (h.diaSemana !== dia) return false;
+                                        if (h.estado === 'CANCELADO') return false;
+                                        if (!h.horaInicio || !h.horaFin) return false;
+                                        const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+                                        const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+                                        return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+                                      });
+                                      if (cruceDoc) return false;
+
+                                      // Cruce ambiente
+                                      const cruceAmb = todosLosHorarios.some((h) => {
+                                        if (h.diaSemana !== dia) return false;
+                                        if (h.estado === 'CANCELADO') return false;
+                                        if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
+                                        if (!h.horaInicio || !h.horaFin) return false;
+                                        const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+                                        const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+                                        return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+                                      });
+                                      if (cruceAmb) return false;
+
+                                      // Horas del curso
+                                      if (!formState.cursoId) return false;
+                                      const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
+                                      const horasAsignadas = cursoCarga?.horasAsignadas || 0;
+                                      const horasProgramadas = allHorariosDocente
+                                        .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin)
+                                        .reduce((sum, h) => {
+                                          const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
+                                          const hFin = parseInt(h.horaFin.split(':')[0], 10);
+                                          return sum + (hFin - hInicio);
+                                        }, 0);
+                                      const duracion = endHour - startHour;
+                                      if (horasProgramadas + duracion > horasAsignadas) return false;
+
+                                      return true;
+                                    })() : true;
+
+                                    const highlightClass = isSelectedInDrag
+                                      ? (isDragValid
+                                          ? "bg-emerald-100/60 dark:bg-emerald-950/40 border-dashed border-emerald-500 border-2"
+                                          : "bg-red-100/60 dark:bg-red-950/40 border-dashed border-red-500 border-2")
+                                      : isSelectedInSelectedRange
+                                        ? "bg-sky-100/60 dark:bg-sky-950/40 border-dashed border-sky-500 border-2"
+                                        : "bg-white dark:bg-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-700/30";
+
+                                    return (
+                                      <td
+                                        key={`${dia}-${horaNum}`}
+                                        onMouseDown={(e) => handleMouseDown(e, dia, horaNum)}
+                                        onMouseEnter={() => handleMouseEnterCell(dia, horaNum)}
+                                        className={cn(
+                                          "p-0 border-r border-b border-slate-200 dark:border-slate-700 align-top transition-colors select-none min-h-[50px]",
+                                          highlightClass
+                                        )}
+                                        style={{ cursor: formState.cursoId && formState.grupoId ? 'cell' : 'default' }}
+                                      />
+                                    );
+                                  })()
                                 })}
 
                                 {/* HORA Derecha */}

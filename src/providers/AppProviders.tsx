@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PeriodoProvider } from '@/contexts/PeriodoContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Toaster } from 'sonner';
+import { ProveedorConfirmacion } from '@/components/ui/ConfirmacionDialogo';
 import type { ReactNode } from 'react';
 
 function ThemedToaster() {
@@ -24,8 +25,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <AuthProvider>
         <PeriodoProvider>
-          {children}
-          <ThemedToaster />
+          <ProveedorConfirmacion>
+            {children}
+            <ThemedToaster />
+          </ProveedorConfirmacion>
         </PeriodoProvider>
       </AuthProvider>
     </ThemeProvider>

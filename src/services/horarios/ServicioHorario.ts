@@ -272,7 +272,7 @@ export class ServicioHorario {
       try {
         await this.gestorNotificaciones.enviarNotificacion({
           usuarioId: docente.usuarioId,
-          tipo: 'ALERTA_CARGA_HORARIA',
+          tipo: 'SISTEMA',
           titulo: 'Desfase de horas en programación',
           mensaje: alertasCarga.map((a) => a.mensaje).join(' '),
           prioridad: alertasCarga.some((a) => a.severidad === 'ERROR') ? 'ALTA' : 'MEDIA',

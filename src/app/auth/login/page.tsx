@@ -305,9 +305,15 @@ export default function LoginPage() {
       typingTimerRef.current.passwordTimeouts.forEach(clearTimeout);
     }
 
-    // Explicitly reset visible inputs so they do not show credentials
+    // Start typing animation for credentials
     setEmail('');
     setPassword('');
+
+    const emailTimeouts = typeInput(u.email, setEmail, 0, () => {
+      const passwordTimeouts = typeInput(u.password, setPassword, 100);
+      typingTimerRef.current.passwordTimeouts = passwordTimeouts;
+    });
+    typingTimerRef.current.emailTimeouts = emailTimeouts;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

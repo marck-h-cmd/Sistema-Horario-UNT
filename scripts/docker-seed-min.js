@@ -22,7 +22,7 @@ async function main() {
   await upsertUsuario('admin@unitru.edu.pe', {
     nombre: 'Administrador',
     apellidos: 'Sistema',
-    rol: 'ADMINISTRADOR',
+    rol: 'SECRETARIA',
   });
 
   await upsertUsuario('operador@unitru.edu.pe', {
@@ -34,7 +34,7 @@ async function main() {
   await upsertUsuario('superadmin@unitru.edu.pe', {
     nombre: 'Super',
     apellidos: 'Admin',
-    rol: 'SUPER_ADMIN',
+    rol: 'ADMINISTRADOR',
   });
 
   await upsertUsuario('monitor@unitru.edu.pe', {
@@ -49,6 +49,28 @@ async function main() {
     rol: 'DOCENTE',
   });
 
+  // Crear Facultad y Departamento Académico por defecto para satisfacer restricciones
+  let facultad = await prisma.facultad.findFirst({ where: { nombre: 'Ingeniería' } });
+  if (!facultad) {
+    facultad = await prisma.facultad.create({
+      data: {
+        nombre: 'Ingeniería',
+        decano: 'Decano de Ingeniería',
+      }
+    });
+  }
+
+  let dpto = await prisma.departamentoAcademico.findFirst({ where: { id: 1 } });
+  if (!dpto) {
+    dpto = await prisma.departamentoAcademico.create({
+      data: {
+        id: 1,
+        nombre: 'Dpto. de Ing. Sistemas',
+        facultadId: facultad.id,
+      }
+    });
+  }
+
   const docenteExistente = await prisma.docente.findUnique({
     where: { usuarioId: docenteUser.id },
   });
@@ -59,7 +81,7 @@ async function main() {
         codigo: 'DOC001',
         categoria: 'PRINCIPAL',
         dedicacion: 'TIEMPO_COMPLETO_40H',
-        departamento: 'Dpto. de Ing. Sistemas',
+        departamentoId: 1,
         telefono: '999123456',
         preferenciasNotificacion: {
           create: {
