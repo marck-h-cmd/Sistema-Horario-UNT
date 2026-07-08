@@ -398,12 +398,6 @@ async function main() {
       estado: (cols[9] || '').trim(),
       tipoComponente,
     };
-  }).filter(s => {
-    const docenteLower = s.docente.toLowerCase();
-    if (docenteLower.includes('marcelino torres')) return false; // PRINCIPAL
-    if (docenteLower.includes('alberto mendoza')) return false; // ASOCIADO
-    if (docenteLower.includes('bertha urtecho')) return false; // AUXILIAR
-    return true;
   });
 
   const noMapeados = parsedSchedules.filter(s => !s.codigoOficial);
@@ -679,7 +673,7 @@ async function main() {
   console.log(`✅ ${totalAsignaciones} asignaciones curso-docente creadas`);
 
   // ==================== DISPONIBILIDAD DE DOCENTES ====================
-  const diasSemana: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+  const diasSemana: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
   for (const docente of docentes) {
     for (const dia of diasSemana) {
       await prisma.disponibilidadDocente.create({
@@ -705,6 +699,15 @@ async function main() {
       return dbName === itemName || dbName.startsWith(itemName) || itemName.startsWith(dbName);
     });
     if (!docente) { totalHorariosOmitidos++; continue; }
+
+    const docNameLower = (docente.nombre + ' ' + docente.apellidos).toLowerCase();
+    if (
+      docNameLower.includes('marcelino torres') ||
+      docNameLower.includes('alberto mendoza') ||
+      docNameLower.includes('bertha urtecho')
+    ) {
+      continue;
+    }
 
     const cdgId = cdgIndexMap.get(`${cursoInfo.planEstudioCursoId}_${docente.id}_${item.grupo}`);
     if (!cdgId) { totalHorariosOmitidos++; continue; }

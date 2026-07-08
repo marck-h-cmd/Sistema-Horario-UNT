@@ -124,6 +124,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const [cursosCarga, setCursosCarga] = React.useState<any[]>([]);
   const [horariosBorrador, setHorariosBorrador] = React.useState<any[]>([]);
   const [allHorariosDocente, setAllHorariosDocente] = React.useState<any[]>([]);
+  const [disponibilidadDocente, setDisponibilidadDocente] = React.useState<any[]>([]);
   const [horariosAmbiente, setHorariosAmbiente] = React.useState<any[]>([]);
 
   // Opciones para combos
@@ -283,6 +284,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       setCursosCarga([]);
       setHorariosBorrador([]);
       setAllHorariosDocente([]);
+      setDisponibilidadDocente([]);
       return;
     }
 
@@ -302,6 +304,15 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           const items = dataHorarios.data || [];
           setAllHorariosDocente(items);
           setHorariosBorrador(items.filter((h: any) => h.estado === 'BORRADOR'));
+        }
+
+        // Fetch docente availability
+        const resDisp = await fetch(`/api/docentes/${docenteActual.id}/disponibilidad`);
+        if (resDisp.ok) {
+          const dataDisp = await resDisp.json();
+          setDisponibilidadDocente(dataDisp.data || []);
+        } else {
+          setDisponibilidadDocente([]);
         }
       } catch (err) {
         console.error(err);
@@ -416,8 +427,25 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       return;
     }
 
+    // Validar disponibilidad del docente
+    if (disponibilidadDocente.length > 0) {
+      for (let h = startHour; h < endHour; h++) {
+        const slotDisp = disponibilidadDocente.some((d: any) => {
+          if (d.diaSemana !== dia) return false;
+          const hInicio = parseInt(d.horaInicio.split(':')[0], 10);
+          const hFin = parseInt(d.horaFin.split(':')[0], 10);
+          return h >= hInicio && h < hFin;
+        });
+        if (!slotDisp) {
+          NotificacionToast.error('El docente no está disponible en este horario.');
+          return;
+        }
+      }
+    }
+
     // Validar cruce de docente
     const cruceDoc = allHorariosDocente.find((h: any) => {
+      if (formState.id && h.id === formState.id) return false;
       if (h.diaSemana !== dia) return false;
       if (h.estado === 'CANCELADO') return false;
       if (!h.horaInicio || !h.horaFin) return false;
@@ -426,8 +454,21 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
     });
 
+    // Validar cruce de grupo
+    const cruceGrupo = todosLosHorarios.find((h: any) => {
+      if (formState.id && h.id === formState.id) return false;
+      if (h.diaSemana !== dia) return false;
+      if (h.estado === 'CANCELADO') return false;
+      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+      if (!h.horaInicio || !h.horaFin) return false;
+      const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+      const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+      return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+    });
+
     // Validar cruce de ambiente
     const cruceAmb = todosLosHorarios.find((h: any) => {
+      if (formState.id && h.id === formState.id) return false;
       if (h.diaSemana !== dia) return false;
       if (h.estado === 'CANCELADO') return false;
       if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
@@ -441,7 +482,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
     const horasAsignadas = cursoCarga?.horasAsignadas || 0;
     const horasProgramadas = allHorariosDocente
-      .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin)
+      .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin && (!formState.id || h.id !== formState.id))
       .reduce((sum, h) => {
         const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
         const hFin = parseInt(h.horaFin.split(':')[0], 10);
@@ -454,6 +495,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     if (cruceDoc) {
       isValid = false;
       errorMsg = `El docente ya tiene una clase programada en este horario: ${cruceDoc.curso?.codigo || ''} (${cruceDoc.horaInicio} - ${cruceDoc.horaFin}).`;
+    } else if (cruceGrupo) {
+      isValid = false;
+      errorMsg = `El grupo ya tiene una clase programada en este horario por ${cruceGrupo.curso?.codigo || ''} (${cruceGrupo.horaInicio} - ${cruceGrupo.horaFin}).`;
     } else if (cruceAmb) {
       isValid = false;
       errorMsg = `El ambiente ya está ocupado en este horario por ${cruceAmb.curso?.codigo || ''} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin}).`;
@@ -531,18 +575,100 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           const endHour = endIdx + 1;
           const dia = dragStart.dia;
 
-          setSelectedSlotRange({ dia, startHour, endHour });
-          setFormState((prev) => ({
-            ...prev,
-            diaSemana: dia,
-            horaInicio: startHour.toString().padStart(2, '0') + ':00',
-            horaFin: endHour.toString().padStart(2, '0') + ':00',
-          }));
+          // Validar disponibilidad del docente
+          let isDispOk = true;
+          if (disponibilidadDocente.length > 0) {
+            for (let h = startHour; h < endHour; h++) {
+              const slotDisp = disponibilidadDocente.some((d: any) => {
+                if (d.diaSemana !== dia) return false;
+                const hInicio = parseInt(d.horaInicio.split(':')[0], 10);
+                const hFin = parseInt(d.horaFin.split(':')[0], 10);
+                return h >= hInicio && h < hFin;
+              });
+              if (!slotDisp) {
+                isDispOk = false;
+                break;
+              }
+            }
+          }
 
-          if (formState.ambienteId) {
-            await crearBloqueHorario(dia, startHour, endHour);
+          // Validar cruce de docente
+          const cruceDoc = allHorariosDocente.find((h: any) => {
+            if (formState.id && h.id === formState.id) return false;
+            if (h.diaSemana !== dia) return false;
+            if (h.estado === 'CANCELADO') return false;
+            if (!h.horaInicio || !h.horaFin) return false;
+            const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+            const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+            return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+          });
+
+          // Validar cruce de grupo
+          const cruceGrupo = todosLosHorarios.find((h: any) => {
+            if (formState.id && h.id === formState.id) return false;
+            if (h.diaSemana !== dia) return false;
+            if (h.estado === 'CANCELADO') return false;
+            if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+            if (!h.horaInicio || !h.horaFin) return false;
+            const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+            const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+            return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+          });
+
+          // Validar cruce de ambiente
+          const cruceAmb = formState.ambienteId ? todosLosHorarios.find((h: any) => {
+            if (formState.id && h.id === formState.id) return false;
+            if (h.diaSemana !== dia) return false;
+            if (h.estado === 'CANCELADO') return false;
+            if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
+            if (!h.horaInicio || !h.horaFin) return false;
+            const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+            const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+            return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+          }) : null;
+
+          // Validar límite de horas del curso
+          const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
+          const horasAsignadas = cursoCarga?.horasAsignadas || 0;
+          const horasProgramadas = allHorariosDocente
+            .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin && (!formState.id || h.id !== formState.id))
+            .reduce((sum, h) => {
+              const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
+              const hFin = parseInt(h.horaFin.split(':')[0], 10);
+              return sum + (hFin - hInicio);
+            }, 0);
+          const duracion = endHour - startHour;
+
+          let errorMsg = '';
+          if (!isDispOk) {
+            errorMsg = 'El docente no está disponible en este horario.';
+          } else if (cruceDoc) {
+            errorMsg = `El docente ya tiene una clase programada en este horario: ${cruceDoc.curso?.codigo || ''} (${cruceDoc.horaInicio} - ${cruceDoc.horaFin}).`;
+          } else if (cruceGrupo) {
+            errorMsg = `El grupo ya tiene una clase programada en este horario por ${cruceGrupo.curso?.codigo || ''} (${cruceGrupo.horaInicio} - ${cruceGrupo.horaFin}).`;
+          } else if (cruceAmb) {
+            errorMsg = `El ambiente ya está ocupado en este horario por ${cruceAmb.curso?.codigo || ''} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin}).`;
+          } else if (horasProgramadas + duracion > horasAsignadas) {
+            errorMsg = `Se superaría el límite de horas asignadas (${horasProgramadas + duracion}h de ${horasAsignadas}h).`;
+          }
+
+          if (errorMsg) {
+            NotificacionToast.error(errorMsg);
+            setSelectedSlotRange(null);
           } else {
-            NotificacionToast.exito(`Horario seleccionado: ${dia} ${startHour}:00 - ${endHour}:00. Elija un ambiente para programar.`);
+            setSelectedSlotRange({ dia, startHour, endHour });
+            setFormState((prev) => ({
+              ...prev,
+              diaSemana: dia,
+              horaInicio: startHour.toString().padStart(2, '0') + ':00',
+              horaFin: endHour.toString().padStart(2, '0') + ':00',
+            }));
+
+            if (formState.ambienteId) {
+              await crearBloqueHorario(dia, startHour, endHour);
+            } else {
+              NotificacionToast.exito(`Horario seleccionado: ${dia} ${startHour}:00 - ${endHour}:00. Elija un ambiente para programar.`);
+            }
           }
         }
         setIsDragging(false);
@@ -555,7 +681,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isDragging, dragStart, dragEnd, formState, allHorariosDocente, todosLosHorarios, cursosCarga, docenteActual, ventana]);
+  }, [isDragging, dragStart, dragEnd, formState, allHorariosDocente, todosLosHorarios, cursosCarga, docenteActual, ventana, disponibilidadDocente]);
 
   // Temporizadores
   React.useEffect(() => {
@@ -1366,11 +1492,13 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                           );
                         }, 0);
                       const disponible = item.horasAsignadas - horasProgramadas;
-                      if (disponible <= 0) return null;
                       return (
-                        <option key={curso.id} value={curso.id}>
-                          {curso.codigo} - {curso.nombre} (Disponibles: {disponible}h de{' '}
-                          {item.horasAsignadas}h)
+                        <option 
+                          key={curso.id} 
+                          value={curso.id}
+                          disabled={disponible <= 0 && !isEditing}
+                        >
+                          {curso.codigo} - {curso.nombre} {disponible <= 0 ? '(Sin horas disponibles)' : `(Disponibles: ${disponible}h de ${item.horasAsignadas}h)`}
                         </option>
                       );
                     })}
@@ -1749,9 +1877,6 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                 {DIA_LABEL[d]}
                               </th>
                             ))}
-                            <th className="py-3 px-3 text-center font-semibold w-20 border-b border-slate-700">
-                              HORA
-                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -1952,6 +2077,30 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
 
                                   // Celda vacía
                                   return (() => {
+                                    const isDocenteDisponible = disponibilidadDocente.length === 0 || disponibilidadDocente.some((d: any) => {
+                                      if (d.diaSemana !== dia) return false;
+                                      const hInicio = parseInt(d.horaInicio.split(':')[0], 10);
+                                      const hFin = parseInt(d.horaFin.split(':')[0], 10);
+                                      return horaNum >= hInicio && horaNum < hFin;
+                                    });
+
+                                    if (!isDocenteDisponible) {
+                                      return (
+                                        <td
+                                          key={`${dia}-${horaNum}`}
+                                          className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-middle text-center bg-slate-100 dark:bg-slate-900/50 relative cursor-not-allowed select-none min-h-[50px]"
+                                          style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.1) 5px, transparent 5px, transparent 10px)'
+                                          }}
+                                          title="Docente no disponible en este horario (Declaración de disponibilidad)"
+                                        >
+                                          <div className="flex items-center justify-center h-full w-full opacity-60">
+                                            <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">No disponible</span>
+                                          </div>
+                                        </td>
+                                      );
+                                    }
+
                                     const isCellOcupadaPorAmbiente = formState.ambienteId ? todosLosHorarios.some((h) => {
                                       if (formState.id && h.id === formState.id) return false;
                                       if (!h.ambiente || h.ambiente.id !== formState.ambienteId) return false;
@@ -1981,6 +2130,34 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       );
                                     }
 
+                                    const isCellOcupadaPorGrupo = formState.grupoId ? todosLosHorarios.some((h) => {
+                                      if (formState.id && h.id === formState.id) return false;
+                                      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+                                      if (h.diaSemana !== dia) return false;
+                                      if (h.estado === 'CANCELADO') return false;
+                                      if (!h.horaInicio || !h.horaFin) return false;
+                                      const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+                                      const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+                                      return horaNum >= hStart && horaNum < hEnd;
+                                    }) : false;
+
+                                    if (isCellOcupadaPorGrupo) {
+                                      return (
+                                        <td
+                                          key={`${dia}-${horaNum}`}
+                                          className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-middle text-center bg-amber-500/5 dark:bg-amber-500/10 relative cursor-not-allowed select-none min-h-[50px]"
+                                          style={{
+                                            backgroundImage: 'repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.08) 5px, transparent 5px, transparent 10px)'
+                                          }}
+                                          title="El grupo ya tiene una clase programada en este horario"
+                                        >
+                                          <div className="flex items-center justify-center h-full w-full opacity-60">
+                                            <Lock className="h-3.5 w-3.5 text-amber-500/70 dark:text-amber-400/60" />
+                                          </div>
+                                        </td>
+                                      );
+                                    }
+
                                     const isSelectedInDrag = isDragging &&
                                       dragStart &&
                                       dragEnd &&
@@ -1997,6 +2174,19 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       const startHour = Math.min(dragStart.horaIndex, dragEnd.horaIndex);
                                       const endHour = Math.max(dragStart.horaIndex, dragEnd.horaIndex) + 1;
                                       
+                                      // Disponibilidad del docente
+                                      if (disponibilidadDocente.length > 0) {
+                                        for (let h = startHour; h < endHour; h++) {
+                                          const slotDisp = disponibilidadDocente.some((d: any) => {
+                                            if (d.diaSemana !== dia) return false;
+                                            const hInicio = parseInt(d.horaInicio.split(':')[0], 10);
+                                            const hFin = parseInt(d.horaFin.split(':')[0], 10);
+                                            return h >= hInicio && h < hFin;
+                                          });
+                                          if (!slotDisp) return false;
+                                        }
+                                      }
+
                                       // Cruce docente
                                       const cruceDoc = allHorariosDocente.some((h) => {
                                         if (h.diaSemana !== dia) return false;
@@ -2007,6 +2197,42 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                         return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
                                       });
                                       if (cruceDoc) return false;
+
+
+                                      // Cruce grupo
+
+
+                                      const cruceGrupo = formState.grupoId ? todosLosHorarios.some((h) => {
+
+
+                                        if (formState.id && h.id === formState.id) return false;
+
+
+                                        if (h.diaSemana !== dia) return false;
+
+
+                                        if (h.estado === 'CANCELADO') return false;
+
+
+                                        if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+
+
+                                        if (!h.horaInicio || !h.horaFin) return false;
+
+
+                                        const hStart = parseInt(h.horaInicio.split(':')[0], 10);
+
+
+                                        const hEnd = parseInt(h.horaFin.split(':')[0], 10);
+
+
+                                        return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
+
+
+                                      }) : false;
+
+
+                                      if (cruceGrupo) return false;
 
                                       // Cruce ambiente
                                       const cruceAmb = todosLosHorarios.some((h) => {
@@ -2060,16 +2286,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                   })()
                                 })}
 
-                                {/* HORA Derecha */}
-                                <td
-                                  className="py-2.5 px-2 text-center border-l border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-mono text-xs whitespace-nowrap"
-                                >
-                                  {`${horaNum.toString().padStart(2, '0')}:00`}
-                                  <br />
-                                  <span className="text-[10px] opacity-70">
-                                    {`${(horaNum + 1).toString().padStart(2, '0')}:00`}
-                                  </span>
-                                </td>
+
                               </tr>
                             );
                           })}
@@ -2082,7 +2299,6 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                 {getHorasDia(dia)}h
                               </td>
                             ))}
-                            <td className="py-3 px-2 text-center">TOTAL</td>
                           </tr>
                         </tbody>
                       </table>
