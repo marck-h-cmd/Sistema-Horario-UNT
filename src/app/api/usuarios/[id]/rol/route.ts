@@ -9,8 +9,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const authResult = await withAuth(request, [Rol.ADMINISTRADOR]);
-  if (authResult.error) {
-    return NextResponse.json({ success: false, message: authResult.error }, { status: authResult.status });
+  if (authResult) {
+    return authResult;
   }
 
   const userId = params.id;

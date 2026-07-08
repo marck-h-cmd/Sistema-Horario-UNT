@@ -164,7 +164,7 @@ export default function UsuariosPage() {
       key: 'rol',
       header: 'Rol',
       cell: (r) => (
-        <Badge variant={r.rol === Rol.ADMINISTRADOR ? 'primary' : 'outline'}>
+        <Badge variant={r.rol === Rol.ADMINISTRADOR ? 'default' : 'outline'}>
           {Formateadores.rolUsuario(r.rol)}
         </Badge>
       )

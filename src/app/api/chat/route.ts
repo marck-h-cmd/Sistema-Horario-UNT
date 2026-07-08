@@ -213,23 +213,43 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
           execute: async ({ nombre, incluirHorario }) => {
             try {
               console.log('[DEBUG] Tool consultarDocente called with:', { nombre, incluirHorario });
-              const docentes = await prisma.docente.findMany({
-                where: {
+              const cleanName = nombre.replace(/(profesor|docente|ing\.?|ingeniero|dr\.?|doctor|magister|mg\.?)\s+/gi, '').trim();
+              const searchTerms = cleanName.split(' ').filter(t => t.length > 2);
+              
+              const whereCondition = searchTerms.length > 0 ? {
+                AND: searchTerms.map(term => ({
                   usuario: {
                     OR: [
-                      { nombre: { contains: nombre, mode: 'insensitive' } },
-                      { apellidos: { contains: nombre, mode: 'insensitive' } }
+                      { nombre: { contains: term, mode: 'insensitive' as const } },
+                      { apellidos: { contains: term, mode: 'insensitive' as const } }
                     ]
                   }
-                },
+                }))
+              } : {
+                usuario: {
+                  OR: [
+                    { nombre: { contains: cleanName, mode: 'insensitive' as const } },
+                    { apellidos: { contains: cleanName, mode: 'insensitive' as const } }
+                  ]
+                }
+              };
+
+              const docentes = await prisma.docente.findMany({
+                where: whereCondition,
                 include: {
                   usuario: true,
                   departamento: true,
+                  disponibilidad: true,
                   ...(incluirHorario ? {
-                    horarios: {
-                      include: { curso: true, ambiente: true },
-                      orderBy: { diaSemana: 'asc' },
-                      take: 15
+                    cursos: {
+                      include: {
+                        planEstudioCurso: { include: { curso: true } },
+                        grupos: {
+                          include: {
+                            horarios: { include: { ambiente: true } }
+                          }
+                        }
+                      }
                     }
                   } : {})
                 },
@@ -241,21 +261,40 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
                 return { encontrado: false, mensaje: `No existe docente con nombre "${nombre}"` };
               }
 
-              const res = docentes.map(d => ({
-                nombre: `${d.usuario.nombre} ${d.usuario.apellidos}`,
-                email: d.usuario.email,
-                categoria: d.categoria,
-                dedicacion: d.dedicacion,
-                departamento: d.departamento?.nombre ?? 'No asignado',
-                horarios: incluirHorario ? (d.horarios ?? []).map(h => ({
-                  dia: h.diaSemana,
-                  de: h.horaInicio,
-                  a: h.horaFin,
-                  curso: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre ?? '-',
-                  aula: h.ambiente?.nombre ?? '-',
-                  estado: h.estado
-                })) : undefined
-              }));
+              const res = docentes.map(d => {
+                const horariosDocente: any[] = [];
+                if (incluirHorario && d.cursos) {
+                  for (const c of d.cursos) {
+                    const cursoName = c.planEstudioCurso?.curso?.nombre ?? '-';
+                    for (const g of c.grupos) {
+                      for (const h of g.horarios) {
+                        horariosDocente.push({
+                          dia: h.diaSemana,
+                          de: h.horaInicio,
+                          a: h.horaFin,
+                          curso: cursoName,
+                          aula: h.ambiente?.nombre ?? '-',
+                          estado: h.estado
+                        });
+                      }
+                    }
+                  }
+                }
+
+                return {
+                  nombre: `${d.usuario.nombre} ${d.usuario.apellidos}`,
+                  email: d.usuario.email,
+                  categoria: d.categoria,
+                  dedicacion: d.dedicacion,
+                  departamento: d.departamento?.nombre ?? 'No asignado',
+                  disponibilidad: d.disponibilidad.map((disp: any) => ({
+                    dia: disp.diaSemana,
+                    de: disp.horaInicio,
+                    a: disp.horaFin
+                  })),
+                  horarios: incluirHorario ? horariosDocente : undefined
+                };
+              });
               console.log('[DEBUG] Tool consultarDocente result:', JSON.stringify(res));
               return res;
             } catch (e: any) {
