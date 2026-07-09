@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
       docenteId = docenteIdParam;
     }
 
-    const pdfBuffer = await reporteService.generarFormato3Horario(periodoId, docenteId);
+    const formato = searchParams.get('formato') || 'grid';
+    const pdfBuffer = await reporteService.generarFormato3Horario(periodoId, docenteId, formato as 'grid' | 'table');
     const filename = `horario-personal-${docenteId}-${periodoId}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {

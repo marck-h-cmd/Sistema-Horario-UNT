@@ -89,12 +89,12 @@ export class ReporteService {
   /**
    * Genera el FORMATO 3: Horario Semanal del Personal Docente
    */
-  async generarFormato3Horario(periodoId: string, docenteId: string): Promise<Buffer> {
+  async generarFormato3Horario(periodoId: string, docenteId: string, formato: 'grid' | 'table' = 'grid'): Promise<Buffer> {
     const data = await this.obtenerDatosCompletosDocente(docenteId, periodoId);
-    const html = this.construirHtmlFormato3(data);
+    const html = formato === 'table' ? this.construirHtmlFormato3Table(data) : this.construirHtmlFormato3(data);
     return this.generadorPDF.generarPDF(html, {
-      titulo: 'Formato 3 - Horario Semanal',
-      orientacion: 'landscape',
+      titulo: formato === 'table' ? 'Formato 3 - Horario Personal' : 'Formato 3 - Horario Semanal',
+      orientacion: formato === 'table' ? 'portrait' : 'landscape',
       formato: 'A4',
       numeracionPaginas: false,
       margenes: { top: '6mm', right: '6mm', bottom: '6mm', left: '6mm' },
@@ -665,6 +665,130 @@ export class ReporteService {
             <span class="leyenda-color" style="background: ${COLOR_NO_LECTIVA.bg}; border-left: 3px solid ${COLOR_NO_LECTIVA.border};"></span>
             <span>No lectiva</span>
           </div>
+        </div>
+      </body>
+      </html>`;
+  }
+
+  private construirHtmlFormato3Table(data: any): string {
+    const { docente, periodo, horariosLectivos, distribucionesNoLectivas } = data;
+    const nombreDocente = `${docente.usuario.nombre} ${docente.usuario.apellidos}`;
+    const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+    const DIAS_LABEL: Record<string, string> = {
+      LUNES: 'Lunes', MARTES: 'Martes', MIERCOLES: 'Miércoles',
+      JUEVES: 'Jueves', VIERNES: 'Viernes', SABADO: 'Sábado',
+    };
+
+    // Agrupar todas las actividades del día
+    const actividadesPorDia: Record<string, any[]> = {};
+    for (const dia of DIAS) {
+      actividadesPorDia[dia] = [];
+    }
+
+    // 1. Lectivos
+    for (const hl of horariosLectivos) {
+      if (!hl.diaSemana || !hl.horaInicio || !hl.horaFin) continue;
+      const cursoObj = hl.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso;
+      if (!cursoObj) continue;
+      actividadesPorDia[hl.diaSemana].push({
+        tipo: 'LECTIVA',
+        horaInicio: hl.horaInicio,
+        horaFin: hl.horaFin,
+        titulo: `${cursoObj.codigo} - ${cursoObj.nombre}`,
+        detalle: `${hl.tipoComponente} | Grupo: ${hl.cursoDocenteGrupo?.grupo?.nombre || 'A'} | Aula: ${hl.ambiente?.nombre || '—'}`,
+        colorBg: '#eff6ff',
+        colorText: '#1e3a8a',
+        colorBorder: '#3b82f6',
+      });
+    }
+
+    // 2. No lectivos
+    for (const dnl of distribucionesNoLectivas) {
+      if (!dnl.diaSemana || !dnl.horaInicio || !dnl.horaFin) continue;
+      actividadesPorDia[dnl.diaSemana].push({
+        tipo: 'NO_LECTIVA',
+        horaInicio: dnl.horaInicio,
+        horaFin: dnl.horaFin,
+        titulo: this.formatearTipoActividad(dnl.declaracionItem.tipoActividad),
+        detalle: dnl.declaracionItem.descripcion || 'Actividad complementaria declarada',
+        colorBg: '#fffbeb',
+        colorText: '#92400e',
+        colorBorder: '#f59e0b',
+      });
+    }
+
+    // Ordenar por hora en cada día
+    for (const dia of DIAS) {
+      actividadesPorDia[dia].sort((a: any, b: any) => a.horaInicio.localeCompare(b.horaInicio));
+    }
+
+    // Construir el HTML del contenido
+    const bloquesHtml = DIAS.map((dia) => {
+      const items = actividadesPorDia[dia];
+      const filas = items.length === 0 
+        ? `<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 12px; font-style: italic;">No hay actividades programadas</td></tr>`
+        : items.map(item => `
+            <tr style="background: ${item.colorBg};">
+              <td style="padding: 8px 10px; font-weight: 700; color: ${item.colorText}; border: 1px solid #cbd5e1; font-size: 8pt; width: 15%;">${item.horaInicio} - ${item.horaFin}</td>
+              <td style="padding: 8px 10px; font-weight: 700; color: ${item.colorText}; border: 1px solid #cbd5e1; font-size: 8pt; width: 15%;">${item.tipo}</td>
+              <td style="padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 8pt; width: 35%;">${item.titulo}</td>
+              <td style="padding: 8px 10px; color: #475569; border: 1px solid #cbd5e1; font-size: 8pt; width: 35%;">${item.detalle}</td>
+            </tr>
+          `).join('');
+
+      return `
+        <div style="margin-bottom: 14px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; page-break-inside: avoid;">
+          <div style="background: #0f2d55; color: white; padding: 6px 12px; font-weight: 800; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em;">
+            ${DIAS_LABEL[dia]}
+          </div>
+          <table style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #cbd5e1;">
+            <thead>
+              <tr style="background: #f1f5f9; text-align: left;">
+                <th style="padding: 6px 10px; font-size: 7.5pt; color: #475569; border: 1px solid #cbd5e1;">Hora</th>
+                <th style="padding: 6px 10px; font-size: 7.5pt; color: #475569; border: 1px solid #cbd5e1;">Tipo</th>
+                <th style="padding: 6px 10px; font-size: 7.5pt; color: #475569; border: 1px solid #cbd5e1;">Actividad / Asignatura</th>
+                <th style="padding: 6px 10px; font-size: 7.5pt; color: #475569; border: 1px solid #cbd5e1;">Detalles</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filas}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 8pt; line-height: 1.2; color: #1e293b; margin: 15px; }
+          .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 0 0 6px; margin: 0 0 6px; border-bottom: 1px solid #cbd5e1; }
+          .topbar .title { font-size: 10pt; font-weight: 800; color: #0f2d55; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+          .topbar .meta { text-align: right; color: #64748b; font-size: 7.5pt; }
+          .topbar .meta strong { color: #0f2d55; }
+          .info { display: flex; justify-content: space-between; gap: 10px; padding: 0 0 6px; margin: 0 0 10px; border-bottom: 1px solid #e2e8f0; }
+          .info .left { font-weight: 700; color: #0f2d55; }
+          .info .right { color: #64748b; text-align: right; }
+        </style>
+      </head>
+      <body>
+        <div class="topbar">
+          <p class="title">Horario Personal (Vista Detallada)</p>
+          <div class="meta">
+            <div>Período: <strong>${escapeHtml(periodo.nombre)}</strong></div>
+          </div>
+        </div>
+
+        <div class="info">
+          <div class="left">${escapeHtml(nombreDocente)} · ${escapeHtml(docente.codigo)}</div>
+          <div class="right">${escapeHtml(docente.dedicacion.replace(/_/g, ' '))}</div>
+        </div>
+
+        <div>
+          ${bloquesHtml}
         </div>
       </body>
       </html>`;
