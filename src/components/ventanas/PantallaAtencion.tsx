@@ -153,6 +153,10 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  const selectedGrupoRealId = React.useMemo(() => {
+    return grupos.find((g: any) => g.id === formState.grupoId)?.grupoId || formState.grupoId;
+  }, [grupos, formState.grupoId]);
+
   // Estados para arrastre en el horario
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState<{ dia: string; horaIndex: number } | null>(null);
@@ -484,7 +488,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       if (formState.id && h.id === formState.id) return false;
       if (h.diaSemana !== dia) return false;
       if (h.estado === 'CANCELADO') return false;
-      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
+      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== selectedGrupoRealId) return false;
       if (!h.horaInicio || !h.horaFin) return false;
       const hStart = parseInt(h.horaInicio.split(':')[0], 10);
       const hEnd = parseInt(h.horaFin.split(':')[0], 10);
@@ -626,7 +630,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             if (formState.id && h.id === formState.id) return false;
             if (h.diaSemana !== dia) return false;
             if (h.estado === 'CANCELADO') return false;
-            if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
+            if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== selectedGrupoRealId) return false;
             if (!h.horaInicio || !h.horaFin) return false;
             const hStart = parseInt(h.horaInicio.split(':')[0], 10);
             const hEnd = parseInt(h.horaFin.split(':')[0], 10);
@@ -2303,9 +2307,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       );
                                     }
 
-                                    const ocupacionGrupo = formState.grupoId ? todosLosHorarios.find((h) => {
+                                    const ocupacionGrupo = selectedGrupoRealId ? todosLosHorarios.find((h) => {
                                       if (formState.id && h.id === formState.id) return false;
-                                      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
+                                      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== selectedGrupoRealId) return false;
                                       if (h.diaSemana !== dia) return false;
                                       if (h.estado === 'CANCELADO') return false;
                                       if (!h.horaInicio || !h.horaFin) return false;
@@ -2386,19 +2390,11 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       // Cruce grupo
 
 
-                                      const cruceGrupo = formState.grupoId ? todosLosHorarios.some((h) => {
-
-
+                                      const cruceGrupo = selectedGrupoRealId ? todosLosHorarios.some((h) => {
                                         if (formState.id && h.id === formState.id) return false;
-
-
                                         if (h.diaSemana !== dia) return false;
-
-
                                         if (h.estado === 'CANCELADO') return false;
-
-
-                                        if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
+                                        if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== selectedGrupoRealId) return false;
 
 
                                         if (!h.horaInicio || !h.horaFin) return false;
