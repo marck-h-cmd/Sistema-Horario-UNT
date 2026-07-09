@@ -143,8 +143,13 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     diaSemana: 'LUNES',
     horaInicio: '08:00',
     horaFin: '10:00',
+    tipoComponente: 'TEORIA',
   });
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [missingCursoWarning, setMissingCursoWarning] = React.useState(false);
+  const [missingComponenteWarning, setMissingComponenteWarning] = React.useState(false);
+  const [missingGrupoWarning, setMissingGrupoWarning] = React.useState(false);
+  const [missingAmbienteWarning, setMissingAmbienteWarning] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -346,6 +351,15 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     cargarHorariosAmbiente();
   }, [formState.ambienteId, ventana?.periodoId]);
 
+  // Auto-submit when user selects ambiente after dragging a slot without ambiente
+  React.useEffect(() => {
+    if (missingAmbienteWarning && formState.ambienteId && selectedSlotRange) {
+      setMissingAmbienteWarning(false);
+      crearBloqueHorario(selectedSlotRange.dia, selectedSlotRange.startHour, selectedSlotRange.endHour);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState.ambienteId]);
+
   // Cargar grupos cuando cambia el curso
   React.useEffect(() => {
     if (!formState.cursoId) {
@@ -383,8 +397,19 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
 
   // --- Lógica de arrastre de carga lectiva ---
   const handleMouseDown = (e: React.MouseEvent, dia: string, horaIndex: number) => {
-    if (!formState.cursoId || !formState.grupoId) {
-      NotificacionToast.error('Seleccione curso y grupo antes de arrastrar en el horario.');
+    if (!formState.cursoId) {
+      setMissingCursoWarning(true);
+      NotificacionToast.advertencia('Debe seleccionar el comboBox Asignatura / Curso.');
+      return;
+    }
+    if (!formState.tipoComponente) {
+      setMissingComponenteWarning(true);
+      NotificacionToast.advertencia('Debe seleccionar el comboBox Componente del Curso.');
+      return;
+    }
+    if (!formState.grupoId) {
+      setMissingGrupoWarning(true);
+      NotificacionToast.advertencia('Debe seleccionar el comboBox Grupo / Sección.');
       return;
     }
     e.preventDefault(); // Prevent text selection / native drag
@@ -459,7 +484,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       if (formState.id && h.id === formState.id) return false;
       if (h.diaSemana !== dia) return false;
       if (h.estado === 'CANCELADO') return false;
-      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
       if (!h.horaInicio || !h.horaFin) return false;
       const hStart = parseInt(h.horaInicio.split(':')[0], 10);
       const hEnd = parseInt(h.horaFin.split(':')[0], 10);
@@ -478,17 +503,8 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       return Math.max(hInicio, startHour) < Math.min(hFin, endHour);
     });
 
-    // Validar límite de horas del curso
-    const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
-    const horasAsignadas = cursoCarga?.horasAsignadas || 0;
-    const horasProgramadas = allHorariosDocente
-      .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin && (!formState.id || h.id !== formState.id))
-      .reduce((sum, h) => {
-        const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
-        const hFin = parseInt(h.horaFin.split(':')[0], 10);
-        return sum + (hFin - hInicio);
-      }, 0);
     const duracion = endHour - startHour;
+    const hoursValidation = checkComponentHoursLimit(formState.cursoId, formState.tipoComponente, duracion, formState.id || undefined);
 
     let isValid = true;
     let errorMsg = '';
@@ -501,9 +517,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     } else if (cruceAmb) {
       isValid = false;
       errorMsg = `El ambiente ya está ocupado en este horario por ${cruceAmb.curso?.codigo || ''} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin}).`;
-    } else if (horasProgramadas + duracion > horasAsignadas) {
+    } else if (!hoursValidation.isValid) {
       isValid = false;
-      errorMsg = `Se superaría el límite de horas asignadas (${horasProgramadas + duracion}h de ${horasAsignadas}h).`;
+      errorMsg = hoursValidation.errorMsg;
     }
 
     if (isValid) {
@@ -520,6 +536,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
           diaSemana: dia,
           horaInicio: hStartStr,
           horaFin: hEndStr,
+          tipoComponente: formState.tipoComponente,
         };
         if (formState.grupoId) payload.grupoId = formState.grupoId;
 
@@ -532,18 +549,19 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
         if (res.ok) {
           NotificacionToast.exito('Bloque horario programado correctamente.');
           setSelectedSlotRange(null);
-          setFormState((prev) => ({ ...prev, ambienteId: '' }));
 
           // reload docente schedules
           const resHorarios = await fetch(
             `/api/horarios?docenteId=${docenteActual.id}&periodoId=${ventana.periodoId}&limit=100`
           );
+          let items = [];
           if (resHorarios.ok) {
             const dataHorarios = await resHorarios.json();
-            const items = dataHorarios.data || [];
+            items = dataHorarios.data || [];
             setAllHorariosDocente(items);
-            setHorariosBorrador(items.filter((h) => h.estado === 'BORRADOR'));
+            setHorariosBorrador(items.filter((h: any) => h.estado === 'BORRADOR'));
           }
+          revisarHorasYRestablecer(items, formState.cursoId, formState.tipoComponente);
 
           // reload all schedules list
           const resTodosHor = await fetch(`/api/horarios?periodoId=${ventana.periodoId}&limit=2000`);
@@ -608,7 +626,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             if (formState.id && h.id === formState.id) return false;
             if (h.diaSemana !== dia) return false;
             if (h.estado === 'CANCELADO') return false;
-            if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+            if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
             if (!h.horaInicio || !h.horaFin) return false;
             const hStart = parseInt(h.horaInicio.split(':')[0], 10);
             const hEnd = parseInt(h.horaFin.split(':')[0], 10);
@@ -627,17 +645,8 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             return Math.max(hStart, startHour) < Math.min(hEnd, endHour);
           }) : null;
 
-          // Validar límite de horas del curso
-          const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId);
-          const horasAsignadas = cursoCarga?.horasAsignadas || 0;
-          const horasProgramadas = allHorariosDocente
-            .filter((h) => (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) && h.estado !== 'CANCELADO' && h.horaInicio && h.horaFin && (!formState.id || h.id !== formState.id))
-            .reduce((sum, h) => {
-              const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
-              const hFin = parseInt(h.horaFin.split(':')[0], 10);
-              return sum + (hFin - hInicio);
-            }, 0);
           const duracion = endHour - startHour;
+          const hoursValidation = checkComponentHoursLimit(formState.cursoId, formState.tipoComponente, duracion, formState.id || undefined);
 
           let errorMsg = '';
           if (!isDispOk) {
@@ -648,8 +657,8 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             errorMsg = `El grupo ya tiene una clase programada en este horario por ${cruceGrupo.curso?.codigo || ''} (${cruceGrupo.horaInicio} - ${cruceGrupo.horaFin}).`;
           } else if (cruceAmb) {
             errorMsg = `El ambiente ya está ocupado en este horario por ${cruceAmb.curso?.codigo || ''} (${cruceAmb.horaInicio} - ${cruceAmb.horaFin}).`;
-          } else if (horasProgramadas + duracion > horasAsignadas) {
-            errorMsg = `Se superaría el límite de horas asignadas (${horasProgramadas + duracion}h de ${horasAsignadas}h).`;
+          } else if (!hoursValidation.isValid) {
+            errorMsg = hoursValidation.errorMsg;
           }
 
           if (errorMsg) {
@@ -667,7 +676,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
             if (formState.ambienteId) {
               await crearBloqueHorario(dia, startHour, endHour);
             } else {
-              NotificacionToast.exito(`Horario seleccionado: ${dia} ${startHour}:00 - ${endHour}:00. Elija un ambiente para programar.`);
+              // No hay ambiente seleccionado – mostrar advertencia visual (el componente leerá selectedSlotRange)
+              setMissingAmbienteWarning(true);
+              NotificacionToast.advertencia('Debe seleccionar el comboBox Ambiente.');
             }
           }
         }
@@ -916,6 +927,16 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       return;
     }
 
+    const startHour = parseInt(horaInicio.split(':')[0], 10);
+    const endHour = parseInt(horaFin.split(':')[0], 10);
+    const duracion = endHour - startHour;
+    const hoursValidation = checkComponentHoursLimit(cursoId, formState.tipoComponente, duracion, isEditing && id ? id : undefined);
+    if (!hoursValidation.isValid) {
+      setFormError(hoursValidation.errorMsg);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const payload: any = {
         periodoId: ventana.periodoId,
@@ -925,6 +946,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
         diaSemana,
         horaInicio,
         horaFin,
+        tipoComponente: formState.tipoComponente,
       };
       if (grupoId) payload.grupoId = grupoId;
 
@@ -944,18 +966,19 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
 
       if (res.ok) {
         NotificacionToast.exito(isEditing ? 'Bloque horario actualizado' : 'Bloque horario registrado exitosamente');
-        setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
         setIsEditing(false);
 
         const resHorarios = await fetch(
           `/api/horarios?docenteId=${docenteActual.id}&periodoId=${ventana.periodoId}&limit=100`
         );
+        let items: any[] = [];
         if (resHorarios.ok) {
           const dataHorarios = await resHorarios.json();
-          const items = dataHorarios.data || [];
+          items = dataHorarios.data || [];
           setAllHorariosDocente(items);
           setHorariosBorrador(items.filter((h: any) => h.estado === 'BORRADOR'));
         }
+        revisarHorasYRestablecer(items, cursoId, formState.tipoComponente);
 
         // reload all schedules list
         const resTodosHor = await fetch(`/api/horarios?periodoId=${ventana.periodoId}&limit=2000`);
@@ -982,6 +1005,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       diaSemana: bloque.diaSemana,
       horaInicio: bloque.horaInicio,
       horaFin: bloque.horaFin,
+      tipoComponente: bloque.tipoComponente || 'TEORIA',
     });
     setIsEditing(true);
     setFormError(null);
@@ -1295,6 +1319,103 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     };
   });
 
+  const checkComponentHoursLimit = (cursoId: string, tipoComponente: string, duracion: number, idExcluir?: string) => {
+    const cursoCarga = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === cursoId);
+    if (!cursoCarga) return { isValid: true, errorMsg: '' };
+
+    const totalTeoria = cursoCarga.planEstudioCurso?.horasTeoria || 0;
+    const totalPractica = cursoCarga.planEstudioCurso?.horasPractica || 0;
+    const totalLaboratorio = cursoCarga.planEstudioCurso?.horasLaboratorio || 0;
+
+    const horasAsignadasComponente = 
+      tipoComponente === 'TEORIA' ? totalTeoria :
+      tipoComponente === 'PRACTICA' ? totalPractica :
+      totalLaboratorio;
+
+    const horasProgramadasComponente = allHorariosDocente
+      .filter((h: any) =>
+        (h.curso?.id === cursoId || h.cursoId === cursoId) &&
+        h.tipoComponente === tipoComponente &&
+        h.estado !== 'CANCELADO' &&
+        (!idExcluir || h.id !== idExcluir) &&
+        h.horaInicio && h.horaFin
+      )
+      .reduce((sum, h) => {
+        const hInicio = parseInt(h.horaInicio.split(':')[0], 10);
+        const hFin = parseInt(h.horaFin.split(':')[0], 10);
+        return sum + (hFin - hInicio);
+      }, 0);
+
+    if (horasProgramadasComponente + duracion > horasAsignadasComponente) {
+      return {
+        isValid: false,
+        errorMsg: `Se superaría el límite de horas asignadas para ${tipoComponente} (${horasProgramadasComponente + duracion}h de ${horasAsignadasComponente}h).`,
+      };
+    }
+    return { isValid: true, errorMsg: '' };
+  };
+
+  const revisarHorasYRestablecer = (newHorarios: any[], cursoId: string, currentComp: string) => {
+    const item = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === cursoId);
+    if (!item) {
+      setFormState((prev) => ({ ...prev, cursoId: '', tipoComponente: 'TEORIA', grupoId: '', ambienteId: '' }));
+      return;
+    }
+
+    const totalTeoria = item.planEstudioCurso?.horasTeoria || 0;
+    const totalPractica = item.planEstudioCurso?.horasPractica || 0;
+    const totalLaboratorio = item.planEstudioCurso?.horasLaboratorio || 0;
+
+    const pTeoria = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+    const pPractica = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+    const pLaboratorio = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+
+    const dispTeoria = totalTeoria - pTeoria;
+    const dispPractica = totalPractica - pPractica;
+    const dispLaboratorio = totalLaboratorio - pLaboratorio;
+
+    if (currentComp === 'TEORIA' && dispTeoria > 0) return;
+    if (currentComp === 'PRACTICA' && dispPractica > 0) return;
+    if (currentComp === 'LABORATORIO' && dispLaboratorio > 0) return;
+
+    if (dispTeoria > 0) {
+      setFormState((prev) => ({ ...prev, tipoComponente: 'TEORIA', ambienteId: '' }));
+    } else if (dispPractica > 0) {
+      setFormState((prev) => ({ ...prev, tipoComponente: 'PRACTICA', ambienteId: '' }));
+    } else if (dispLaboratorio > 0) {
+      setFormState((prev) => ({ ...prev, tipoComponente: 'LABORATORIO', ambienteId: '' }));
+    } else {
+      setFormState((prev) => ({ ...prev, cursoId: '', tipoComponente: 'TEORIA', grupoId: '', ambienteId: '' }));
+    }
+  };
+
+  const handleCursoChange = (cursoId: string) => {
+    setMissingCursoWarning(false);
+    setMissingComponenteWarning(false);
+    setMissingGrupoWarning(false);
+    setMissingAmbienteWarning(false);
+    if (!cursoId) {
+      setFormState((prev) => ({ ...prev, cursoId: '', tipoComponente: 'TEORIA', grupoId: '', ambienteId: '' }));
+      return;
+    }
+    const item = cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === cursoId);
+    let defaultComp = 'TEORIA';
+    if (item) {
+      const totalTeoria = item.planEstudioCurso?.horasTeoria || 0;
+      const totalPractica = item.planEstudioCurso?.horasPractica || 0;
+      const totalLaboratorio = item.planEstudioCurso?.horasLaboratorio || 0;
+
+      const pTeoria = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+      const pPractica = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+      const pLaboratorio = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+
+      if (totalTeoria - pTeoria > 0) defaultComp = 'TEORIA';
+      else if (totalPractica - pPractica > 0) defaultComp = 'PRACTICA';
+      else if (totalLaboratorio - pLaboratorio > 0) defaultComp = 'LABORATORIO';
+    }
+    setFormState((prev) => ({ ...prev, cursoId, tipoComponente: defaultComp, grupoId: '', ambienteId: '' }));
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className={`space-y-6 ${className}`}>
@@ -1462,13 +1583,23 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
               <form onSubmit={handleGuardarBloque} className="space-y-4">
                 {/* Curso */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                     Asignatura / Curso *
+                    {missingCursoWarning && (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 animate-pulse">
+                        <AlertCircle className="h-3.5 w-3.5" /> ¡Selecciona el curso!
+                      </span>
+                    )}
                   </label>
                   <select
                     value={formState.cursoId}
-                    onChange={(e) => setFormState({ ...formState, cursoId: e.target.value, grupoId: '' })}
-                    className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent"
+                    onChange={(e) => handleCursoChange(e.target.value)}
+                    className={cn(
+                      "flex h-10 w-full rounded-md border bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent",
+                      missingCursoWarning
+                        ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 focus:ring-amber-400"
+                        : "border-gray-300 dark:border-slate-600 focus:ring-[#1a365d]"
+                    )}
                     required
                   >
                     <option value="">Seleccionar curso...</option>
@@ -1505,15 +1636,113 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   </select>
                 </div>
 
+                {/* Componente del Curso */}
+                {(() => {
+                  const selectedCursoCarga = formState.cursoId ? cursosCarga.find((item) => (item.planEstudioCurso?.curso?.id || item.curso?.id) === formState.cursoId) : null;
+                  
+                  let totalTeoria = 0;
+                  let totalPractica = 0;
+                  let totalLaboratorio = 0;
+                  let dispTeoria = 0;
+                  let dispPractica = 0;
+                  let dispLaboratorio = 0;
+
+                  if (selectedCursoCarga) {
+                    totalTeoria = selectedCursoCarga.planEstudioCurso?.horasTeoria || 0;
+                    totalPractica = selectedCursoCarga.planEstudioCurso?.horasPractica || 0;
+                    totalLaboratorio = selectedCursoCarga.planEstudioCurso?.horasLaboratorio || 0;
+
+                    const programmedTeoria = allHorariosDocente
+                      .filter((h: any) =>
+                        (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) &&
+                        h.tipoComponente === 'TEORIA' &&
+                        h.estado !== 'CANCELADO' &&
+                        (!formState.id || h.id !== formState.id) &&
+                        h.horaInicio && h.horaFin
+                      )
+                      .reduce((sum: number, h: any) => sum + parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10), 0);
+
+                    const programmedPractica = allHorariosDocente
+                      .filter((h: any) =>
+                        (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) &&
+                        h.tipoComponente === 'PRACTICA' &&
+                        h.estado !== 'CANCELADO' &&
+                        (!formState.id || h.id !== formState.id) &&
+                        h.horaInicio && h.horaFin
+                      )
+                      .reduce((sum: number, h: any) => sum + parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10), 0);
+
+                    const programmedLaboratorio = allHorariosDocente
+                      .filter((h: any) =>
+                        (h.curso?.id === formState.cursoId || h.cursoId === formState.cursoId) &&
+                        h.tipoComponente === 'LABORATORIO' &&
+                        h.estado !== 'CANCELADO' &&
+                        (!formState.id || h.id !== formState.id) &&
+                        h.horaInicio && h.horaFin
+                      )
+                      .reduce((sum: number, h: any) => sum + parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10), 0);
+
+                    dispTeoria = totalTeoria - programmedTeoria;
+                    dispPractica = totalPractica - programmedPractica;
+                    dispLaboratorio = totalLaboratorio - programmedLaboratorio;
+                  }
+
+                  if (!formState.cursoId) return null;
+
+                  return (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                        Componente del Curso *
+                        {missingComponenteWarning && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 animate-pulse">
+                            <AlertCircle className="h-3.5 w-3.5" /> ¡Selecciona el componente!
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={formState.tipoComponente}
+                        onChange={(e) => { setFormState({ ...formState, tipoComponente: e.target.value, ambienteId: '' }); setMissingComponenteWarning(false); }}
+                        className={cn(
+                          "flex h-10 w-full rounded-md border bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent",
+                          missingComponenteWarning
+                            ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 focus:ring-amber-400"
+                            : "border-gray-300 dark:border-slate-600 focus:ring-[#1a365d]"
+                        )}
+                        required
+                      >
+                        <option value="TEORIA" disabled={dispTeoria <= 0 && !isEditing}>
+                          Teoría ({dispTeoria <= 0 ? 'Sin horas disponibles' : `${dispTeoria}h de ${totalTeoria}h disp.`})
+                        </option>
+                        <option value="PRACTICA" disabled={dispPractica <= 0 && !isEditing}>
+                          Práctica ({dispPractica <= 0 ? 'Sin horas disponibles' : `${dispPractica}h de ${totalPractica}h disp.`})
+                        </option>
+                        <option value="LABORATORIO" disabled={dispLaboratorio <= 0 && !isEditing}>
+                          Laboratorio ({dispLaboratorio <= 0 ? 'Sin horas disponibles' : `${dispLaboratorio}h de ${totalLaboratorio}h disp.`})
+                        </option>
+                      </select>
+                    </div>
+                  );
+                })()}
+
                 {/* Grupo */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                     Grupo / Sección *
+                    {missingGrupoWarning && (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 animate-pulse">
+                        <AlertCircle className="h-3.5 w-3.5" /> ¡Selecciona el grupo!
+                      </span>
+                    )}
                   </label>
                   <select
                     value={formState.grupoId}
-                    onChange={(e) => setFormState({ ...formState, grupoId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent disabled:opacity-50"
+                    onChange={(e) => { setFormState({ ...formState, grupoId: e.target.value }); setMissingGrupoWarning(false); }}
+                    className={cn(
+                      "flex h-10 w-full rounded-md border bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50",
+                      missingGrupoWarning
+                        ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 focus:ring-amber-400"
+                        : "border-gray-300 dark:border-slate-600 focus:ring-[#1a365d]"
+                    )}
                     disabled={!formState.cursoId}
                     required
                   >
@@ -1528,27 +1757,48 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
 
                 {/* Ambiente */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                     Ambiente / Aula / Laboratorio *
+                    {missingAmbienteWarning && (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 animate-pulse">
+                        <AlertCircle className="h-3.5 w-3.5" /> ¡Selecciona el ambiente!
+                      </span>
+                    )}
                   </label>
                   <select
                     value={formState.ambienteId}
-                    onChange={(e) => setFormState({ ...formState, ambienteId: e.target.value })}
-                    className="flex h-10 w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a365d] focus:border-transparent"
+                    onChange={(e) => { setFormState({ ...formState, ambienteId: e.target.value }); setMissingAmbienteWarning(false); }}
+                    className={cn(
+                      "flex h-10 w-full rounded-md border bg-white dark:bg-slate-700 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent",
+                      missingAmbienteWarning
+                        ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 focus:ring-amber-400"
+                        : "border-gray-300 dark:border-slate-600 focus:ring-[#1a365d]"
+                    )}
                     required
                   >
                     <option value="">Seleccionar ambiente...</option>
-                    {ambientes.map((amb) => {
-                      const disponibilidad = getDisponibilidadAmbiente(amb.id);
-                      const isOcupado = !disponibilidad.disponible && disponibilidad.mensaje.startsWith('Ocupado');
-                      return (
-                        <option key={amb.id} value={amb.id} disabled={isOcupado}>
-                          [{amb.tipo}] {amb.codigo} - {amb.nombre} {isOcupado ? `(Ocupado: ${disponibilidad.mensaje.replace('Ocupado (', '').replace(')', '')})` : ''}
-                        </option>
-                      );
-                    })}
+                    {(() => {
+                      const ambientesFiltrados = ambientes.filter((amb) => {
+                        if (formState.tipoComponente === 'LABORATORIO') {
+                          return amb.tipo === 'LABORATORIO';
+                        } else {
+                          return amb.tipo !== 'LABORATORIO';
+                        }
+                      });
+                      return ambientesFiltrados.map((amb) => {
+                        const disponibilidad = getDisponibilidadAmbiente(amb.id);
+                        const isOcupado = !disponibilidad.disponible && disponibilidad.mensaje.startsWith('Ocupado');
+                        return (
+                          <option key={amb.id} value={amb.id} disabled={isOcupado}>
+                            [{amb.tipo}] {amb.codigo} - {amb.nombre} {isOcupado ? `(Ocupado: ${disponibilidad.mensaje.replace('Ocupado (', '').replace(')', '')})` : ''}
+                          </option>
+                        );
+                      });
+                    })()}
                   </select>
                 </div>
+
+
 
                 {/* Instrucciones de Programación mediante Arrastre */}
                 <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl p-4 flex items-start gap-3 mt-4">
@@ -1561,46 +1811,19 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   </div>
                 </div>
 
-                {/* Rango de tiempo seleccionado en calendario */}
-                {selectedSlotRange && (
-                  <div className="bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/20 dark:border-sky-500/30 rounded-xl p-4 space-y-3 mt-4">
-                    <div className="flex items-start gap-2.5">
-                      <Clock className="h-5 w-5 text-sky-500 mt-0.5 shrink-0" />
-                      <div className="text-xs text-slate-600 dark:text-slate-300">
-                        <p className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">Horario Seleccionado</p>
-                        <p className="mt-0.5">
-                          <strong>Día:</strong> {selectedSlotRange.dia}
-                        </p>
-                        <p>
-                          <strong>Rango:</strong> {selectedSlotRange.startHour}:00 - {selectedSlotRange.endHour}:00 ({selectedSlotRange.endHour - selectedSlotRange.startHour}h)
-                        </p>
-                      </div>
+                {/* Advertencia: bloque seleccionado sin ambiente */}
+                {missingAmbienteWarning && selectedSlotRange && (
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-xl flex items-start gap-2.5 animate-pulse">
+                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 dark:text-amber-300">
+                      <p className="font-bold uppercase tracking-wide">Selecciona el Ambiente</p>
+                      <p className="mt-0.5">Bloque {selectedSlotRange.dia} {selectedSlotRange.startHour}:00 – {selectedSlotRange.endHour}:00 listo. Elige el aula o laboratorio para guardarlo.</p>
+                      <button
+                        type="button"
+                        className="mt-1.5 text-amber-700 dark:text-amber-400 underline text-xs"
+                        onClick={() => { setSelectedSlotRange(null); setMissingAmbienteWarning(false); }}
+                      >Cancelar selección</button>
                     </div>
-                    
-                    <button
-                      type="button"
-                      onClick={() => crearBloqueHorario(selectedSlotRange.dia, selectedSlotRange.startHour, selectedSlotRange.endHour)}
-                      disabled={!formState.ambienteId || isSubmitting}
-                      className="w-full flex items-center justify-center gap-2 bg-[#1a365d] hover:bg-[#254d84] text-white font-semibold px-4 py-2.5 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? (
-                        <span className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                      Programar en este Horario
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedSlotRange(null);
-                        setFormState(prev => ({ ...prev, diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' }));
-                      }}
-                      className="w-full px-3 py-1.5 border dark:border-slate-600 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 transition-colors text-center"
-                    >
-                      Limpiar Selección
-                    </button>
                   </div>
                 )}
 
@@ -1630,105 +1853,61 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                   </div>
                 )}
 
-                {/* TABLAS DE DISPONIBILIDAD DE AMBIENTES */}
+                {/* TABLAS DE DISPONIBILIDAD DE AMBIENTES - filtradas por tipoComponente */}
                 {formState.cursoId && formState.horaInicio && formState.horaFin && (() => {
-                  const aulas = ambientes.filter(a => a.tipo === 'AULA');
-                  const labs = ambientes.filter(a => a.tipo === 'LABORATORIO');
-                  
+                  const esLaboratorio = formState.tipoComponente === 'LABORATORIO';
+                  const ambientesFiltrados = ambientes.filter(a =>
+                    esLaboratorio ? a.tipo === 'LABORATORIO' : a.tipo !== 'LABORATORIO'
+                  );
+                  const seccionLabel = esLaboratorio ? 'LABORATORIO' : 'TEORÍA / PRÁCTICA (Aulas)';
+
                   return (
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-4 mt-2">
                       <h4 className="text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
-                        Ambientes disponibles para asignación
+                        Ambientes disponibles — {seccionLabel}
                       </h4>
-                      
-                      <div className="space-y-4">
-                        {/* TEORÍA */}
-                        <div>
-                          <h5 className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 mb-1">TEORÍA (Aulas):</h5>
-                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm overflow-hidden text-[10px] max-h-40 overflow-y-auto">
-                            <table className="w-full text-left">
-                              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0">
-                                <tr>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Ambiente</th>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400 text-center">Cap.</th>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Estado</th>
+
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm overflow-hidden text-[10px] max-h-44 overflow-y-auto">
+                        <table className="w-full text-left">
+                          <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                            <tr>
+                              <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Ambiente</th>
+                              <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400 text-center">Cap.</th>
+                              <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {ambientesFiltrados.length === 0 && (
+                              <tr><td colSpan={3} className="px-2 py-3 text-center text-slate-400">Sin ambientes registrados</td></tr>
+                            )}
+                            {ambientesFiltrados.map(a => {
+                              const { disponible, mensaje } = getDisponibilidadAmbiente(a.id);
+                              return (
+                                <tr
+                                  key={a.id}
+                                  className={cn(
+                                    disponible ? 'bg-white dark:bg-slate-800' : 'bg-red-50/50 dark:bg-red-900/10 opacity-75',
+                                    'hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer'
+                                  )}
+                                  onClick={() => {
+                                    if (disponible) { setFormState(f => ({ ...f, ambienteId: a.id })); setMissingAmbienteWarning(false); }
+                                  }}
+                                >
+                                  <td className="px-2 py-1 font-medium dark:text-slate-200">
+                                    {a.codigo}
+                                    {formState.ambienteId === a.id && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                                  </td>
+                                  <td className="px-2 py-1 text-slate-500 dark:text-slate-400 text-center">{a.capacidad ?? '-'}</td>
+                                  <td className="px-2 py-1">
+                                    {disponible
+                                      ? <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5" /> Libre</span>
+                                      : <span className="text-red-500 dark:text-red-400 flex items-center gap-0.5"><X className="w-2.5 h-2.5" /> {mensaje}</span>}
+                                  </td>
                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                {aulas.map(a => {
-                                  const { disponible, mensaje } = getDisponibilidadAmbiente(a.id);
-                                  return (
-                                    <tr 
-                                      key={a.id} 
-                                      className={cn(
-                                        disponible ? "bg-white dark:bg-slate-800" : "bg-red-50/50 dark:bg-red-900/10 opacity-75",
-                                        "hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
-                                      )}
-                                      onClick={() => {
-                                        if(disponible) setFormState(f => ({...f, ambienteId: a.id}));
-                                      }}
-                                    >
-                                      <td className="px-2 py-1 font-medium dark:text-slate-200">
-                                        {a.codigo}
-                                        {formState.ambienteId === a.id && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
-                                      </td>
-                                      <td className="px-2 py-1 text-slate-500 dark:text-slate-400 text-center">{a.capacidad ?? '-'}</td>
-                                      <td className="px-2 py-1">
-                                        {disponible 
-                                          ? <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5"/> Libre</span> 
-                                          : <span className="text-red-500 dark:text-red-400 flex items-center gap-0.5"><X className="w-2.5 h-2.5"/> {mensaje}</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                        
-                        {/* LABORATORIO */}
-                        <div>
-                          <h5 className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 mb-1">LABORATORIO:</h5>
-                          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-sm overflow-hidden text-[10px] max-h-40 overflow-y-auto">
-                            <table className="w-full text-left">
-                              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0">
-                                <tr>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Ambiente</th>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400 text-center">Cap.</th>
-                                  <th className="px-2 py-1 font-medium text-slate-500 dark:text-slate-400">Estado</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                {labs.map(a => {
-                                  const { disponible, mensaje } = getDisponibilidadAmbiente(a.id);
-                                  return (
-                                    <tr 
-                                      key={a.id} 
-                                      className={cn(
-                                        disponible ? "bg-white dark:bg-slate-800" : "bg-red-50/50 dark:bg-red-900/10 opacity-75",
-                                        "hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
-                                      )}
-                                      onClick={() => {
-                                        if(disponible) setFormState(f => ({...f, ambienteId: a.id}));
-                                      }}
-                                    >
-                                      <td className="px-2 py-1 font-medium dark:text-slate-200">
-                                        {a.codigo}
-                                        {formState.ambienteId === a.id && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
-                                      </td>
-                                      <td className="px-2 py-1 text-slate-500 dark:text-slate-400 text-center">{a.capacidad ?? '-'}</td>
-                                      <td className="px-2 py-1">
-                                        {disponible 
-                                          ? <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5"/> Libre</span> 
-                                          : <span className="text-red-500 dark:text-red-400 flex items-center gap-0.5"><X className="w-2.5 h-2.5"/> {mensaje}</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   );
@@ -1884,7 +2063,10 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                             return (
                               <tr
                                 key={horaNum}
-                                className={rowIndex % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/30 dark:bg-slate-700/30'}
+                                className={cn(
+                                  'h-20',
+                                  rowIndex % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/30 dark:bg-slate-700/30'
+                                )}
                               >
                                 {/* HORA Izquierda */}
                                 <td
@@ -1940,7 +2122,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                         className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-top relative"
                                       >
                                         {/* Contenedor flex para múltiples clases en el mismo slot */}
-                                        <div className="flex flex-col h-full w-full divide-y divide-black/5">
+                                        <div className="absolute inset-0 flex flex-col divide-y divide-black/5">
                                           {startingClasses.map((h: any) => {
                                             const col = getColorForCurso(h.curso?.codigo || 'DEFAULT');
                                             const esLab =
@@ -2000,14 +2182,15 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                                 >
                                                   {h.curso?.codigo || 'S/C'}
                                                 </div>
-                                                {!isCompact && (
-                                                  <div
-                                                    className="text-[10px] leading-tight opacity-95 line-clamp-2 mb-1.5"
-                                                    title={h.curso?.nombre || ''}
-                                                  >
-                                                    {h.curso?.nombre || 'Curso Desconocido'}
-                                                  </div>
-                                                )}
+                                                <div
+                                                  className={cn(
+                                                    'leading-tight opacity-95 line-clamp-2 mb-1.5',
+                                                    isCompact ? 'text-[9.5px]' : 'text-[10.5px]'
+                                                  )}
+                                                  title={h.curso?.nombre || ''}
+                                                >
+                                                  {h.curso?.nombre || 'Curso Desconocido'}
+                                                </div>
 
                                                 {/* Footer: grupo + ambiente */}
                                                 <div
@@ -2044,16 +2227,6 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                                       className="p-0.5 hover:bg-green-100 text-green-600 rounded transition-colors"
                                                     >
                                                       <Check className="w-3 h-3" />
-                                                    </button>
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEditarBloque(h);
-                                                      }}
-                                                      title="Editar"
-                                                      className="p-0.5 hover:bg-slate-200 text-slate-700 rounded transition-colors"
-                                                    >
-                                                      <Edit2 className="w-3 h-3" />
                                                     </button>
                                                     <button
                                                       onClick={(e) => {
@@ -2130,29 +2303,40 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                       );
                                     }
 
-                                    const isCellOcupadaPorGrupo = formState.grupoId ? todosLosHorarios.some((h) => {
+                                    const ocupacionGrupo = formState.grupoId ? todosLosHorarios.find((h) => {
                                       if (formState.id && h.id === formState.id) return false;
-                                      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+                                      if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
                                       if (h.diaSemana !== dia) return false;
                                       if (h.estado === 'CANCELADO') return false;
                                       if (!h.horaInicio || !h.horaFin) return false;
                                       const hStart = parseInt(h.horaInicio.split(':')[0], 10);
                                       const hEnd = parseInt(h.horaFin.split(':')[0], 10);
                                       return horaNum >= hStart && horaNum < hEnd;
-                                    }) : false;
+                                    }) : null;
 
-                                    if (isCellOcupadaPorGrupo) {
+                                    if (ocupacionGrupo) {
+                                      const cursoObj = ocupacionGrupo.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso || ocupacionGrupo.curso;
+                                      const cursoNombre = cursoObj?.nombre || 'Curso Ocupado';
+                                      const cursoCodigo = cursoObj?.codigo || '';
+                                      const docName = ocupacionGrupo.cursoDocenteGrupo?.cursoDocente?.docente?.usuario 
+                                        ? `${ocupacionGrupo.cursoDocenteGrupo.cursoDocente.docente.usuario.nombre.split(' ')[0]} ${ocupacionGrupo.cursoDocenteGrupo.cursoDocente.docente.usuario.apellidos.split(' ')[0]}`
+                                        : '';
+
                                       return (
                                         <td
                                           key={`${dia}-${horaNum}`}
-                                          className="p-0 border-r border-b border-slate-200 dark:border-slate-700 align-middle text-center bg-amber-500/5 dark:bg-amber-500/10 relative cursor-not-allowed select-none min-h-[50px]"
+                                          className="p-1 border-r border-b border-slate-200 dark:border-slate-700 align-middle text-center bg-amber-500/5 dark:bg-amber-500/10 relative cursor-not-allowed select-none min-h-[50px]"
                                           style={{
                                             backgroundImage: 'repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.08) 5px, transparent 5px, transparent 10px)'
                                           }}
-                                          title="El grupo ya tiene una clase programada en este horario"
+                                          title={`El grupo ya tiene programado el curso "${cursoNombre}"${docName ? ` con el docente ${docName}` : ''}`}
                                         >
-                                          <div className="flex items-center justify-center h-full w-full opacity-60">
-                                            <Lock className="h-3.5 w-3.5 text-amber-500/70 dark:text-amber-400/60" />
+                                          <div className="flex flex-col items-center justify-center h-full w-full opacity-75 text-[10px] leading-tight font-medium text-amber-700 dark:text-amber-400">
+                                            <div className="font-bold uppercase tracking-wider text-[8px] text-amber-600 dark:text-amber-500 flex items-center gap-1 justify-center">
+                                              <Lock className="h-2.5 w-2.5 inline" /> Grupo Ocupado
+                                            </div>
+                                            <div className="mt-0.5 truncate max-w-full font-semibold">{cursoCodigo} {cursoNombre.slice(0, 18)}...</div>
+                                            {docName && <div className="text-[9px] opacity-80 truncate max-w-full">{docName}</div>}
                                           </div>
                                         </td>
                                       );
@@ -2214,7 +2398,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                                         if (h.estado === 'CANCELADO') return false;
 
 
-                                        if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo.id !== formState.grupoId) return false;
+                                        if (!h.cursoDocenteGrupo || h.cursoDocenteGrupo?.grupo?.id !== formState.grupoId) return false;
 
 
                                         if (!h.horaInicio || !h.horaFin) return false;

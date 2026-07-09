@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { AppError } from '@/services/auth/AuthService';
-import { DiaSemana, EstadoHorario, Prisma } from '@prisma/client';
+import { DiaSemana, EstadoHorario, Prisma, TipoComponente } from '@prisma/client';
 import { GestorNotificaciones } from '../notificaciones/GestorNotificaciones';
 import { ValidadorHorario } from './ValidadorHorario';
 import { ValidadorConflictos } from './ValidadorConflictos';
@@ -16,6 +16,7 @@ export interface CrearHorarioDTO {
   diaSemana: DiaSemana;
   horaInicio: string;
   horaFin: string;
+  tipoComponente?: TipoComponente;
 }
 
 export interface FiltrosHorario {
@@ -245,6 +246,10 @@ export class ServicioHorario {
       creadoPor: usuarioId,
       fechaCreacion: new Date(),
     };
+
+    if (datos.tipoComponente) {
+      dataToCreate.tipoComponente = datos.tipoComponente;
+    }
 
     const horario = await prisma.horario.create({
       data: dataToCreate,
