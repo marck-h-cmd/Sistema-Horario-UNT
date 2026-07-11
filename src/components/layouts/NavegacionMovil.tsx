@@ -53,6 +53,11 @@ export function NavegacionMovil({ isOpen, onClose }: NavegacionMovilProps) {
       href: '/dashboard/ambientes',
     },
     {
+      icono: Calendar,
+      label: 'Disponibilidad en Vivo',
+      href: '/dashboard/ambientes/disponibilidad',
+    },
+    {
       icono: ClipboardList,
       label: 'Horarios',
       href: '/dashboard/horarios',

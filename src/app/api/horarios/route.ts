@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ServicioHorario } from '@/services/horarios/ServicioHorario';
 import { createSuccessResponse, createErrorResponse, createPaginatedResponse } from '@/lib/respuestas';
 import { withAuth } from '@/middleware/auth';
-import { DiaSemana, EstadoHorario } from '@prisma/client';
+import { DiaSemana, EstadoHorario, TipoComponente } from '@prisma/client';
 import { ROLES } from '@/lib/constantes';
 
 const servicioHorario = new ServicioHorario();
@@ -97,6 +97,7 @@ const crearHorarioSchema = z.object({
   diaSemana: z.nativeEnum(DiaSemana),
   horaInicio: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:mm requerido'),
   horaFin: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:mm requerido'),
+  tipoComponente: z.nativeEnum(TipoComponente).optional(),
 });
 
 /**

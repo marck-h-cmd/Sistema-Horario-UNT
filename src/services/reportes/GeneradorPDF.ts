@@ -52,7 +52,7 @@ export class GeneradorPDF {
       });
 
       await page.setContent(html, {
-        waitUntil: 'networkidle0',
+        waitUntil: 'domcontentloaded',
       });
 
       await page.addStyleTag({

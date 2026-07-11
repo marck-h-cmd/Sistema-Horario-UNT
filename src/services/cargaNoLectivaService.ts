@@ -145,15 +145,24 @@ export class CargaNoLectivaService {
         }
       }
     });
-    
+    const parseTime = (t: string) => {
+      const parts = t.split(':');
+      return parseInt(parts[0], 10) + (parseInt(parts[1] || '0', 10) / 60);
+    };
+
     let horasLectivas = 0;
     for (const h of horarios) {
-      const plan = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
-      if (!plan) continue;
-      switch (h.tipoComponente) {
-        case 'TEORIA': horasLectivas += plan.horasTeoria; break;
-        case 'PRACTICA': horasLectivas += plan.horasPractica; break;
-        case 'LABORATORIO': horasLectivas += plan.horasLaboratorio; break;
+      if (h.horaInicio && h.horaFin) {
+        horasLectivas += parseTime(h.horaFin) - parseTime(h.horaInicio);
+      } else {
+        const plan = h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso;
+        if (plan) {
+          switch (h.tipoComponente) {
+            case 'TEORIA': horasLectivas += plan.horasTeoria; break;
+            case 'PRACTICA': horasLectivas += plan.horasPractica; break;
+            case 'LABORATORIO': horasLectivas += plan.horasLaboratorio; break;
+          }
+        }
       }
     }
     const horasNoLectivasDisponibles = Math.max(0, horasDedicacion - horasLectivas);

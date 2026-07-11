@@ -414,19 +414,6 @@ export class ServicioDocente {
           where: { activo: true },
           include: {
             grupo: true,
-            matriculas: {
-              include: {
-                estudiante: {
-                  select: {
-                    id: true,
-                    codigo: true,
-                    nombre: true,
-                    apellidos: true,
-                    email: true,
-                  },
-                },
-              },
-            },
           },
           orderBy: { grupo: { nombre: 'asc' } },
         },
@@ -446,14 +433,6 @@ export class ServicioDocente {
         id: g.id,
         nombre: g.grupo.nombre,
         capacidad: g.capacidad,
-        estudiantes: g.matriculas
-          ?.map((m: any) => m.estudiante ? ({
-            id: m.estudiante.id,
-            codigo: m.estudiante.codigo,
-            nombreCompleto: `${m.estudiante.nombre} ${m.estudiante.apellidos}`,
-            email: m.estudiante.email,
-          }) : null)
-          .filter(Boolean) || [],
       })),
     }));
   }

@@ -24,10 +24,20 @@ export function ItemSidebar({
   collapsed = false,
 }: ItemSidebarProps) {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const hasChildren = children && children.length > 0;
+  const childIsActive = React.useMemo(() => {
+    return hasChildren && children.some(child => child.href === pathname);
+  }, [pathname, children, hasChildren]);
+
+  const [isOpen, setIsOpen] = React.useState(childIsActive);
+
+  React.useEffect(() => {
+    if (childIsActive) {
+      setIsOpen(true);
+    }
+  }, [childIsActive]);
 
   const isActive = href ? pathname === href || pathname.startsWith(`${href}/`) : false;
-  const hasChildren = children && children.length > 0;
 
   const handleClick = () => {
     if (hasChildren) {

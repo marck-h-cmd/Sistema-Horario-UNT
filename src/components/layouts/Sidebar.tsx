@@ -73,6 +73,7 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
       href: '/dashboard/ambientes',
       children: [
         { icono: Building2, label: 'Todos', href: '/dashboard/ambientes' },
+        { icono: Calendar, label: 'Disponibilidad en Vivo', href: '/dashboard/ambientes/disponibilidad' },
         { icono: Building2, label: 'Nuevo Ambiente', href: '/dashboard/ambientes/nuevo' },
       ],
     },

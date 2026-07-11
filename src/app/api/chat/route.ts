@@ -244,8 +244,9 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
                     cursos: {
                       include: {
                         planEstudioCurso: { include: { curso: true } },
-                        grupos: {
+                        cursoDocenteGrupos: {
                           include: {
+                            grupo: true,
                             horarios: { include: { ambiente: true } }
                           }
                         }
@@ -266,8 +267,9 @@ IMPORTANTE: Cuando llames a las herramientas, debes usar EXACTAMENTE los nombres
                 if (incluirHorario && d.cursos) {
                   for (const c of d.cursos) {
                     const cursoName = c.planEstudioCurso?.curso?.nombre ?? '-';
-                    for (const g of c.grupos) {
-                      for (const h of g.horarios) {
+                    const cdgList = c.cursoDocenteGrupos || [];
+                    for (const cdg of cdgList) {
+                      for (const h of cdg.horarios || []) {
                         horariosDocente.push({
                           dia: h.diaSemana,
                           de: h.horaInicio,
