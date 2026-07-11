@@ -367,7 +367,7 @@ export class ReporteCatalogoService {
         cursoDocente: {
           include: { planEstudioCurso: { include: { curso: true } } }
         },
-        _count: { select: { horarios: true, matriculas: true } },
+        _count: { select: { horarios: true } },
       },
       orderBy: [
         { cursoDocente: { planEstudioCurso: { curso: { codigo: 'asc' } } } },

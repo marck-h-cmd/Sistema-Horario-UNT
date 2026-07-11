@@ -241,7 +241,7 @@ export function FormatoPlanEstudios({ planNombre, planAnio, cursos }: FormatoPla
         </View>
 
         <Text style={styles.mainTitle}>
-          {planNombre} {planAnio}
+          {planNombre} 
         </Text>
 
         {/* Cabecera de tabla */}

@@ -351,7 +351,6 @@ async function main() {
   await prisma.$executeRawUnsafe('TRUNCATE TABLE plan_estudio_cursos CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE planes_estudio CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE cursos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE estudiantes CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE disponibilidad_docentes CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE preferencias_notificaciones CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE atencion_ventanas CASCADE');
@@ -398,12 +397,6 @@ async function main() {
       estado: (cols[9] || '').trim(),
       tipoComponente,
     };
-  }).filter(s => {
-    const docenteLower = s.docente.toLowerCase();
-    if (docenteLower.includes('marcelino torres')) return false; // PRINCIPAL
-    if (docenteLower.includes('alberto mendoza')) return false; // ASOCIADO
-    if (docenteLower.includes('bertha urtecho')) return false; // AUXILIAR
-    return true;
   });
 
   const noMapeados = parsedSchedules.filter(s => !s.codigoOficial);
@@ -679,7 +672,7 @@ async function main() {
   console.log(`✅ ${totalAsignaciones} asignaciones curso-docente creadas`);
 
   // ==================== DISPONIBILIDAD DE DOCENTES ====================
-  const diasSemana: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+  const diasSemana: DiaSemana[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
   for (const docente of docentes) {
     for (const dia of diasSemana) {
       await prisma.disponibilidadDocente.create({
@@ -705,6 +698,15 @@ async function main() {
       return dbName === itemName || dbName.startsWith(itemName) || itemName.startsWith(dbName);
     });
     if (!docente) { totalHorariosOmitidos++; continue; }
+
+    const docNameLower = (docente.nombre + ' ' + docente.apellidos).toLowerCase();
+    if (
+      docNameLower.includes('marcelino torres') ||
+      docNameLower.includes('alberto mendoza') ||
+      docNameLower.includes('bertha urtecho')
+    ) {
+      continue;
+    }
 
     const cdgId = cdgIndexMap.get(`${cursoInfo.planEstudioCursoId}_${docente.id}_${item.grupo}`);
     if (!cdgId) { totalHorariosOmitidos++; continue; }
@@ -738,48 +740,6 @@ async function main() {
   }
   console.log(`✅ ${totalHorariosCreados} horarios creados (${totalHorariosOmitidos} omitidos)`);
 
-  // ==================== ESTUDIANTES Y MATRÍCULAS ====================
-  const estudiantesData = [
-    { codigo: '1020100126', nombre: 'Carlos Alberto', apellidos: 'Sánchez Ruiz', email: 'csanchez@unitru.edu.pe', dni: '71234561', ciclo: 1 },
-    { codigo: '1020100226', nombre: 'Ana Lucía', apellidos: 'Torres Paredes', email: 'atorres@unitru.edu.pe', dni: '71234562', ciclo: 1 },
-    { codigo: '1020100326', nombre: 'Roberto Carlos', apellidos: 'García Mendoza', email: 'rgarcia@unitru.edu.pe', dni: '71234563', ciclo: 3 },
-    { codigo: '1020100426', nombre: 'María Fernanda', apellidos: 'López Castro', email: 'mlopez@unitru.edu.pe', dni: '71234564', ciclo: 5 },
-    { codigo: '1020100526', nombre: 'Diego Armando', apellidos: 'Morales Villa', email: 'dmorales@unitru.edu.pe', dni: '71234565', ciclo: 7 },
-    { codigo: '1020100626', nombre: 'Valeria Andrea', apellidos: 'Rojas Pineda', email: 'vrojas@unitru.edu.pe', dni: '71234566', ciclo: 9 },
-  ];
-
-  const estudiantes: any[] = [];
-  for (const est of estudiantesData) {
-    const estudiante = await prisma.estudiante.create({ data: est });
-    estudiantes.push(estudiante);
-  }
-
-  let totalMatriculas = 0;
-  for (const estudiante of estudiantes) {
-    // Buscar un curso del ciclo del estudiante que tenga CursoDocenteGrupo activo
-    for (const [, cursoInfo] of cursosOficialMap) {
-      if (cursoInfo.ciclo !== estudiante.ciclo) continue;
-      // Buscar cdg para este curso
-      const cdgKey = [...cdgIndexMap.entries()].find(([k]) => k.startsWith(cursoInfo.planEstudioCursoId + '_'));
-      if (!cdgKey) continue;
-      try {
-        await prisma.matricula.create({
-          data: {
-            estudianteId: estudiante.id,
-            cursoDocenteGrupoId: cdgKey[1],
-            periodoId: periodo.id,
-            estado: 'ACTIVO',
-          }
-        });
-        totalMatriculas++;
-        break; // 1 matrícula por estudiante para ejemplo
-      } catch {
-        // ignorar duplicados
-      }
-    }
-  }
-  console.log(`✅ ${estudiantes.length} estudiantes y ${totalMatriculas} matrículas creadas`);
-
   // ==================== REPORTE FINAL ====================
   console.log('\n🎉 ========== DATOS SEMILLA v3 GENERADOS ==========');
   console.log(`📊 Resumen:`);
@@ -788,7 +748,6 @@ async function main() {
   console.log(`   🏛️  Ambientes: ${ambientes.length}`);
   console.log(`   📋 Asignaciones: ${totalAsignaciones}`);
   console.log(`   📅 Horarios confirmados: ${totalHorariosCreados}`);
-  console.log(`   👨‍🎓 Estudiantes: ${estudiantes.length}`);
   console.log(`   📅 Período: ${periodo.nombre}`);
   console.log('==================================================\n');
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Save, Calendar, FileText } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Calendar, FileText, Table, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiGet, apiPost, ApiClientError, downloadFile } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
@@ -52,6 +52,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ dia: string; horaIndex: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ dia: string; horaIndex: number } | null>(null);
+  const [vistaFormato, setVistaFormato] = useState<'grid' | 'table'>('grid');
 
   useEffect(() => {
     cargarDistribucion();
@@ -403,7 +404,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
     try {
       await downloadFile(
         '/api/reportes/horario-personal',
-        { periodoId, docenteId },
+        { periodoId, docenteId, formato: vistaFormato },
         `Horario_Personal_${docenteId}.pdf`
       );
       setSuccess('PDF generado correctamente');
@@ -412,6 +413,33 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
     } finally {
       setExportando(false);
     }
+  };
+
+  const getActividadesDia = (dia: string) => {
+    const lectivas = horariosLectivos.filter(h => h.diaSemana === dia).map(h => ({
+      id: h.id,
+      tipo: 'LECTIVA',
+      horaInicio: h.horaInicio,
+      horaFin: h.horaFin,
+      titulo: h.cursoDocenteGrupo?.cursoDocente?.planEstudioCurso?.curso?.nombre || 'Clase Lectiva',
+      detalle: `${h.tipoComponente} | Grupo: ${h.cursoDocenteGrupo?.grupo?.nombre || '—'} | Aula: ${h.ambiente?.nombre || '—'}`,
+      item: h,
+    }));
+
+    const noLectivas = distribuciones.filter(d => d.diaSemana === dia).map(d => {
+      const actName = declaracionItems.find(i => i.id === d.declaracionItemId)?.tipoActividad || d.tipoActividad;
+      return {
+        id: d.id,
+        tipo: 'NO_LECTIVA',
+        horaInicio: d.horaInicio,
+        horaFin: d.horaFin,
+        titulo: actName ? actName.replace(/_/g, ' ') : 'Actividad No Lectiva',
+        detalle: declaracionItems.find(i => i.id === d.declaracionItemId)?.descripcion || '',
+        item: d,
+      };
+    });
+
+    return [...lectivas, ...noLectivas].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
   };
 
   if (loading) return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" /></div>;
@@ -564,128 +592,209 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
           )}
         </div>
 
-        <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr>
-                <th className="p-2 text-center w-16 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">Hora</th>
-                {DIAS.map(d => (
-                  <th
-                    key={d}
-                    className="p-2 text-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
-                  >
-                    {DIAS_LABEL[d]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {HORAS.slice(0, -1).map((hora, idx) => (
-                <tr key={hora}>
-                  <td className="p-0 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                    <div className="flex flex-col items-center justify-center h-full min-h-[60px] text-slate-600 dark:text-slate-300">
-                      <span className="font-medium text-[11px] leading-tight whitespace-nowrap">
-                        {hora.replace(/^0/, '')}-{HORAS[idx + 1].replace(/^0/, '')}
-                      </span>
-                    </div>
-                  </td>
-                  {DIAS.map(dia => {
-                    const cell = grid[hora][dia];
-                    
-                    if (cell.skip) return null; // Oculto porque otra celda ocupa este espacio con rowSpan
-
-                    if (cell.empty) {
-                      const isSelectedInDrag = isDragging && 
-                        dragStart && 
-                        dragEnd && 
-                        dragStart.dia === dia && 
-                        idx >= Math.min(dragStart.horaIndex, dragEnd.horaIndex) && 
-                        idx <= Math.max(dragStart.horaIndex, dragEnd.horaIndex);
-
-                      const isDragValid = isSelectedInDrag ? checkIsDragValid(dia, dragStart.horaIndex, dragEnd.horaIndex) : true;
-
-                      return (
-                        <td
-                          key={dia}
-                          onMouseDown={() => modalidad === 'arrastre' && handleMouseDown(dia, idx)}
-                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
-                          className={cn(
-                            "border border-slate-200 dark:border-slate-700 transition-all select-none",
-                            isSelectedInDrag 
-                              ? (isDragValid 
-                                  ? "bg-amber-100/60 dark:bg-amber-950/40 border-dashed border-amber-500 border-2" 
-                                  : "bg-red-100/60 dark:bg-red-950/40 border-dashed border-red-500 border-2")
-                              : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          )}
-                          style={{ height: 60, cursor: modalidad === 'arrastre' ? 'cell' : 'default' }}
-                        />
-                      );
-                    }
-                    
-                    if (cell.tipo === 'LECTIVA') {
-                      return (
-                        <td
-                          key={dia}
-                          rowSpan={cell.rowSpan}
-                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
-                          className="border border-slate-200 dark:border-slate-700 bg-blue-50/80 dark:bg-blue-950/35 p-0 align-top"
-                          style={{ height: 60 * cell.rowSpan }}
-                        >
-                          <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center">
-                            <div className="font-bold text-blue-800 dark:text-blue-200 text-[11px] leading-tight">
-                              {cell.cursoNombre}
-                            </div>
-                            <div className="text-blue-600 dark:text-blue-300 text-[10px] mt-1 uppercase">{cell.tipoComponente}</div>
-                            <div className="text-slate-500 dark:text-slate-400 text-[10px] mt-1">
-                              {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
-                            </div>
-                          </div>
-                        </td>
-                      );
-                    } else {
-                      return (
-                        <td
-                          key={dia}
-                          rowSpan={cell.rowSpan}
-                          onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
-                          className="border border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/25 p-0 align-top relative group"
-                          style={{ height: 60 * cell.rowSpan }}
-                        >
-                          <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center px-4">
-                            <div className="font-bold text-amber-800 dark:text-amber-200 text-[11px] leading-tight break-words">
-                              {cell.tipoActividad}
-                            </div>
-                            <div className="text-amber-600 dark:text-amber-300 text-[10px] mt-1">
-                              {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => handleEliminar(cell.id)}
-                            className="absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </td>
-                      );
-                    }
-                  })}
+        {vistaFormato === 'grid' ? (
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-2 text-center w-16 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">Hora</th>
+                  {DIAS.map(d => (
+                    <th
+                      key={d}
+                      className="p-2 text-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                    >
+                      {DIAS_LABEL[d]}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {HORAS.slice(0, -1).map((hora, idx) => (
+                  <tr key={hora}>
+                    <td className="p-0 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                      <div className="flex flex-col items-center justify-center h-full min-h-[60px] text-slate-600 dark:text-slate-300">
+                        <span className="font-medium text-[11px] leading-tight whitespace-nowrap">
+                          {hora.replace(/^0/, '')}-{HORAS[idx + 1].replace(/^0/, '')}
+                        </span>
+                      </div>
+                    </td>
+                    {DIAS.map(dia => {
+                      const cell = grid[hora][dia];
+                      
+                      if (cell.skip) return null; // Oculto porque otra celda ocupa este espacio con rowSpan
+
+                      if (cell.empty) {
+                        const isSelectedInDrag = isDragging && 
+                          dragStart && 
+                          dragEnd && 
+                          dragStart.dia === dia && 
+                          idx >= Math.min(dragStart.horaIndex, dragEnd.horaIndex) && 
+                          idx <= Math.max(dragStart.horaIndex, dragEnd.horaIndex);
+
+                        const isDragValid = isSelectedInDrag ? checkIsDragValid(dia, dragStart.horaIndex, dragEnd.horaIndex) : true;
+
+                        return (
+                          <td
+                            key={dia}
+                            onMouseDown={() => modalidad === 'arrastre' && handleMouseDown(dia, idx)}
+                            onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
+                            className={cn(
+                              "border border-slate-200 dark:border-slate-700 transition-all select-none",
+                              isSelectedInDrag 
+                                ? (isDragValid 
+                                    ? "bg-amber-100/60 dark:bg-amber-950/40 border-dashed border-amber-500 border-2" 
+                                    : "bg-red-100/60 dark:bg-red-950/40 border-dashed border-red-500 border-2")
+                                : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            )}
+                            style={{ height: 60, cursor: modalidad === 'arrastre' ? 'cell' : 'default' }}
+                          />
+                        );
+                      }
+                      
+                      if (cell.tipo === 'LECTIVA') {
+                        return (
+                          <td
+                            key={dia}
+                            rowSpan={cell.rowSpan}
+                            onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
+                            className="border border-slate-200 dark:border-slate-700 bg-blue-50/80 dark:bg-blue-950/35 p-0 align-top"
+                            style={{ height: 60 * cell.rowSpan }}
+                          >
+                            <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center">
+                              <div className="font-bold text-blue-800 dark:text-blue-200 text-[11px] leading-tight font-sans">
+                                {cell.cursoNombre}
+                              </div>
+                              <div className="text-blue-600 dark:text-blue-300 text-[10px] mt-1 uppercase">{cell.tipoComponente}</div>
+                              <div className="text-slate-500 dark:text-slate-400 text-[10px] mt-1">
+                                {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      } else {
+                        return (
+                          <td
+                            key={dia}
+                            rowSpan={cell.rowSpan}
+                            onMouseEnter={() => modalidad === 'arrastre' && handleMouseEnterCell(dia, idx)}
+                            className="border border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/25 p-0 align-top relative group"
+                            style={{ height: 60 * cell.rowSpan }}
+                          >
+                            <div className="h-full w-full p-2 flex flex-col items-center justify-center text-center px-4">
+                              <div className="font-bold text-amber-800 dark:text-amber-200 text-[11px] leading-tight break-words">
+                                {cell.tipoActividad}
+                              </div>
+                              <div className="text-amber-600 dark:text-amber-300 text-[10px] mt-1">
+                                {cell.horaInicio.replace(/^0/, '')} - {cell.horaFin.replace(/^0/, '')}
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => handleEliminar(cell.id)}
+                              className="absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </td>
+                        );
+                      }
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {DIAS.map(dia => {
+              const items = getActividadesDia(dia);
+              return (
+                <div key={dia} className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                  <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 font-bold text-slate-800 dark:text-slate-200 uppercase text-xs tracking-wider">
+                    {DIAS_LABEL[dia]}
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-850 text-left text-xs font-semibold text-slate-500">
+                        <th className="px-4 py-2">Hora</th>
+                        <th className="px-4 py-2">Tipo</th>
+                        <th className="px-4 py-2">Actividad / Asignatura</th>
+                        <th className="px-4 py-2">Detalles</th>
+                        <th className="px-4 py-2 text-right">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                      {items.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-4 text-center text-xs text-slate-400 italic">
+                            Sin actividades programadas
+                          </td>
+                        </tr>
+                      ) : (
+                        items.map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                              {item.horaInicio} - {item.horaFin}
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                                item.tipo === 'LECTIVA'
+                                  ? "bg-blue-550/10 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                                  : "bg-amber-500/10 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                              )}>
+                                {item.tipo === 'LECTIVA' ? 'Lectiva' : 'No Lectiva'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {item.titulo}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                              {item.detalle}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-right">
+                              {item.tipo === 'NO_LECTIVA' && (
+                                <button
+                                  onClick={() => handleEliminar(item.id)}
+                                  className="p-1 rounded text-red-650 hover:bg-red-50 dark:hover:bg-red-950/40"
+                                  title="Eliminar bloque"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
         
         <div className="mt-6 flex justify-between items-center">
-          <Button
-            onClick={handleExportarPDF}
-            disabled={!horarioCompleto || exportando}
-            variant="outline"
-            className="gap-2 border-slate-300 dark:border-slate-700 disabled:opacity-50"
-          >
-            {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-            Exportar PDF
-          </Button>
-          <Button onClick={handleGuardar} disabled={guardando} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleExportarPDF}
+              disabled={!horarioCompleto || exportando}
+              variant="outline"
+              className="gap-2 border-slate-300 dark:border-slate-700 disabled:opacity-50 font-semibold"
+            >
+              {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Exportar PDF
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setVistaFormato(vistaFormato === 'grid' ? 'table' : 'grid')}
+              className="gap-2 border-slate-350 dark:border-slate-750 font-semibold text-slate-700 dark:text-slate-300"
+            >
+              {vistaFormato === 'grid' ? <Table className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+              {vistaFormato === 'grid' ? 'Vista Tabla' : 'Vista Grilla'}
+            </Button>
+          </div>
+          <Button onClick={handleGuardar} disabled={guardando} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md gap-2 font-semibold">
             {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Guardar Horario Personal
           </Button>
