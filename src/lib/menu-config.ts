@@ -41,6 +41,7 @@ export const MENU_SECTIONS: MenuSection[] = [
   {
     titulo: 'Gestión',
     items: [
+      { nombre: 'Usuarios', href: '/dashboard/usuarios', icon: Users, permission: 'GESTIONAR_USUARIOS' },
       { nombre: 'Docentes', href: '/dashboard/docentes', icon: GraduationCap, permission: 'GESTIONAR_DOCENTES' },
       { nombre: 'Cursos', href: '/dashboard/cursos', icon: BookOpen, permission: 'GESTIONAR_CURSOS' },
       { nombre: 'Plan de Estudios', href: '/dashboard/plan-estudios', icon: BookOpen, permission: 'GESTIONAR_CURSOS' },
