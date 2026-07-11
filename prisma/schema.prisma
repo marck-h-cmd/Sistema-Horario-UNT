@@ -503,7 +503,6 @@ model CursoDocenteGrupo {
   grupo           Grupo        @relation(fields: [grupoId], references: [id], onDelete: Cascade)
   
   horarios        Horario[]
-  matriculas      Matricula[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -556,7 +555,6 @@ model PeriodoAcademico {
   
   horarios        Horario[]
   ventanas        VentanaAtencion[]
-  matriculas      Matricula[]
   configuraciones ConfiguracionPeriodo?
   distribucionesNoLectiva DistribucionNoLectiva[]
   declaracionesNoLectiva DeclaracionNoLectiva[]
@@ -953,51 +951,6 @@ model SeleccionTemporal {
   @@map("selecciones_temporales")
 }
 
-// ============================================
-// ESTUDIANTES Y MATRÍCULA
-// ============================================
-
-model Estudiante {
-  id              String    @id @default(uuid())
-  codigo          String    @unique
-  nombre          String
-  apellidos       String
-  email           String    @unique
-  dni             String    @unique
-  ciclo           Int       @default(1)
-  activo          Boolean   @default(true)
-  
-  matriculas      Matricula[]
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@index([codigo])
-  @@index([email])
-  @@index([activo])
-  @@map("estudiantes")
-}
-
-model Matricula {
-  id                  String    @id @default(uuid())
-  estudianteId        String
-  cursoDocenteGrupoId String
-  periodoId           String
-  estado              String    @default("ACTIVO")
-  
-  estudiante          Estudiante @relation(fields: [estudianteId], references: [id], onDelete: Cascade)
-  cursoDocenteGrupo   CursoDocenteGrupo @relation(fields: [cursoDocenteGrupoId], references: [id], onDelete: Cascade)
-  periodo             PeriodoAcademico @relation(fields: [periodoId], references: [id])
-
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  @@unique([estudianteId, cursoDocenteGrupoId, periodoId])
-  @@index([estudianteId])
-  @@index([cursoDocenteGrupoId])
-  @@index([periodoId])
-  @@map("matriculas")
-}
 
 // ============================================
 // CHATBOT PERSISTENCE

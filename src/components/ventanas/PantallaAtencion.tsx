@@ -1032,7 +1032,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
         setAllHorariosDocente((prev) => prev.filter((h) => h.id !== id));
         setTodosLosHorarios((prev) => prev.filter((h) => h.id !== id));
         if (formState.id === id) {
-          setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
+          setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00', tipoComponente: 'TEORIA' });
           setIsEditing(false);
         }
       } else {
@@ -1370,9 +1370,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
     const totalPractica = item.planEstudioCurso?.horasPractica || 0;
     const totalLaboratorio = item.planEstudioCurso?.horasLaboratorio || 0;
 
-    const pTeoria = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
-    const pPractica = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
-    const pLaboratorio = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+    const pTeoria = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
+    const pPractica = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
+    const pLaboratorio = newHorarios.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
 
     const dispTeoria = totalTeoria - pTeoria;
     const dispPractica = totalPractica - pPractica;
@@ -1409,9 +1409,9 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
       const totalPractica = item.planEstudioCurso?.horasPractica || 0;
       const totalLaboratorio = item.planEstudioCurso?.horasLaboratorio || 0;
 
-      const pTeoria = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
-      const pPractica = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
-      const pLaboratorio = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + parseInt(h.horaFin.split(':')[0]) - parseInt(h.horaInicio.split(':')[0]), 0);
+      const pTeoria = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'TEORIA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
+      const pPractica = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'PRACTICA' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
+      const pLaboratorio = allHorariosDocente.filter((h: any) => (h.curso?.id === cursoId || h.cursoId === cursoId) && h.tipoComponente === 'LABORATORIO' && h.estado !== 'CANCELADO').reduce((sum, h) => sum + (h.horaFin && h.horaInicio ? parseInt(h.horaFin.split(':')[0], 10) - parseInt(h.horaInicio.split(':')[0], 10) : 0), 0);
 
       if (totalTeoria - pTeoria > 0) defaultComp = 'TEORIA';
       else if (totalPractica - pPractica > 0) defaultComp = 'PRACTICA';
@@ -1840,7 +1840,7 @@ export function PantallaAtencion({ ventanaId, className, onVolver }: PantallaAte
                       type="button"
                       onClick={() => {
                         setIsEditing(false);
-                        setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00' });
+                        setFormState({ id: '', cursoId: '', grupoId: '', ambienteId: '', diaSemana: 'LUNES', horaInicio: '08:00', horaFin: '10:00', tipoComponente: 'TEORIA' });
                         setFormError(null);
                       }}
                       className="w-full px-3 py-1.5 border dark:border-slate-600 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-slate-300 transition-colors"

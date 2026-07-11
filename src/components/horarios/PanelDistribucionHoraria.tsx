@@ -738,7 +738,7 @@ export default function PanelDistribucionHoraria({ docenteId, periodoId, declara
                             <td className="px-4 py-3 text-xs">
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                                item.type === 'LECTIVA' || item.tipo === 'LECTIVA'
+                                item.tipo === 'LECTIVA'
                                   ? "bg-blue-550/10 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
                                   : "bg-amber-500/10 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                               )}>

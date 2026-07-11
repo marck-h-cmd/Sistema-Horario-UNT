@@ -581,7 +581,7 @@ export default function DisponibilidadPage() {
                   </div>
                 )}
                 <div className="text-xs text-slate-500 font-medium">
-                  Capacidad: <strong>{selectedCell.ambiente.capacidad} estudiantes</strong>
+                  Capacidad: <strong>{selectedCell.ambiente.capacidad} personas</strong>
                 </div>
               </div>
 

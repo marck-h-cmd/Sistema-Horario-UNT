@@ -11,18 +11,10 @@ import { useState, useEffect } from 'react';
 import { BarChartCard } from '@/components/charts/BarChartCard';
 import { usePeriodo } from '@/contexts/PeriodoContext';
 
-interface Estudiante {
-  id: string;
-  codigo: string;
-  nombreCompleto: string;
-  email: string;
-}
-
 interface Grupo {
   id: string;
   nombre: string;
   capacidad: number;
-  estudiantes: Estudiante[];
 }
 
 interface CursoConGrupos {
@@ -138,22 +130,13 @@ export default function DocenteCursosPage() {
   }
 
   const totalHoras = cursos.reduce((acc, c) => acc + c.horasAsignadas, 0);
-  const totalEstudiantes = cursos.reduce(
-    (acc, c) => acc + c.grupos.reduce((gAcc, g) => gAcc + (g.estudiantes?.length || 0), 0),
-    0
-  );
 
-  // ✅ Datos correctos para BarChartCard
-  const chartData = cursos.map(c => ({
-    codigo: c.codigo,
-    estudiantes: c.grupos.reduce((acc, g) => acc + (g.estudiantes?.length || 0), 0),
-  }));
 
   return (
     <div className="space-y-6 pb-10">
       <PageHeader
         title="Gestión de Cursos"
-        description="Visualiza tus cursos asignados y nómina de estudiantes."
+        description="Visualiza tus cursos asignados."
         actions={
           <Link href="/dashboard/docente" className="btn-outline gap-2">
             <span className="text-lg">←</span>
@@ -169,7 +152,7 @@ export default function DocenteCursosPage() {
         {[
           { label: 'Cursos a Cargo', value: cursos.length, icon: <Download className="h-5 w-5" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
           { label: 'Carga Horaria', value: `${totalHoras}h`, icon: <Clock className="h-5 w-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-          { label: 'Total Estudiantes', value: totalEstudiantes, icon: <UsersIcon className="h-5 w-5" />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+
         ].map((stat, i) => (
           <div key={i} className="card p-6 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="flex items-center justify-between">
@@ -188,16 +171,7 @@ export default function DocenteCursosPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* COLUMNA IZQUIERDA */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="animate-fadeIn">
-            {/* ✅ CORREGIDO: xKey y dataKey agregados */}
-            <BarChartCard
-              title="Estudiantes por Curso"
-              data={chartData}
-              xKey="codigo"
-              dataKey="estudiantes"
-              color="#c9a84c"
-            />
-          </div>
+
 
           <div className="card overflow-hidden border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="card-header bg-slate-50 dark:bg-slate-700/50">
@@ -301,13 +275,7 @@ export default function DocenteCursosPage() {
                         }`}
                       >
                         <span className="text-xs font-bold">Grupo {grupo.nombre}</span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                          selectedGrupoId === grupo.id
-                            ? 'bg-white/20'
-                            : 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300'
-                        }`}>
-                          {grupo.estudiantes?.length || 0}
-                        </span>
+
                       </button>
                     ))}
                   </div>
@@ -319,7 +287,7 @@ export default function DocenteCursosPage() {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <h4 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                            Nómina de Estudiantes
+                            Detalle del Grupo
                           </h4>
                           <p className="text-xs font-medium text-slate-400 dark:text-slate-400">
                             Grupo {selectedGrupo.nombre} • Capacidad: {selectedGrupo.capacidad} vacantes
@@ -338,41 +306,12 @@ export default function DocenteCursosPage() {
                         </button>
                       </div>
 
-                      <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700">
-                        <table className="w-full border-collapse text-left text-sm">
-                          <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-700/30">
-                              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-300">Código</th>
-                              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-300">Estudiante</th>
-                              <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-300">Correo</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                            {selectedGrupo.estudiantes?.length > 0 ? (
-                              selectedGrupo.estudiantes.map((est) => (
-                                <tr key={est.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                                  <td className="px-5 py-3">
-                                    <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{est.codigo}</span>
-                                  </td>
-                                  <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{est.nombreCompleto}</td>
-                                  <td className="px-5 py-3 text-slate-400 dark:text-slate-400">{est.email}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={3} className="px-5 py-10 text-center text-slate-400 dark:text-slate-400 italic">
-                                  No hay estudiantes matriculados.
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
                       <p className="text-sm font-medium text-slate-400 dark:text-slate-400">
-                        Selecciona un grupo para ver la nómina.
+                        Selecciona un grupo para ver su detalle.
                       </p>
                     </div>
                   )}
@@ -384,7 +323,7 @@ export default function DocenteCursosPage() {
               <div className="mb-4 text-4xl opacity-20">🎓</div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Gestión Académica</h3>
               <p className="mt-2 max-w-xs text-sm text-slate-400 dark:text-slate-400">
-                Selecciona un curso de la lista para visualizar el detalle y la nómina oficial.
+                Selecciona un curso de la lista para visualizar sus detalles y grupos.
               </p>
             </div>
           )}
