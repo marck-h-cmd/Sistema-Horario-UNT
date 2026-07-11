@@ -77,6 +77,7 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // WhatsApp-style Recording States
   const [recordingState, setRecordingState] = useState<'IDLE' | 'HOLDING' | 'LOCKED'>('IDLE');
@@ -172,36 +173,34 @@ export function Chatbot() {
     fetchHistory();
   }, [user]);
 
-  const clearChat = useCallback(async () => {
-    if (window.confirm('¿Estás seguro de que deseas iniciar una nueva conversación y borrar el historial en pantalla?')) {
-      try {
-        setIsLoading(true);
-        const token = localStorage.getItem('accessToken');
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const res = await fetch('/api/chat/history', {
-          method: 'POST',
-          headers
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.sessionId) {
-            setSessionId(data.sessionId);
-            sessionStorage.setItem('chatbot_session_id', data.sessionId);
-          }
-          setMessages([]);
-        }
-      } catch (err) {
-        console.error('Error al limpiar chat:', err);
-      } finally {
-        setIsLoading(false);
+  const confirmClearChat = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('accessToken');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
+
+      const res = await fetch('/api/chat/history', {
+        method: 'POST',
+        headers
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+          sessionStorage.setItem('chatbot_session_id', data.sessionId);
+        }
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error('Error al limpiar chat:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -548,7 +547,7 @@ export function Chatbot() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={clearChat}
+                onClick={() => setShowClearConfirm(true)}
                 className="p-1.5 hover:bg-emerald-700 rounded-md transition-colors"
                 title="Limpiar conversación"
                 disabled={isLoading}
@@ -773,6 +772,42 @@ export function Chatbot() {
                 }
               </button>
             </form>
+          )}
+
+          {/* Modal de confirmación personalizado de limpieza de chat */}
+          {showClearConfirm && (
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl max-w-[85%] border border-slate-200 dark:border-slate-700 text-center space-y-4 animate-in fade-in zoom-in duration-200">
+                <div className="w-11 h-11 bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <Trash2 size={20} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">¿Limpiar conversación?</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                    Se borrará todo el historial en pantalla e iniciarás una nueva sesión de chat con FelIxA.
+                  </p>
+                </div>
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(false)}
+                    className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowClearConfirm(false);
+                      confirmClearChat();
+                    }}
+                    className="flex-1 px-3 py-2 bg-rose-600 hover:bg-rose-750 text-white text-xs font-semibold rounded-xl shadow-md transition-all active:scale-95"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
