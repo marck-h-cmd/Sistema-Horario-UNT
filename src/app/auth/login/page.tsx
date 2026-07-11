@@ -62,8 +62,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [dateTimeStr, setDateTimeStr] = useState('');
-  const [lastUpdated, setLastUpdated] = useState('');
+
   const [canvasOpacity, setCanvasOpacity] = useState(0);
   const [renderCanvas, setRenderCanvas] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -105,33 +104,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
-
-    const now = new Date();
-    let h = now.getHours();
-    const ap = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    h = h ? h : 12;
-    const m = now.getMinutes().toString().padStart(2, '0');
-    setLastUpdated(`${h}:${m} ${ap}`);
-
-    const updateDateTime = () => {
-      const nowTime = new Date();
-      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const dayName = days[nowTime.getDay()];
-      const dayNum = nowTime.getDate();
-      const monthName = months[nowTime.getMonth()];
-      let hours = nowTime.getHours();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const minutes = nowTime.getMinutes().toString().padStart(2, '0');
-      setDateTimeStr(`${dayName}, ${dayNum} ${monthName} · ${hours}:${minutes} ${ampm}`);
-    };
-
-    updateDateTime();
-    const interval = setInterval(updateDateTime, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -457,7 +429,7 @@ export default function LoginPage() {
         </svg>
 
         {/* Barra translúcida inferior con la identidad institucional */}
-        <div className="absolute inset-x-0 bottom-0 z-10 bg-black/60 backdrop-blur-md px-8 py-6 border-t border-white/10 flex flex-col">
+        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-8 pb-8 pt-20 flex flex-col">
           <p
             style={{
               fontSize: 10,
@@ -551,21 +523,7 @@ export default function LoginPage() {
                     Acceso al Sistema
                   </h2>
 
-                  <p className="login-subtitle mt-1.5 text-xs sm:text-[13px]">
-                    Ingrese sus credenciales de Ingeniería de Sistemas para continuar
-                  </p>
 
-                  {dateTimeStr && (
-                    <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                      <span className="relative flex h-1.5 w-1.5 shrink-0 items-center justify-center">
-                        <span className="dot-pulse absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400/35"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                      </span>
-                      <span>Sistema activo</span>
-                      <span className="text-slate-300 dark:text-slate-700">·</span>
-                      <span className="font-mono">{dateTimeStr}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -574,21 +532,8 @@ export default function LoginPage() {
                 <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   Acceso al Sistema
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Ingrese sus credenciales para continuar
-                </p>
 
-                {dateTimeStr && (
-                  <div className="flex items-center justify-center gap-1.25 mt-2 text-[10.5px] font-semibold text-slate-400 dark:text-slate-500">
-                    <span className="relative flex h-1.25 w-1.25 shrink-0 items-center justify-center">
-                      <span className="dot-pulse absolute inline-flex h-2 w-2 rounded-full bg-emerald-400/35"></span>
-                      <span className="relative inline-flex rounded-full h-1.25 w-1.25 bg-emerald-500"></span>
-                    </span>
-                    <span>Sistema activo</span>
-                    <span className="text-slate-300 dark:text-slate-700">·</span>
-                    <span className="font-mono text-[10px]">{dateTimeStr}</span>
-                  </div>
-                )}
+
               </div>
 
               {/* ROLES */}
@@ -936,23 +881,24 @@ export default function LoginPage() {
         .login-card {
           overflow: hidden;
           border-radius: var(--card-radius);
-          border: 1px solid rgba(226, 232, 240, 0.9);
+          border: 1px solid rgba(226, 232, 240, 0.95);
           background: rgba(255, 255, 255, 0.96);
           box-shadow:
-            0 24px 65px rgba(15, 23, 42, 0.11),
+            0 30px 80px rgba(15, 23, 42, 0.08),
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(18px);
+          backdrop-filter: blur(20px);
           transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
         }
 
         .dark .login-card {
-          border: 1px solid rgba(73, 92, 128, 0.55);
+          border: 1px solid rgba(73, 92, 128, 0.45);
           background:
-            linear-gradient(180deg, rgba(18, 30, 55, 0.96) 0%, rgba(10, 19, 38, 0.98) 100%);
+            linear-gradient(180deg, rgba(18, 30, 55, 0.94) 0%, rgba(10, 19, 38, 0.97) 100%);
           box-shadow:
-            0 28px 80px rgba(0, 0, 0, 0.64),
-            0 0 0 1px rgba(255, 255, 255, 0.025) inset,
-            0 1px 0 rgba(255, 255, 255, 0.05) inset;
+            0 35px 85px rgba(0, 0, 0, 0.65),
+            0 0 40px rgba(55, 138, 221, 0.04),
+            0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+            0 1px 0 rgba(255, 255, 255, 0.04) inset;
         }
 
         .login-card-inner {
@@ -1159,6 +1105,10 @@ export default function LoginPage() {
           color: #576880 !important; /* higher contrast slate for WCAG AA */
         }
 
+        .login-input:hover {
+          border-color: #94a3b8 !important;
+        }
+
         .login-input:focus {
           border-color: #0f2d55 !important;
           box-shadow: 0 0 0 4px rgba(15, 45, 85, 0.12) !important;
@@ -1174,9 +1124,13 @@ export default function LoginPage() {
           color: #94a3b8 !important; /* higher contrast placeholder for WCAG AA */
         }
 
+        .dark .login-input:hover {
+          border-color: rgba(201, 168, 76, 0.45) !important;
+        }
+
         .dark .login-input:focus {
-          border-color: #5b8ee6 !important;
-          box-shadow: 0 0 0 4px rgba(91, 142, 230, 0.18) !important;
+          border-color: #e2c66e !important;
+          box-shadow: 0 0 0 4px rgba(226, 198, 110, 0.18) !important;
         }
 
         .login-input-highlight {
@@ -1205,8 +1159,8 @@ export default function LoginPage() {
         }
 
         .dark .password-toggle:hover {
-          background: rgba(36, 50, 78, 0.85);
-          color: #e2e8f0;
+          background: rgba(71, 85, 105, 0.4);
+          color: #f8fafc;
         }
 
         .error-box {
@@ -1246,20 +1200,20 @@ export default function LoginPage() {
           overflow: hidden !important;
           border-radius: 16px !important;
           gap: 12px !important;
-          background: #1e293b !important;
+          background: linear-gradient(135deg, #0f2d55 0%, #1d4ed8 100%) !important;
           color: #ffffff !important;
           font-size: 13.5px !important;
           font-weight: 850 !important;
           text-transform: uppercase !important;
           letter-spacing: 0.08em !important;
-          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 10px 22px rgba(15, 45, 85, 0.15) !important;
           transition: all 220ms ease !important;
         }
 
         .login-button:hover {
           transform: translateY(-1px) scale(1.005) !important;
-          background: #0f172a !important;
-          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.15) !important;
+          background: linear-gradient(135deg, #0b2240 0%, #1e40af 100%) !important;
+          box-shadow: 0 14px 30px rgba(15, 45, 85, 0.25) !important;
         }
 
         .dark .login-button {
@@ -1496,7 +1450,7 @@ export default function LoginPage() {
         .forgot-link {
           font-size: 13px;
           font-weight: 600;
-          color: #378add;
+          color: #1d4ed8;
           text-decoration: none;
           transition: color 150ms ease, text-decoration-color 150ms ease;
           white-space: nowrap;
@@ -1504,17 +1458,18 @@ export default function LoginPage() {
 
         .forgot-link:hover {
           text-decoration: underline;
-          text-decoration-color: #378add;
-          color: #2563eb;
+          text-decoration-color: #1d4ed8;
+          color: #1e40af;
         }
 
         .dark .forgot-link {
-          color: #5b8ee6;
+          color: #e2c66e;
         }
 
         .dark .forgot-link:hover {
-          color: #7aa7f0;
-          text-decoration-color: #5b8ee6;
+          text-decoration: underline;
+          text-decoration-color: #e2c66e;
+          color: #f3d88c;
         }
 
         /* ── Remember me checkbox row ── */
@@ -1532,7 +1487,7 @@ export default function LoginPage() {
           border-radius: 4px;
           border: 1.5px solid #cbd5e1;
           cursor: pointer;
-          accent-color: #378add;
+          accent-color: #0f2d55;
           transition: border-color 150ms ease;
         }
 
