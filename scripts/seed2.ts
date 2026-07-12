@@ -345,7 +345,6 @@ async function main() {
   console.log('🗑️  Limpiando datos anteriores...');
   // Limpiar en orden correcto respetando dependencias de FK (CASCADE lo maneja todo desde las raíces)
   await prisma.$executeRawUnsafe('TRUNCATE TABLE horarios, validaciones_horarios, incumplimientos CASCADE');
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE matriculas CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE curso_docente_grupos CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE cursos_docentes CASCADE');
   await prisma.$executeRawUnsafe('TRUNCATE TABLE plan_estudio_cursos CASCADE');

@@ -549,23 +549,7 @@ export default function LoginPage() {
                 <div className="w-full text-center flex flex-col items-center">
                   <h2 className="login-title tracking-tight">
                     Acceso al Sistema
-                  </h2>
-
-                  <p className="login-subtitle mt-1.5 text-xs sm:text-[13px]">
-                    Ingrese sus credenciales de Ingeniería de Sistemas para continuar
-                  </p>
-
-                  {dateTimeStr && (
-                    <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                      <span className="relative flex h-1.5 w-1.5 shrink-0 items-center justify-center">
-                        <span className="dot-pulse absolute inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400/35"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                      </span>
-                      <span>Sistema activo</span>
-                      <span className="text-slate-300 dark:text-slate-700">·</span>
-                      <span className="font-mono">{dateTimeStr}</span>
-                    </div>
-                  )}
+                  </h2>             
                 </div>
               </div>
 
@@ -591,8 +575,8 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* ROLES */}
-              <div className="mb-6">
+              {/* ROLES (Ocultos a petición del usuario) */}
+              <div className="mb-6 hidden">
                 <div className="role-cards-grid grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {DEMO_USERS.map((u, idx) => {
                     const c = ROLE_DETAILS[u.id] ?? ROLE_DETAILS.admin;
