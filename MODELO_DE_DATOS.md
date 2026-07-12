@@ -50,7 +50,7 @@ erDiagram
 
     DOCENTE {
         String id PK
-        String usuarioId FK UK
+        String usuarioId FK, UK
         String codigo UK
         CategoriaDocente categoria
         DedicacionDocente dedicacion
@@ -311,7 +311,7 @@ erDiagram
 
     PREFERENCIAS_NOTIFICACION {
         String id PK
-        String docenteId FK UK
+        String docenteId FK, UK
         Boolean correoActivo
         Boolean whatsappActivo
         Boolean telegramActivo
@@ -332,7 +332,7 @@ erDiagram
 
     CONFIGURACION_PERIODO {
         String id PK
-        String periodoId FK UK
+        String periodoId FK, UK
         Int horasMaxDiariasDocente
         Int horasMaxContinuas
         Int descansoMinEntreHoras

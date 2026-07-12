@@ -481,7 +481,7 @@ export default function LoginPage() {
 
       {/* BANNER MÓVIL (SÓLO VISIBLE EN MÓVIL) */}
       <div 
-        className="relative w-full h-36 shrink-0 lg:hidden flex flex-col justify-end p-5 overflow-hidden"
+        className="relative w-full h-48 shrink-0 lg:hidden flex flex-col justify-center px-6 overflow-hidden"
         style={{
           backgroundImage: "url('/imagenes/fondo-login.jpg')",
           backgroundSize: 'cover',
@@ -514,7 +514,7 @@ export default function LoginPage() {
       </div>
 
       {/* PANEL DERECHO */}
-      <div className="login-right relative flex flex-1 flex-col items-center justify-center overflow-y-auto lg:overflow-y-auto lg:overflow-x-hidden px-6 py-8 transition-colors duration-300 lg:h-full lg:px-8 lg:py-0">
+      <div className="login-right relative flex flex-1 flex-col items-center justify-start lg:justify-center overflow-y-auto lg:overflow-y-auto lg:overflow-x-hidden px-5 py-8 lg:px-8 lg:py-0 transition-colors duration-300 lg:h-full z-20 -mt-8 lg:mt-0 rounded-t-[32px] lg:rounded-none shadow-[0_-8px_30px_rgba(0,0,0,0.12)] lg:shadow-none bg-white dark:bg-[#020617] lg:bg-transparent">
         <div className="login-right-bg" />
         <div className="login-right-grid" />
         <div className="login-right-glow-one" />
@@ -558,21 +558,6 @@ export default function LoginPage() {
                 <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   Acceso al Sistema
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Ingrese sus credenciales para continuar
-                </p>
-
-                {dateTimeStr && (
-                  <div className="flex items-center justify-center gap-1.25 mt-2 text-[10.5px] font-semibold text-slate-400 dark:text-slate-500">
-                    <span className="relative flex h-1.25 w-1.25 shrink-0 items-center justify-center">
-                      <span className="dot-pulse absolute inline-flex h-2 w-2 rounded-full bg-emerald-400/35"></span>
-                      <span className="relative inline-flex rounded-full h-1.25 w-1.25 bg-emerald-500"></span>
-                    </span>
-                    <span>Sistema activo</span>
-                    <span className="text-slate-300 dark:text-slate-700">·</span>
-                    <span className="font-mono text-[10px]">{dateTimeStr}</span>
-                  </div>
-                )}
               </div>
 
               {/* ROLES (Ocultos a petición del usuario) */}
