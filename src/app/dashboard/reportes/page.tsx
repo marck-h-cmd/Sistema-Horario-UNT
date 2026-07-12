@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileDown, Loader2, Library, CalendarRange, Users, Building2 } from 'lucide-react';
+import {
+  FileDown, Loader2, Library, CalendarRange, Users, Building2,
+  BarChart3, AlertTriangle, GraduationCap, BookOpen, MapPin,
+  CalendarDays, Layers, ClipboardList
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,13 +61,15 @@ const CATALOGOS: {
   label: string;
   desc: string;
   labelFiltro: string;
+  icon: React.ComponentType<any>;
+  color: string;
 }[] = [
-  { key: 'cat-doc', entidad: 'docentes', label: 'Docentes', desc: 'Datos maestros de docentes', labelFiltro: 'Docente' },
-  { key: 'cat-cur', entidad: 'cursos', label: 'Cursos', desc: 'Plan de estudios y horas', labelFiltro: 'Curso' },
-  { key: 'cat-amb', entidad: 'ambientes', label: 'Ambientes', desc: 'Aulas y laboratorios', labelFiltro: 'Ambiente' },
-  { key: 'cat-per', entidad: 'periodos', label: 'Períodos', desc: 'Períodos académicos', labelFiltro: 'Período' },
-  { key: 'cat-gru', entidad: 'grupos', label: 'Grupos', desc: 'Grupos por curso', labelFiltro: 'Grupo' },
-  { key: 'cat-car', entidad: 'carga-academica', label: 'Carga académica', desc: 'Asignaciones curso–docente', labelFiltro: 'Asignación' },
+  { key: 'cat-doc', entidad: 'docentes', label: 'Docentes', desc: 'Datos maestros y categorías', labelFiltro: 'Docente', icon: GraduationCap, color: 'from-blue-500 to-indigo-500' },
+  { key: 'cat-cur', entidad: 'cursos', label: 'Cursos', desc: 'Plan de estudios y ciclos', labelFiltro: 'Curso', icon: BookOpen, color: 'from-emerald-500 to-teal-500' },
+  { key: 'cat-amb', entidad: 'ambientes', label: 'Ambientes', desc: 'Aulas y laboratorios', labelFiltro: 'Ambiente', icon: MapPin, color: 'from-purple-500 to-pink-500' },
+  { key: 'cat-per', entidad: 'periodos', label: 'Períodos', desc: 'Historial de períodos académicos', labelFiltro: 'Período', icon: CalendarDays, color: 'from-amber-500 to-orange-500' },
+  { key: 'cat-gru', entidad: 'grupos', label: 'Grupos', desc: 'Secciones por curso', labelFiltro: 'Grupo', icon: Layers, color: 'from-rose-500 to-red-500' },
+  { key: 'cat-car', entidad: 'carga-academica', label: 'Carga académica', desc: 'Carga horaria curso–docente', labelFiltro: 'Asignación', icon: ClipboardList, color: 'from-cyan-500 to-blue-500' },
 ];
 
 const FILTROS_INICIALES: FiltrosCatalogo = {
@@ -278,16 +284,20 @@ export default function ReportesPage() {
 
       {/* ── Reportes de gestión ─────────────────────────── */}
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-unt-blue dark:text-unt-gold-light">Reporte de gestión</h3>
-          </div>
-          <div className="card-body">
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+        <div className="group relative card hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-cyan-500" />
+          <div className="card-body p-6 flex flex-col h-full gap-2">
+            <div className="flex items-center justify-between pb-1">
+              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Reporte de Gestión</h3>
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-sm opacity-90 group-hover:scale-110 transition-transform duration-300">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Resumen del período: docentes, cursos, avance por categoría y ocupación de ambientes.
             </p>
             <Button
-              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white mt-auto"
               disabled={!!downloading || !periodoId}
               onClick={() =>
                 runDownload('ges', () =>
@@ -295,22 +305,26 @@ export default function ReportesPage() {
                 )
               }
             >
-              <FileDown className="h-4 w-4" />
-              {downloading === 'ges' ? 'Generando…' : 'Descargar'}
+              <FileDown className="h-4 w-4 mr-2" />
+              {downloading === 'ges' ? 'Generando…' : 'Descargar PDF'}
             </Button>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-sm font-semibold text-unt-blue dark:text-unt-gold-light">Reporte de conflictos</h3>
-          </div>
-          <div className="card-body">
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              Validaciones que no cumplen en el período activo.
+        <div className="group relative card hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-500 to-rose-500" />
+          <div className="card-body p-6 flex flex-col h-full gap-2">
+            <div className="flex items-center justify-between pb-1">
+              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Reporte de Conflictos</h3>
+              <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-sm opacity-90 group-hover:scale-110 transition-transform duration-300">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Validaciones que no cumplen en el período activo. Cruces, excesos y alertas.
             </p>
             <Button
-              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white mt-auto"
               disabled={!!downloading || !periodoId}
               onClick={() =>
                 runDownload('conf', () =>
@@ -318,8 +332,8 @@ export default function ReportesPage() {
                 )
               }
             >
-              <FileDown className="h-4 w-4" />
-              {downloading === 'conf' ? 'Generando…' : 'Descargar'}
+              <FileDown className="h-4 w-4 mr-2" />
+              {downloading === 'conf' ? 'Generando…' : 'Descargar PDF'}
             </Button>
           </div>
         </div>
@@ -337,16 +351,24 @@ export default function ReportesPage() {
           <div className="grid gap-5 sm:grid-cols-2">
 
             {/* Carga académica por docente */}
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-              <div>
-                <h4 className="font-semibold text-unt-blue dark:text-unt-gold-light">
-                  Carga académica por docente
-                </h4>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Cursos asignados, horas totales y horarios por docente.
-                </p>
+            <div className="group relative flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/70 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 dark:border-slate-700 dark:bg-slate-900/40 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+              
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-850 dark:text-slate-100">
+                    Carga académica por docente
+                  </h4>
+                  <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    Cursos asignados, horas totales y horarios por docente.
+                  </p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm opacity-85 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
               </div>
-              <div>
+
+              <div className="mt-2">
                 <Label htmlFor="cargaDocCat">Categoría de docente (opcional)</Label>
                 <select
                   id="cargaDocCat"
@@ -361,7 +383,7 @@ export default function ReportesPage() {
                 </select>
               </div>
               <Button
-                className="mt-auto w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+                className="mt-4 w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
                 disabled={!!downloading}
                 onClick={() =>
                   runDownload(
@@ -380,22 +402,30 @@ export default function ReportesPage() {
                   )
                 }
               >
-                <FileDown className="h-4 w-4 shrink-0" />
+                <FileDown className="h-4 w-4 mr-2 shrink-0" />
                 {downloading === 'carga-doc' ? 'Generando…' : 'Descargar PDF'}
               </Button>
             </div>
 
             {/* Horarios por ambiente */}
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-              <div>
-                <h4 className="font-semibold text-unt-blue dark:text-unt-gold-light">
-                  Horarios por ambiente
-                </h4>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Uso de aulas y laboratorios por día y hora en el período.
-                </p>
+            <div className="group relative flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/70 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 dark:border-slate-700 dark:bg-slate-900/40 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500" />
+              
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-850 dark:text-slate-100">
+                    Horarios por ambiente
+                  </h4>
+                  <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    Uso de aulas y laboratorios por día y hora en el período.
+                  </p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-sm opacity-85 group-hover:scale-110 transition-transform duration-300">
+                  <Building2 className="h-4.5 w-4.5" />
+                </div>
               </div>
-              <div>
+
+              <div className="mt-2">
                 <Label htmlFor="hasTipo">Tipo de ambiente (opcional)</Label>
                 <select
                   id="hasTipo"
@@ -443,7 +473,7 @@ export default function ReportesPage() {
                   })
                 }
               >
-                <Building2 className="h-4 w-4 shrink-0" />
+                <Building2 className="h-4 w-4 mr-2 shrink-0" />
                 {downloading === 'hor-amb' ? 'Generando…' : 'Descargar PDF'}
               </Button>
               {!periodoId && (
@@ -521,17 +551,27 @@ export default function ReportesPage() {
                 const lista = opciones[c.entidad];
                 const seleccion = filtros[c.entidad];
                 const esTodos = seleccion === TODOS;
+                const IconComp = c.icon;
 
                 return (
                   <div key={c.key}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-                    <div>
-                      <h4 className="font-semibold text-unt-blue dark:text-unt-gold-light">{c.label}</h4>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{c.desc}</p>
+                    className="group relative flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/70 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 dark:border-slate-700 dark:bg-slate-900/40 overflow-hidden">
+                    
+                    {/* Top gradient highlight bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${c.color}`} />
+
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-slate-800 dark:text-slate-200">{c.label}</h4>
+                        <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{c.desc}</p>
+                      </div>
+                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${c.color} text-white shadow-sm opacity-85 group-hover:scale-110 transition-transform duration-300`}>
+                        <IconComp className="h-4.5 w-4.5" />
+                      </div>
                     </div>
 
                     {/* Selector de registro individual */}
-                    <div>
+                    <div className="mt-1">
                       <Label htmlFor={`filtro-${c.entidad}`}>{c.labelFiltro}</Label>
                       <select id={`filtro-${c.entidad}`} className={SELECT_CLS} value={seleccion}
                         onChange={(e) => setFiltros((prev) => ({ ...prev, [c.entidad]: e.target.value }))}>
@@ -639,7 +679,7 @@ export default function ReportesPage() {
                         runDownload(c.key, () => descargarCatalogo(c), { requierePeriodo: false })
                       }
                     >
-                      <FileDown className="h-4 w-4 shrink-0" />
+                      <FileDown className="h-4 w-4 mr-2 shrink-0" />
                       {downloading === c.key
                         ? 'Generando…'
                         : esTodos ? 'PDF — Todos' : 'PDF — Seleccionado'}

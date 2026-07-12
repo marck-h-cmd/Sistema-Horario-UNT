@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,8 +49,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-slate-200/50 dark:border-slate-800/80 px-6 py-5 bg-slate-50/50 dark:bg-slate-900/10">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-md">
-          <span className="font-display text-sm font-extrabold">UNT</span>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-white shadow-md overflow-hidden p-1 border border-slate-200">
+          <Image src="/logo-unt.png" alt="UNT" width={32} height={32} className="object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-sm font-semibold tracking-tight text-slate-900 dark:text-white">
