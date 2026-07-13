@@ -152,23 +152,23 @@ export default function NotificacionesPage() {
         description="Historial de avisos enviados por el sistema."
         actions={
           <div className="flex items-center gap-2">
-            <Button
+            <Boton
               type="button"
               variant={soloMis ? 'default' : 'outline'}
               className={soloMis ? 'bg-unt-blue hover:bg-unt-blue/90 text-white' : ''}
               onClick={() => setSoloMis(true)}
             >
               Mis notificaciones
-            </Button>
+            </Boton>
             {user?.rol === Rol.ADMINISTRADOR || user?.rol === Rol.SECRETARIA ? (
-              <Button
+              <Boton
                 type="button"
                 variant={!soloMis ? 'default' : 'outline'}
                 className={!soloMis ? 'bg-unt-blue hover:bg-unt-blue/90 text-white' : ''}
                 onClick={() => setSoloMis(false)}
               >
                 Todas
-              </Button>
+              </Boton>
             ) : null}
           </div>
         }
