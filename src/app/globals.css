@@ -14,28 +14,28 @@
     --foreground: 15 23 42;
     --card: 255 255 255;
     --card-foreground: 15 23 42;
-    --primary: 79 70 229; /* Indigo 600 */
+    --primary: 30 64 175; /* UNT Blue (Blue 800) */
     --primary-foreground: 255 255 255;
-    --accent: 79 70 229;
+    --accent: 30 64 175;
     --border: 226 232 240;
     --input: 255 255 255;
-    --ring: 79 70 229;
+    --ring: 30 64 175;
     --radius: 0.5rem; /* 8px */
 
-    /* Indigo shades for Light Mode */
-    --primary-50: 245 243 255;
-    --primary-100: 237 233 254;
-    --primary-200: 221 214 254;
-    --primary-300: 196 181 253;
-    --primary-400: 167 139 250;
-    --primary-500: 139 92 246;
-    --primary-600: 124 58 237;
-    --primary-700: 109 40 217;
-    --primary-800: 91 33 182;
-    --primary-900: 76 29 149;
+    /* Blue shades for Light Mode (UNT Blue) */
+    --primary-50: 239 246 255;
+    --primary-100: 219 234 254;
+    --primary-200: 191 219 254;
+    --primary-300: 147 197 253;
+    --primary-400: 96 165 250;
+    --primary-500: 59 130 246;
+    --primary-600: 37 99 235;
+    --primary-700: 29 78 216;
+    --primary-800: 30 64 175;
+    --primary-900: 30 58 138;
 
-    --unt-blue: 79 70 229;
-    --unt-blue-light: 99 102 241;
+    --unt-blue: 30 64 175;
+    --unt-blue-light: 59 130 246;
     --unt-gold: 201 168 76;
     --unt-gold-light: 226 200 120;
     --unt-red: 239 68 68;
@@ -47,27 +47,27 @@
     --foreground: 241 245 249; /* #F1F5F9 */
     --card: 17 24 39; /* #111827 */
     --card-foreground: 241 245 249;
-    --primary: 99 102 241; /* Indigo 500 */
+    --primary: 96 165 250; /* Light UNT Blue (Blue 400) */
     --primary-foreground: 241 245 249;
-    --accent: 99 102 241;
+    --accent: 96 165 250;
     --border: 31 41 55; /* #1F2937 */
     --input: 26 34 52; /* #1A2234 */
-    --ring: 99 102 241;
+    --ring: 96 165 250;
 
-    /* Indigo shades for Dark Mode */
-    --primary-50: 245 243 255;
-    --primary-100: 237 233 254;
-    --primary-200: 221 214 254;
-    --primary-300: 196 181 253;
-    --primary-400: 129 140 248;
-    --primary-500: 99 102 241;
-    --primary-600: 79 70 229;
-    --primary-700: 67 56 202;
-    --primary-800: 55 48 163;
-    --primary-900: 49 46 129;
+    /* Blue shades for Dark Mode (UNT Blue) */
+    --primary-50: 239 246 255;
+    --primary-100: 219 234 254;
+    --primary-200: 191 219 254;
+    --primary-300: 147 197 253;
+    --primary-400: 96 165 250;
+    --primary-500: 59 130 246;
+    --primary-600: 37 99 235;
+    --primary-700: 29 78 216;
+    --primary-800: 30 64 175;
+    --primary-900: 30 58 138;
 
-    --unt-blue: 99 102 241;
-    --unt-blue-light: 129 140 248;
+    --unt-blue: 96 165 250;
+    --unt-blue-light: 147 197 253;
     --unt-gold: 226 200 120;
     --unt-gold-light: 243 232 200;
     --unt-red: 248 113 113;

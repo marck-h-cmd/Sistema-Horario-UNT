@@ -6,7 +6,7 @@ import { apiGet, apiPut, apiPost } from '@/lib/api-client';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { Boton } from '@/components/ui/Boton';
 import { Formateadores } from '@/lib/formateadores';
 import { toast } from 'sonner';
 import {
@@ -427,10 +427,11 @@ export default function PerfilPage() {
             )}
 
             <div className="flex justify-end border-t border-slate-100 pt-5 dark:border-slate-700/80">
-              <Button
+              <Boton
                 type="submit"
                 disabled={guardandoInfo}
-                className="btn-primary min-w-[150px]"
+                variant="default"
+                className="min-w-[150px]"
               >
                 {guardandoInfo ? (
                   <>
@@ -440,7 +441,7 @@ export default function PerfilPage() {
                 ) : (
                   'Guardar Cambios'
                 )}
-              </Button>
+              </Boton>
             </div>
           </form>
         </div>
@@ -569,7 +570,7 @@ export default function PerfilPage() {
               </ul>
             </div>
 
-            <Button
+            <Boton
               type="submit"
               disabled={
                 cambiandoPassword ||
@@ -579,7 +580,8 @@ export default function PerfilPage() {
                 !hasLower ||
                 !hasDigit
               }
-              className="btn-primary w-full"
+              variant="default"
+              className="w-full"
             >
               {cambiandoPassword ? (
                 <>
@@ -589,7 +591,7 @@ export default function PerfilPage() {
               ) : (
                 'Cambiar Contraseña'
               )}
-            </Button>
+            </Boton>
           </form>
         </div>
       </div>

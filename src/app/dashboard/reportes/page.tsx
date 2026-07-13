@@ -6,7 +6,7 @@ import {
   BarChart3, AlertTriangle, GraduationCap, BookOpen, MapPin,
   CalendarDays, Layers, ClipboardList
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Boton } from '@/components/ui/Boton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -296,8 +296,9 @@ export default function ReportesPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Resumen del período: docentes, cursos, avance por categoría y ocupación de ambientes.
             </p>
-            <Button
-              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white mt-auto"
+            <Boton
+              variant="default"
+              className="w-full mt-auto"
               disabled={!!downloading || !periodoId}
               onClick={() =>
                 runDownload('ges', () =>
@@ -307,7 +308,7 @@ export default function ReportesPage() {
             >
               <FileDown className="h-4 w-4 mr-2" />
               {downloading === 'ges' ? 'Generando…' : 'Descargar PDF'}
-            </Button>
+            </Boton>
           </div>
         </div>
 
@@ -323,8 +324,9 @@ export default function ReportesPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Validaciones que no cumplen en el período activo. Cruces, excesos y alertas.
             </p>
-            <Button
-              className="w-full bg-unt-blue hover:bg-unt-blue/90 text-white mt-auto"
+            <Boton
+              variant="danger"
+              className="w-full mt-auto"
               disabled={!!downloading || !periodoId}
               onClick={() =>
                 runDownload('conf', () =>
@@ -334,7 +336,7 @@ export default function ReportesPage() {
             >
               <FileDown className="h-4 w-4 mr-2" />
               {downloading === 'conf' ? 'Generando…' : 'Descargar PDF'}
-            </Button>
+            </Boton>
           </div>
         </div>
       </div>
@@ -382,8 +384,9 @@ export default function ReportesPage() {
                   ))}
                 </select>
               </div>
-              <Button
-                className="mt-4 w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+              <Boton
+                variant="default"
+                className="mt-4 w-full"
                 disabled={!!downloading}
                 onClick={() =>
                   runDownload(
@@ -404,7 +407,7 @@ export default function ReportesPage() {
               >
                 <FileDown className="h-4 w-4 mr-2 shrink-0" />
                 {downloading === 'carga-doc' ? 'Generando…' : 'Descargar PDF'}
-              </Button>
+              </Boton>
             </div>
 
             {/* Horarios por ambiente */}
@@ -457,8 +460,9 @@ export default function ReportesPage() {
                     ))}
                 </select>
               </div>
-              <Button
-                className="mt-auto w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+              <Boton
+                variant="default"
+                className="mt-auto w-full"
                 disabled={!!downloading || !periodoId}
                 onClick={() =>
                   runDownload('hor-amb', () => {
@@ -475,7 +479,7 @@ export default function ReportesPage() {
               >
                 <Building2 className="h-4 w-4 mr-2 shrink-0" />
                 {downloading === 'hor-amb' ? 'Generando…' : 'Descargar PDF'}
-              </Button>
+              </Boton>
               {!periodoId && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   Requiere período académico activo.
@@ -515,10 +519,10 @@ export default function ReportesPage() {
                   onChange={(e) => setFechaHasta(e.target.value)} className="h-9 w-[150px] text-xs" />
               </div>
               {(fechaDesde || fechaHasta) && (
-                <Button type="button" variant="ghost" onClick={() => { setFechaDesde(''); setFechaHasta(''); }}
+                <Boton type="button" variant="ghost" onClick={() => { setFechaDesde(''); setFechaHasta(''); }}
                   className="h-9 px-2 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
                   Limpiar
-                </Button>
+                </Boton>
               )}
             </div>
           </div>
@@ -672,8 +676,9 @@ export default function ReportesPage() {
                       </div>
                     )}
 
-                    <Button
-                      className="mt-auto w-full bg-unt-blue hover:bg-unt-blue/90 text-white"
+                    <Boton
+                      variant="default"
+                      className="mt-auto w-full"
                       disabled={!!downloading || (!esTodos && !seleccion) || rangoFechasInvalido}
                       onClick={() =>
                         runDownload(c.key, () => descargarCatalogo(c), { requierePeriodo: false })
@@ -683,7 +688,7 @@ export default function ReportesPage() {
                       {downloading === c.key
                         ? 'Generando…'
                         : esTodos ? 'PDF — Todos' : 'PDF — Seleccionado'}
-                    </Button>
+                    </Boton>
                   </div>
                 );
               })}

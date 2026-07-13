@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2, Save } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Save, Globe, ShieldCheck, Clock, Shield } from 'lucide-react';
+import { Boton } from '@/components/ui/Boton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorAlert } from '@/components/feedback/ErrorAlert';
@@ -80,14 +80,14 @@ export default function ConfiguracionPage() {
         title="Configuración del sistema"
         description="Parámetros generales almacenados en caché (Redis)."
         actions={
-          <Button
+          <Boton
             onClick={handleSave}
             disabled={saving || loading}
-            className="bg-unt-blue hover:bg-unt-blue/90 text-white"
+            variant="default"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Guardando…' : 'Guardar cambios'}
-          </Button>
+          </Boton>
         }
       />
 
@@ -102,45 +102,61 @@ export default function ConfiguracionPage() {
           <div className="card-body space-y-4">
             <div>
               <Label htmlFor="na">Nombre de la aplicación</Label>
-              <Input
-                id="na"
-                value={cfg.nombreApp ?? ''}
-                onChange={(e) => setCfg((c) => ({ ...c, nombreApp: e.target.value }))}
-              />
+              <div className="relative mt-1">
+                <Globe className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="na"
+                  value={cfg.nombreApp ?? ''}
+                  onChange={(e) => setCfg((c) => ({ ...c, nombreApp: e.target.value }))}
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="ver">Versión</Label>
-              <Input
-                id="ver"
-                value={cfg.version ?? ''}
-                onChange={(e) => setCfg((c) => ({ ...c, version: e.target.value }))}
-              />
+              <div className="relative mt-1">
+                <Shield className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="ver"
+                  value={cfg.version ?? ''}
+                  onChange={(e) => setCfg((c) => ({ ...c, version: e.target.value }))}
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="max">Máximo intentos de login</Label>
-              <Input
-                id="max"
-                type="number"
-                min={1}
-                value={cfg.maxIntentosLogin ?? ''}
-                onChange={(e) =>
-                  setCfg((c) => ({ ...c, maxIntentosLogin: parseInt(e.target.value, 10) || 0 }))
-                }
-              />
+              <div className="relative mt-1">
+                <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="max"
+                  type="number"
+                  min={1}
+                  value={cfg.maxIntentosLogin ?? ''}
+                  onChange={(e) =>
+                    setCfg((c) => ({ ...c, maxIntentosLogin: parseInt(e.target.value, 10) || 0 }))
+                  }
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="tb">Tiempo de bloqueo (minutos)</Label>
-              <Input
-                id="tb"
-                type="number"
-                min={1}
-                value={cfg.tiempoBloqueoMinutos ?? ''}
-                onChange={(e) =>
-                  setCfg((c) => ({ ...c, tiempoBloqueoMinutos: parseInt(e.target.value, 10) || 0 }))
-                }
-              />
+              <div className="relative mt-1">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="tb"
+                  type="number"
+                  min={1}
+                  value={cfg.tiempoBloqueoMinutos ?? ''}
+                  onChange={(e) =>
+                    setCfg((c) => ({ ...c, tiempoBloqueoMinutos: parseInt(e.target.value, 10) || 0 }))
+                  }
+                  className="pl-9"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-2">
               <input
                 id="notif"
                 type="checkbox"
@@ -148,17 +164,19 @@ export default function ConfiguracionPage() {
                 onChange={(e) =>
                   setCfg((c) => ({ ...c, notificacionesActivas: e.target.checked }))
                 }
+                className="h-4 w-4 rounded border-slate-300 text-unt-blue focus:ring-unt-blue/50"
               />
-              <Label htmlFor="notif">Notificaciones activas</Label>
+              <Label htmlFor="notif" className="font-semibold text-slate-700 dark:text-slate-300">Notificaciones activas</Label>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <input
                 id="aud"
                 type="checkbox"
                 checked={!!cfg.auditoriaActiva}
                 onChange={(e) => setCfg((c) => ({ ...c, auditoriaActiva: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300 text-unt-blue focus:ring-unt-blue/50"
               />
-              <Label htmlFor="aud">Auditoría activa</Label>
+              <Label htmlFor="aud" className="font-semibold text-slate-700 dark:text-slate-300">Auditoría activa</Label>
             </div>
           </div>
         </div>

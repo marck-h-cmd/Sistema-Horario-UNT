@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, Users, BookOpen, Hash, Calendar, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/button';
+import { Boton } from '@/components/ui/Boton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   Dialog,
@@ -228,12 +228,12 @@ export default function CursosPage() {
       className: 'w-28 text-right',
       cell: (r: CursoRow) => (
         <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="edit" onClick={() => openEdit(r)}>
+          <Boton type="button" size="sm" variant="edit" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button type="button" size="sm" variant="danger" onClick={() => handleDelete(r)}>
+          </Boton>
+          <Boton type="button" size="sm" variant="danger" onClick={() => handleDelete(r)}>
             <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          </Boton>
         </div>
       ),
     }] : []),
@@ -254,10 +254,10 @@ export default function CursosPage() {
         description="Catálogo de asignaturas y enlace a grupos."
         actions={
           canEdit ? (
-            <Button onClick={openCreate} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
+            <Boton onClick={openCreate} variant="default">
               <Plus className="h-4 w-4" />
               Nuevo curso
-            </Button>
+            </Boton>
           ) : undefined
         }
       />
@@ -312,15 +312,15 @@ export default function CursosPage() {
           </div>
 
           {/* Botón buscar */}
-          <Button type="button" onClick={() => setSearch(qInput.trim())} className="bg-unt-blue hover:bg-unt-blue/90 text-white">
+          <Boton type="button" onClick={() => setSearch(qInput.trim())} variant="default">
             Buscar
-          </Button>
+          </Boton>
 
           {/* Limpiar filtros */}
           {hayFiltrosActivos && (
-            <Button type="button" variant="outline" onClick={limpiarFiltros} className="text-slate-500 dark:text-slate-400">
+            <Boton type="button" variant="outline" onClick={limpiarFiltros}>
               Limpiar
-            </Button>
+            </Boton>
           )}
         </div>
       </div>
@@ -348,87 +348,119 @@ export default function CursosPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="codigo">Código</Label>
-                <Input
-                  id="codigo"
-                  value={form.codigo}
-                  onChange={(e) => setForm((f) => ({ ...f, codigo: e.target.value }))}
-                />
+                <div className="relative mt-1">
+                  <Hash className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="codigo"
+                    value={form.codigo}
+                    onChange={(e) => setForm((f) => ({ ...f, codigo: e.target.value }))}
+                    className="pl-9"
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="ciclo">Ciclo (1–10)</Label>
-                <Input
-                  id="ciclo"
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={form.ciclo}
-                  onChange={(e) => setForm((f) => ({ ...f, ciclo: parseInt(e.target.value, 10) || 1 }))}
-                />
+                <div className="relative mt-1">
+                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="ciclo"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={form.ciclo}
+                    onChange={(e) => setForm((f) => ({ ...f, ciclo: parseInt(e.target.value, 10) || 1 }))}
+                    className="pl-9"
+                  />
+                </div>
               </div>
             </div>
             <div>
               <Label htmlFor="nombre">Nombre</Label>
-              <Input
-                id="nombre"
-                value={form.nombre}
-                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-              />
+              <div className="relative mt-1">
+                <BookOpen className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="nombre"
+                  value={form.nombre}
+                  onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="creditos">Créditos</Label>
-              <Input
-                id="creditos"
-                type="number"
-                min={1}
-                value={form.creditos}
-                onChange={(e) => setForm((f) => ({ ...f, creditos: parseInt(e.target.value, 10) || 0 }))}
-              />
+              <div className="relative mt-1">
+                <Hash className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="creditos"
+                  type="number"
+                  min={1}
+                  value={form.creditos}
+                  onChange={(e) => setForm((f) => ({ ...f, creditos: parseInt(e.target.value, 10) || 0 }))}
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <Label htmlFor="ht">Horas teoría</Label>
-                <Input
-                  id="ht"
-                  type="number"
-                  min={0}
-                  value={form.horasTeoria}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, horasTeoria: parseInt(e.target.value, 10) || 0 }))
-                  }
-                />
+                <div className="relative mt-1">
+                  <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="ht"
+                    type="number"
+                    min={0}
+                    value={form.horasTeoria}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, horasTeoria: parseInt(e.target.value, 10) || 0 }))
+                    }
+                    className="pl-9"
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="hp">Horas práctica</Label>
-                <Input
-                  id="hp"
-                  type="number"
-                  min={0}
-                  value={form.horasPractica}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, horasPractica: parseInt(e.target.value, 10) || 0 }))
-                  }
-                />
+                <div className="relative mt-1">
+                  <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="hp"
+                    type="number"
+                    min={0}
+                    value={form.horasPractica}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, horasPractica: parseInt(e.target.value, 10) || 0 }))
+                    }
+                    className="pl-9"
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="hl">Horas laboratorio</Label>
-                <Input
-                  id="hl"
-                  type="number"
-                  min={0}
-                  value={form.horasLaboratorio}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, horasLaboratorio: parseInt(e.target.value, 10) || 0 }))
-                  }
-                />
+                <div className="relative mt-1">
+                  <Clock className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="hl"
+                    type="number"
+                    min={0}
+                    value={form.horasLaboratorio}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, horasLaboratorio: parseInt(e.target.value, 10) || 0 }))
+                    }
+                    className="pl-9"
+                  />
+                </div>
               </div>
             </div>
             <div>
               <Label htmlFor="plan">Plan de estudios (opcional)</Label>
-              <Input
-                id="plan"
-                value={form.planEstudios}
-                onChange={(e) => setForm((f) => ({ ...f, planEstudios: e.target.value }))}
-              />
+              <div className="relative mt-1">
+                <BookOpen className="absolute left-3 top-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="plan"
+                  value={form.planEstudios}
+                  onChange={(e) => setForm((f) => ({ ...f, planEstudios: e.target.value }))}
+                  className="pl-9"
+                />
+              </div>
             </div>
             {editing && (
               <div className="flex items-center gap-2">
@@ -443,17 +475,17 @@ export default function CursosPage() {
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            <Boton type="button" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
-            </Button>
-            <Button
+            </Boton>
+            <Boton
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="bg-unt-blue hover:bg-unt-blue/90 text-white"
+              variant="default"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
-            </Button>
+            </Boton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -528,7 +528,7 @@ export function Chatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 p-4 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 hover:scale-105 transition-all z-[9999] flex items-center justify-center"
+          className="fixed bottom-6 right-6 p-4 rounded-full bg-[#1a365d] text-white shadow-lg shadow-blue-900/10 hover:bg-[#112747] hover:scale-105 transition-all z-[9999] flex items-center justify-center border border-[#c9a84c]/30 shadow-[#c9a84c]/5"
           aria-label="Abrir asistente"
         >
           <MessageCircle size={28} />
@@ -540,15 +540,15 @@ export function Chatbot() {
         <div className="fixed bottom-6 right-6 w-80 sm:w-96 h-[500px] max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl flex flex-col z-[9999] overflow-hidden">
 
           {/* Header */}
-          <div className="bg-emerald-600 p-4 text-white flex justify-between items-center shadow-sm">
+          <div className="bg-[#1a365d] p-4 text-white flex justify-between items-center shadow-sm border-b border-[#c9a84c]/30">
             <div className="flex items-center gap-2">
-              <Bot size={22} />
+              <Bot size={22} className="text-[#e2c878]" />
               <h3 className="font-semibold text-sm">FelIxA</h3>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="p-1.5 hover:bg-emerald-700 rounded-md transition-colors"
+                className="p-1.5 hover:bg-[#112747] rounded-md transition-colors"
                 title="Limpiar conversación"
                 disabled={isLoading}
               >
@@ -556,14 +556,14 @@ export function Chatbot() {
               </button>
               <button
                 onClick={toggleVoice}
-                className="p-1.5 hover:bg-emerald-700 rounded-md transition-colors"
+                className="p-1.5 hover:bg-[#112747] rounded-md transition-colors"
                 title={voiceEnabled ? 'Silenciar respuestas de voz' : 'Activar respuestas de voz'}
               >
                 {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-emerald-700 rounded-md transition-colors"
+                className="p-1.5 hover:bg-[#112747] rounded-md transition-colors"
                 title="Cerrar"
               >
                 <X size={18} />
@@ -575,11 +575,11 @@ export function Chatbot() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-900/50">
             {messages.length === 0 && (
               <div className="text-center text-sm text-slate-500 mt-6 px-4">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 text-[#1a365d] dark:text-[#e2c878] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#c9a84c]/20">
                   <Bot size={32} />
                 </div>
                 <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">¡Hola! Soy FelIxA.</p>
-                <p>Pregúntame sobre <b>horarios de docentes</b> o <b>laboratorios libres</b>.</p>
+                <p>Pregúntame sobre <b className="text-[#c9a84c]">horarios de docentes</b> o <b className="text-[#c9a84c]">laboratorios libres</b>.</p>
                 <p className="mt-3 text-xs text-slate-400">Escribe o usa el micrófono para hablar.</p>
               </div>
             )}
@@ -587,19 +587,19 @@ export function Chatbot() {
             {messages.map(m => (
               <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
                 {m.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600 mt-1">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-[#1a365d] dark:text-[#e2c878] mt-1 border border-slate-200/60 dark:border-slate-700/60">
                     <Bot size={16} />
                   </div>
                 )}
                 <div className={`max-w-[85%] p-3 rounded-2xl text-sm flex flex-col ${
                   m.role === 'user'
-                    ? 'bg-emerald-600 text-white rounded-tr-sm'
+                    ? 'bg-[#1a365d] text-white rounded-tr-sm border border-blue-900/20'
                     : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-sm shadow-sm'
                 }`}>
                   <div className="whitespace-pre-wrap flex-1">{m.content}</div>
                   {m.createdAt && (
                     <span className={`text-[10px] self-end mt-1.5 leading-none select-none ${
-                      m.role === 'user' ? 'text-emerald-200' : 'text-slate-400 dark:text-slate-500'
+                      m.role === 'user' ? 'text-blue-200/80' : 'text-slate-400 dark:text-slate-500'
                     }`}>
                       {formatMessageTime(m.createdAt)}
                     </span>
@@ -610,13 +610,13 @@ export function Chatbot() {
 
             {isLoading && (
               <div className="flex justify-start gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mt-1">
+                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-slate-800 flex items-center justify-center text-[#1a365d] dark:text-[#e2c878] mt-1 border border-slate-200/60 dark:border-slate-700/60">
                   <Bot size={16} />
                 </div>
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl rounded-tl-sm flex gap-1.5 items-center shadow-sm">
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                 </div>
               </div>
             )}
@@ -670,7 +670,7 @@ export function Chatbot() {
 
                   {/* Floating Lock Icon and held Mic Button */}
                   <div className="relative flex items-center justify-center">
-                    <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-slate-800 px-2 py-1.5 rounded-full border border-emerald-200 dark:border-slate-700 shadow-lg select-none">
+                    <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 text-[9px] text-[#1a365d] dark:text-[#e2c878] bg-blue-50 dark:bg-slate-800 px-2 py-1.5 rounded-full border border-blue-200 dark:border-slate-700 shadow-lg select-none">
                       <span className="animate-chatbot-slide-up-lock">🔒</span>
                       <span className="leading-none text-[8px] animate-chatbot-slide-up-lock">▲</span>
                     </div>
@@ -711,7 +711,7 @@ export function Chatbot() {
                       onClick={togglePauseRecording}
                       className={`p-2 rounded-full transition-all active:scale-90 flex-shrink-0 ${
                         isPaused
-                          ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 hover:bg-emerald-200'
+                          ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 hover:bg-blue-200'
                           : 'bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 hover:bg-amber-200'
                       }`}
                       title={isPaused ? 'Reanudar grabación' : 'Pausar grabación'}
@@ -724,7 +724,7 @@ export function Chatbot() {
                   <button
                     type="button"
                     onClick={stopAndSendRecording}
-                    className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-all active:scale-90 shadow-md flex-shrink-0"
+                    className="p-2.5 bg-[#1a365d] hover:bg-[#112747] text-white rounded-full transition-all active:scale-90 shadow-md flex-shrink-0"
                     title="Enviar mensaje"
                   >
                     <Send size={18} />
@@ -755,7 +755,7 @@ export function Chatbot() {
                 value={inputText}
                 onChange={e => setInputText(e.target.value)}
                 placeholder="Escribe tu pregunta..."
-                className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-200"
+                className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 text-slate-800 dark:text-slate-200"
                 disabled={isLoading}
                 autoComplete="off"
               />
@@ -763,7 +763,7 @@ export function Chatbot() {
               <button
                 type="submit"
                 disabled={isLoading || !inputText.trim()}
-                className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                className="p-2.5 bg-[#1a365d] hover:bg-[#112747] text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 title="Enviar"
               >
                 {isLoading

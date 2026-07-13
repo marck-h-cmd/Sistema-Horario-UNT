@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Boton } from '@/components/ui/Boton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DataTable, type Column } from '@/components/data/DataTable';
@@ -66,6 +66,23 @@ export default function AuditoriaPage() {
     setPage(1);
   }, [filterKey, setPage]);
 
+  const getAccionBadge = (accionName: string) => {
+    const normalized = accionName.toUpperCase();
+    if (normalized.includes('CREATE') || normalized.includes('ADD') || normalized.includes('REGISTRAR')) {
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/30';
+    }
+    if (normalized.includes('UPDATE') || normalized.includes('EDIT') || normalized.includes('MODIFICAR') || normalized.includes('ACTUALIZAR')) {
+      return 'bg-blue-50 text-blue-700 border-blue-200/80 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/30';
+    }
+    if (normalized.includes('DELETE') || normalized.includes('REMOVE') || normalized.includes('ELIMINAR')) {
+      return 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800/30';
+    }
+    if (normalized.includes('LOGIN') || normalized.includes('AUTH') || normalized.includes('ACCESO')) {
+      return 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30';
+    }
+    return 'bg-slate-50 text-slate-700 border-slate-200/80 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700';
+  };
+
   const columns: Column<AuditoriaRow>[] = useMemo(
     () => [
       {
@@ -81,7 +98,15 @@ export default function AuditoriaPage() {
             ? `${r.usuario.apellidos}, ${r.usuario.nombre} (${Formateadores.rolUsuario(r.usuario.rol)})`
             : '—',
       },
-      { key: 'a', header: 'Acción', cell: (r) => <span className="font-mono text-xs">{r.accion}</span> },
+      {
+        key: 'a',
+        header: 'Acción',
+        cell: (r) => (
+          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-mono font-semibold ${getAccionBadge(r.accion)}`}>
+            {r.accion}
+          </span>
+        ),
+      },
       { key: 'e', header: 'Entidad', cell: (r) => r.entidad },
       { key: 'ei', header: 'ID entidad', cell: (r) => r.entidadId || '—' },
     ],
@@ -127,7 +152,7 @@ export default function AuditoriaPage() {
             <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <Button
+            <Boton
               type="button"
               variant="outline"
               onClick={() => {
@@ -140,7 +165,7 @@ export default function AuditoriaPage() {
               }}
             >
               Limpiar filtros
-            </Button>
+            </Boton>
           </div>
         </div>
       </div>

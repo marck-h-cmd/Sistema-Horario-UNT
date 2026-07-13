@@ -49,7 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-slate-200/50 dark:border-slate-800/80 px-6 py-5 bg-slate-50/50 dark:bg-slate-900/10">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-white shadow-md overflow-hidden p-1 border border-slate-200">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-white shadow-md overflow-hidden p-1 border border-[#c9a84c]/50 shadow-[#c9a84c]/5">
           <Image src="/logo-unt.png" alt="UNT" width={32} height={32} className="object-contain" />
         </div>
         <div className="min-w-0 flex-1">

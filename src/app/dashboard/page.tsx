@@ -270,7 +270,7 @@ export default function DashboardPage() {
                 value={resumen?.totalAmbientes ?? 0}
                 subtitle="Aulas y laboratorios"
                 icon={Building2}
-                colorClass="text-primary-600 bg-primary-500/10 dark:text-primary-400 dark:bg-primary-500/20"
+                colorClass="text-[#c9a84c] bg-[#c9a84c]/10 dark:text-[#e2c878] dark:bg-[#c9a84c]/20"
               />
               <DashboardKpiCard
                 title="Horarios (período)"
