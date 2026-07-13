@@ -392,12 +392,12 @@ export default function PlanEstudiosPage() {
       className: 'text-right',
       cell: (row: CursoRow) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="icon" onClick={() => openEdit(row)} title="Editar Curso">
-            <Pencil className="h-4 w-4 text-blue-600" />
+          <Button variant="edit" size="icon" onClick={() => openEdit(row)} title="Editar Curso">
+            <Pencil className="h-4 w-4" />
           </Button>
           {row.activo && (
-            <Button variant="ghost" size="icon" onClick={() => handleDelete(row)} title="Desactivar">
-              <Trash2 className="h-4 w-4 text-red-600" />
+            <Button variant="danger" size="icon" onClick={() => handleDelete(row)} title="Desactivar">
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

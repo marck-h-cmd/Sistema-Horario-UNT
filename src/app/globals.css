@@ -146,19 +146,19 @@
   }
 
   .card {
-    @apply rounded-xl border border-slate-200/50 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-none dark:hover:shadow-lg dark:hover:shadow-black/35;
+    @apply rounded-2xl border border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-none dark:hover:shadow-lg dark:hover:shadow-black/25;
   }
 
   .card-header {
-    @apply border-b border-slate-100/50 px-6 py-4 dark:border-slate-800/80;
+    @apply border-b border-slate-100/60 px-6 py-4 dark:border-slate-800/80;
   }
 
   .card-body {
-    @apply px-6 py-4;
+    @apply px-6 py-5;
   }
 
   .card-footer {
-    @apply border-t border-slate-100/50 px-6 py-4 dark:border-slate-800/80;
+    @apply border-t border-slate-100/60 px-6 py-4 dark:border-slate-800/80;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -171,75 +171,75 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700;
+    @apply rounded-full bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800/80 dark:hover:bg-slate-700;
   }
 
   .table-container {
-    @apply overflow-x-auto rounded-xl border border-slate-200/50 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900/60;
+    @apply overflow-x-auto rounded-2xl border border-slate-200/60 bg-white/85 shadow-sm backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/50;
   }
 
   .table {
-    @apply min-w-full divide-y divide-slate-200/60 dark:divide-slate-800;
+    @apply min-w-full divide-y divide-slate-200/60 dark:divide-slate-800/80;
   }
 
   .table thead {
-    @apply sticky top-0 z-10 bg-slate-50/80 backdrop-blur-md dark:bg-slate-800/80;
+    @apply sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md dark:bg-slate-900/90;
   }
 
   .table th {
-    @apply px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400;
+    @apply px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
   }
 
   .table tbody {
-    @apply divide-y divide-slate-100/60 bg-white dark:divide-slate-800 dark:bg-slate-900/30;
+    @apply divide-y divide-slate-100/60 bg-white/40 dark:divide-slate-800/40 dark:bg-slate-900/10;
   }
 
   .table tbody tr {
-    @apply transition-colors duration-150;
+    @apply transition-all duration-200;
   }
 
   .table tbody tr:nth-child(even) {
-    @apply bg-slate-50/20 dark:bg-slate-900/40;
+    @apply bg-slate-50/10 dark:bg-slate-950/10;
   }
 
   .table tbody tr:hover {
-    @apply bg-primary/5 dark:bg-primary/10;
+    @apply bg-primary-500/5 dark:bg-primary-500/10;
   }
 
   .table td {
-    @apply whitespace-nowrap px-4 py-3 text-sm text-slate-800 dark:text-slate-200;
+    @apply whitespace-nowrap px-5 py-3.5 text-sm text-slate-700 dark:text-slate-200;
   }
 
   .table-actions {
-    @apply flex items-center justify-end gap-1 opacity-80 transition-opacity group-hover:opacity-100;
+    @apply flex items-center justify-end gap-1.5 opacity-80 transition-opacity group-hover:opacity-100;
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide shadow-sm border border-transparent;
   }
 
   .badge-success {
-    @apply badge bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300;
+    @apply badge bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20;
   }
 
   .badge-warning {
-    @apply badge bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300;
+    @apply badge bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/20;
   }
 
   .badge-danger {
-    @apply badge bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-300;
+    @apply badge bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/20;
   }
 
   .badge-info {
-    @apply badge bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300;
+    @apply badge bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/20;
   }
 
   .badge-accent {
-    @apply badge bg-primary/10 text-primary dark:text-primary-300;
+    @apply badge bg-primary-50 text-primary border-primary-200/60 dark:bg-primary/20 dark:text-primary-300 dark:border-primary-500/20;
   }
 
   .badge-gray {
-    @apply badge bg-slate-100 text-slate-700 dark:bg-slate-800/30 dark:text-slate-300;
+    @apply badge bg-slate-100 text-slate-700 border-slate-200/60 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/60;
   }
 
   .spinner {
@@ -251,19 +251,19 @@
   }
 
   .alert-warning {
-    @apply rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-sm text-amber-900 backdrop-blur-sm dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200;
+    @apply rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-sm text-amber-900 backdrop-blur-sm dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200;
   }
 
   .nav-item {
-    @apply flex items-center gap-3.5 rounded-lg border-l-2 px-4 py-2.5 text-sm font-medium transition-all duration-150 hover:translate-x-0.5;
+    @apply flex items-center gap-3 rounded-xl border-l-4 px-4 py-3 text-sm font-semibold transition-all duration-200 hover:translate-x-1;
   }
 
   .nav-item-active {
-    @apply nav-item border-primary bg-primary/10 font-semibold text-primary dark:bg-primary/20 dark:text-primary-300 shadow-sm backdrop-blur-sm;
+    @apply nav-item border-primary-500 bg-gradient-to-r from-primary-500/10 to-primary-500/0 text-primary-600 dark:border-primary-400 dark:from-primary-400/15 dark:to-primary-400/0 dark:text-primary-300 shadow-sm shadow-primary-500/5;
   }
 
   .nav-item-inactive {
-    @apply nav-item border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white;
+    @apply nav-item border-transparent text-slate-500 hover:bg-slate-100/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white;
   }
 }
 

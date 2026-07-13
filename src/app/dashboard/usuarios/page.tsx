@@ -361,14 +361,14 @@ export default function UsuariosPage() {
       className: 'text-right',
       cell: (r) => (
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => openEditModal(r)} title="Editar datos básicos">
+          <Button variant="edit" size="sm" onClick={() => openEditModal(r)} title="Editar datos básicos">
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openRoleModal(r)} title="Gestionar Rol y Docente">
-            <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-500" />
+          <Button variant="warning" size="sm" onClick={() => openRoleModal(r)} title="Gestionar Rol y Docente">
+            <ShieldAlert className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openDeleteModal(r)} title="Eliminar usuario">
-            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+          <Button variant="danger" size="sm" onClick={() => openDeleteModal(r)} title="Eliminar usuario">
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       )
@@ -540,7 +540,7 @@ export default function UsuariosPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRoleDialogOpen(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setRoleDialogOpen(false)}>Cancelar</Button>
             <Button className="bg-unt-blue hover:bg-unt-blue/90 font-bold" onClick={handleSaveRole} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Rol'}
             </Button>
@@ -694,7 +694,7 @@ export default function UsuariosPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
             <Button className="bg-unt-blue hover:bg-unt-blue/90 font-bold" onClick={handleCreateUser} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Registrar'}
             </Button>
@@ -751,7 +751,7 @@ export default function UsuariosPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
             <Button className="bg-unt-blue hover:bg-unt-blue/90 font-bold" onClick={handleEditUser} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar Cambios'}
             </Button>
@@ -776,7 +776,7 @@ export default function UsuariosPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
             <Button className="bg-red-650 hover:bg-red-700 text-white font-bold" onClick={handleDeleteUser} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Eliminar'}
             </Button>

@@ -300,13 +300,13 @@ export default function DocentesPage() {
       className: 'w-36 text-right',
       cell: (r) => (
         <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="outline" title="Ver Carga Horaria" onClick={() => setCargaHorariaDocenteId(r.id)}>
+          <Button type="button" size="sm" variant="view" title="Ver Carga Horaria" onClick={() => setCargaHorariaDocenteId(r.id)}>
             <FileText className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" size="sm" variant="outline" title="Editar" onClick={() => openEdit(r)}>
+          <Button type="button" size="sm" variant="edit" title="Editar" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button type="button" size="sm" variant="destructive" title="Eliminar" onClick={() => handleDelete(r)}>
+          <Button type="button" size="sm" variant="danger" title="Eliminar" onClick={() => handleDelete(r)}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

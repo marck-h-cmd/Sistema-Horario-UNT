@@ -803,20 +803,24 @@ export default function CargaAcademicaAdminPage() {
                               <td className="text-center font-bold text-indigo-700 dark:text-indigo-300 bg-primary/5 dark:bg-primary/10 py-3">{totalHrs}</td>
                               <td className="py-3 pr-4">
                                 <div className="table-actions">
-                                  <button 
+                                  <Button 
+                                    variant="edit"
+                                    size="sm"
                                     onClick={() => abrirModalEdicion(c)}
-                                    className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all duration-150"
                                     title="Editar asignación"
+                                    className="h-7 w-7 p-0"
                                   >
                                     <Edit2 className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button 
+                                  </Button>
+                                  <Button 
+                                    variant="danger"
+                                    size="sm"
                                     onClick={() => eliminarAsignacion(c.ids)}
-                                    className="p-1 rounded-md text-red-500 hover:text-red-755 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 transition-all duration-150"
                                     title="Eliminar asignación"
+                                    className="h-7 w-7 p-0"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                  </Button>
                                 </div>
                               </td>
                             </tr>

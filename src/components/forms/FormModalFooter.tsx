@@ -23,18 +23,17 @@ export function FormModalFooter({
     <DialogFooter className="flex-row justify-end gap-2 border-t border-slate-100 pt-4 sm:justify-end">
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         onClick={onCancel}
         disabled={saving}
-        className="transition-colors duration-150"
       >
         {cancelLabel}
       </Button>
       <Button
         type="button"
+        variant="default"
         onClick={onSubmit}
         disabled={saving || disabled}
-        className="bg-unt-blue text-white transition-colors duration-150 hover:bg-primary-700"
       >
         {saving ? (
           <>

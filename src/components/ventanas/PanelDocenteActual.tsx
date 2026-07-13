@@ -83,7 +83,7 @@ export function PanelDocenteActual({
         <div className="grid grid-cols-2 gap-2">
           <Boton
             onClick={onFinalizar}
-            variant="default"
+            variant="success"
             className="gap-2"
           >
             <CheckCircle className="h-4 w-4" />
@@ -91,7 +91,7 @@ export function PanelDocenteActual({
           </Boton>
           <Boton
             onClick={onCancelar}
-            variant="destructive"
+            variant="danger"
             className="gap-2"
           >
             <XCircle className="h-4 w-4" />

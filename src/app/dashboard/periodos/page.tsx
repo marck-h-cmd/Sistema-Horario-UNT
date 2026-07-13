@@ -165,7 +165,7 @@ export default function PeriodosPage() {
       header: '',
       className: 'w-24 text-right',
       cell: (r: PeriodoRow) => (
-        <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
+        <Button type="button" size="sm" variant="edit" onClick={() => openEdit(r)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       ),
@@ -240,7 +240,7 @@ export default function PeriodosPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -314,7 +314,7 @@ export default function PeriodosPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditRow(null)}>
+            <Button type="button" variant="secondary" onClick={() => setEditRow(null)}>
               Cancelar
             </Button>
             <Button

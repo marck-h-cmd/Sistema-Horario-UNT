@@ -89,7 +89,7 @@ export function TablaPaginada<T extends Record<string, any>>({
           </div>
           <div className="flex gap-2">
             <Boton
-              variant="outline"
+              variant="secondary"
               size="icon"
               onClick={() => onCambioPagina(1)}
               disabled={paginaActual === 1 || cargando}
@@ -97,7 +97,7 @@ export function TablaPaginada<T extends Record<string, any>>({
               <ChevronsLeft className="h-4 w-4" />
             </Boton>
             <Boton
-              variant="outline"
+              variant="secondary"
               size="icon"
               onClick={() => onCambioPagina(paginaActual - 1)}
               disabled={paginaActual === 1 || cargando}
@@ -105,7 +105,7 @@ export function TablaPaginada<T extends Record<string, any>>({
               <ChevronLeft className="h-4 w-4" />
             </Boton>
             <Boton
-              variant="outline"
+              variant="secondary"
               size="icon"
               onClick={() => onCambioPagina(paginaActual + 1)}
               disabled={paginaActual === totalPaginas || cargando}
@@ -113,7 +113,7 @@ export function TablaPaginada<T extends Record<string, any>>({
               <ChevronRight className="h-4 w-4" />
             </Boton>
             <Boton
-              variant="outline"
+              variant="secondary"
               size="icon"
               onClick={() => onCambioPagina(totalPaginas)}
               disabled={paginaActual === totalPaginas || cargando}

@@ -123,7 +123,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0A0F1E]">
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[240px] bg-white text-slate-800 border-r border-slate-200/80 dark:bg-[#111827] dark:text-slate-100 dark:border-slate-800/80 shadow-sm transition-all duration-300 lg:block">
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-[240px] bg-white/90 backdrop-blur-md text-slate-800 border-r border-slate-200/60 dark:bg-[#111827]/85 dark:text-slate-100 dark:border-slate-800/50 shadow-sm transition-all duration-300 lg:block">
         {sidebar}
       </aside>
 
@@ -134,7 +134,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <aside className="absolute left-0 top-0 h-full w-[240px] bg-white text-slate-800 border-r border-slate-200/80 dark:bg-[#111827] dark:text-slate-100 dark:border-slate-800/80 shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-[240px] bg-white/95 backdrop-blur-md text-slate-800 border-r border-slate-200/60 dark:bg-[#111827]/95 dark:text-slate-100 dark:border-slate-800/50 shadow-2xl">
             <button
               type="button"
               className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -149,7 +149,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="lg:ml-[240px]">
-        <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-800/40 dark:bg-[#0A0F1E]/80">
+        <header className="sticky top-0 z-35 border-b border-slate-200/50 bg-white/75 shadow-sm shadow-slate-100/5 backdrop-blur-md dark:border-slate-800/40 dark:bg-[#0A0F1E]/80 dark:shadow-none">
           <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-3.5">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -162,7 +162,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </button>
               <div className="min-w-0">
                 {pageTitle && (
-                  <p className="hidden truncate font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:block">
+                  <p className="hidden truncate font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:block">
                     {pageTitle}
                   </p>
                 )}
@@ -172,7 +172,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 {user && (
                   <p className="hidden text-xs text-slate-400 dark:text-slate-500 lg:block">
                     Bienvenido,{' '}
-                    <span className="font-medium text-slate-600 dark:text-slate-300">
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">
                       {user.nombre}
                     </span>
                   </p>

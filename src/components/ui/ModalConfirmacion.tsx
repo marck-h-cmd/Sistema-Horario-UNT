@@ -62,11 +62,11 @@ export function ModalConfirmacion({
           <ModalDescription>{mensaje}</ModalDescription>
         </ModalHeader>
         <ModalFooter>
-          <Boton variant="outline" onClick={onCerrar} disabled={cargando}>
+          <Boton variant="secondary" onClick={onCerrar} disabled={cargando}>
             {textoCancelar}
           </Boton>
           <Boton
-            variant={tipo === 'danger' ? 'destructive' : 'default'}
+            variant={tipo === 'danger' ? 'danger' : tipo === 'success' ? 'success' : tipo === 'warning' ? 'warning' : 'info'}
             onClick={onConfirmar}
             disabled={cargando}
           >

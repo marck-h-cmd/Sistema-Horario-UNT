@@ -130,10 +130,10 @@ export function ExportOptionsModal({
         </div>
 
         <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button variant="outline" onClick={handleExportExcel}>
+          <Button variant="teal" onClick={handleExportExcel}>
             Exportar a Excel
           </Button>
           <Button onClick={handleExportPDF}>

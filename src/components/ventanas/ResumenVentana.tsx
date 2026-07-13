@@ -82,7 +82,7 @@ export function ResumenVentana({
               </Card.Description>
             </div>
             {onDescargarReporte && (
-              <Boton variant="outline" onClick={onDescargarReporte} className="gap-2">
+              <Boton variant="teal" onClick={onDescargarReporte} className="gap-2">
                 <Download className="h-4 w-4" />
                 Descargar Reporte
               </Boton>

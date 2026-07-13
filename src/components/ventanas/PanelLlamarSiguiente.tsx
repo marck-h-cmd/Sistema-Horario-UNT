@@ -121,7 +121,7 @@ export function PanelLlamarSiguiente({
 
         <div className="grid grid-cols-2 gap-2">
           <Boton
-            variant="outline"
+            variant="info"
             onClick={handleNotificar}
             className="gap-2"
           >

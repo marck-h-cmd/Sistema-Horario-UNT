@@ -217,10 +217,10 @@ function GruposInner() {
         className: 'w-28 text-right',
         cell: (r) => (
           <div className="flex justify-end gap-1">
-            <Button type="button" size="sm" variant="outline" onClick={() => openEdit(r)}>
+            <Button type="button" size="sm" variant="edit" onClick={() => openEdit(r)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <Button type="button" size="sm" variant="destructive" onClick={() => handleDelete(r)}>
+            <Button type="button" size="sm" variant="danger" onClick={() => handleDelete(r)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -364,7 +364,7 @@ function GruposInner() {
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
             <Button

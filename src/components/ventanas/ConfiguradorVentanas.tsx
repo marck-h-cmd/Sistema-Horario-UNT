@@ -137,7 +137,7 @@ export function ConfiguradorVentanas({
       </Card.Content>
       <Card.Footer className="flex gap-2 justify-end">
         {onCancelar && (
-          <Boton variant="outline" onClick={onCancelar}>
+          <Boton variant="secondary" onClick={onCancelar}>
             Cancelar
           </Boton>
         )}

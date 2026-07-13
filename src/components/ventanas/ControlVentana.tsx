@@ -132,13 +132,13 @@ export function ControlVentana({
 
           {estado === 'activa' && (
             <>
-              <Boton onClick={onPausar} variant="outline" className="gap-2">
+              <Boton onClick={onPausar} variant="warning" className="gap-2">
                 <Pause className="h-4 w-4" />
                 Pausar
               </Boton>
               <Boton
                 onClick={onFinalizar}
-                variant="destructive"
+                variant="danger"
                 className="gap-2"
               >
                 <Square className="h-4 w-4" />
@@ -146,8 +146,8 @@ export function ControlVentana({
               </Boton>
               <Boton
                 onClick={onSaltarTurno}
-                variant="outline"
-                className="col-span-2 gap-2 mt-2 border-amber-500/20 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium"
+                variant="orange"
+                className="col-span-2 gap-2 mt-2"
               >
                 <SkipForward className="h-4 w-4" />
                 Saltar Turno (15 min)
@@ -157,13 +157,13 @@ export function ControlVentana({
 
           {estado === 'pausada' && (
             <>
-              <Boton onClick={onReanudar} variant="default" className="gap-2">
+              <Boton onClick={onReanudar} variant="success" className="gap-2">
                 <Play className="h-4 w-4" />
                 Reanudar
               </Boton>
               <Boton
                 onClick={onFinalizar}
-                variant="destructive"
+                variant="danger"
                 className="gap-2"
               >
                 <Square className="h-4 w-4" />
