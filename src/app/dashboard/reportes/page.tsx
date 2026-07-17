@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   FileDown, Loader2, Library, CalendarRange, Users, Building2,
   BarChart3, AlertTriangle, GraduationCap, BookOpen, MapPin,
-  CalendarDays, Layers, ClipboardList
+  CalendarDays, Layers, ClipboardList, Eye
 } from 'lucide-react';
 import { Boton } from '@/components/ui/Boton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ErrorAlert } from '@/components/feedback/ErrorAlert';
-import { apiGet, ApiClientError, downloadFile } from '@/lib/api-client';
+import { apiGet, ApiClientError, downloadFile, getFileUrl } from '@/lib/api-client';
+import { VisorPDF } from '@/components/reportes/VisorPDF';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { usePeriodo } from '@/contexts/PeriodoContext';
 import { Rol } from '@prisma/client';
@@ -108,6 +109,11 @@ export default function ReportesPage() {
   const periodoId = periodoSeleccionado?.id ?? '';
 
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<{ url: string | null; title: string; isOpen: boolean }>({
+    url: null,
+    title: '',
+    isOpen: false,
+  });
   const [filtros, setFiltros] = useState<FiltrosCatalogo>(FILTROS_INICIALES);
   const [extraFiltros, setExtraFiltros] = useState<ExtraFiltros>(EXTRA_INICIAL);
   const [fechaDesde, setFechaDesde] = useState('');
@@ -199,6 +205,27 @@ export default function ReportesPage() {
     }
   };
 
+  const runPreview = async (
+    key: string,
+    fn: () => Promise<string>,
+    title: string,
+    options?: { requierePeriodo?: boolean }
+  ) => {
+    if (options?.requierePeriodo !== false && !periodoId) {
+      toast.error('Seleccione un período');
+      return;
+    }
+    setDownloading(key);
+    try {
+      const url = await fn();
+      setPreviewData({ url, title, isOpen: true });
+    } catch (e) {
+      toast.error(e instanceof ApiClientError ? e.message : 'Error al generar la previsualización');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const descargarCatalogo = (cat: (typeof CATALOGOS)[number]) => {
     const seleccion = filtros[cat.entidad];
     const esTodos = seleccion === TODOS;
@@ -230,6 +257,34 @@ export default function ReportesPage() {
       params,
       `catalogo-${cat.entidad}${esTodos ? '-todos' : `-${seleccion}`}.pdf`
     );
+  };
+
+  const previsualizarCatalogo = (cat: (typeof CATALOGOS)[number]) => {
+    const seleccion = filtros[cat.entidad];
+    const esTodos = seleccion === TODOS;
+    const params: Record<string, string> = {};
+    if (periodoId) params.periodoId = periodoId;
+    if (!esTodos) params.id = seleccion;
+    if (fechaDesde) params.fechaDesde = fechaDesde;
+    if (fechaHasta) params.fechaHasta = fechaHasta;
+
+    if (cat.entidad === 'docentes') {
+      const ex = extraFiltros.docentes;
+      if (ex.categoria) params.categoria = ex.categoria;
+      if (ex.departamento) params.departamento = ex.departamento;
+    } else if (cat.entidad === 'cursos') {
+      const ex = extraFiltros.cursos;
+      if (ex.ciclo) params.ciclo = ex.ciclo;
+    } else if (cat.entidad === 'grupos') {
+      const ex = extraFiltros.grupos;
+      if (ex.cursoId) params.cursoId = ex.cursoId;
+    } else if (cat.entidad === 'carga-academica') {
+      const ex = extraFiltros['carga-academica'];
+      if (ex.docenteId) params.docenteId = ex.docenteId;
+      if (ex.cursoId) params.cursoId = ex.cursoId;
+    }
+
+    return getFileUrl(`/api/reportes/catalogo/${cat.entidad}`, params);
   };
 
   const setExtra = <E extends keyof ExtraFiltros>(
@@ -296,19 +351,32 @@ export default function ReportesPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Resumen del período: docentes, cursos, avance por categoría y ocupación de ambientes.
             </p>
-            <Boton
-              variant="default"
-              className="w-full mt-auto"
-              disabled={!!downloading || !periodoId}
-              onClick={() =>
-                runDownload('ges', () =>
-                  downloadFile('/api/reportes/gestion', { periodoId }, `reporte-gestion-${periodoId}.pdf`)
-                )
-              }
-            >
-              <FileDown className="h-4 w-4 mr-2" />
-              {downloading === 'ges' ? 'Generando…' : 'Descargar PDF'}
-            </Boton>
+            <div className="mt-auto flex w-full gap-2">
+              <Boton
+                variant="default"
+                className="flex-1"
+                disabled={!!downloading || !periodoId}
+                onClick={() =>
+                  runDownload('ges', () =>
+                    downloadFile('/api/reportes/gestion', { periodoId }, `reporte-gestion-${periodoId}.pdf`)
+                  )
+                }
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {downloading === 'ges' ? 'Generando…' : 'Descargar PDF'}
+              </Boton>
+              <Boton
+                variant="outline"
+                className="px-3"
+                title="Previsualizar"
+                disabled={!!downloading || !periodoId}
+                onClick={() =>
+                  runPreview('ges', () => getFileUrl('/api/reportes/gestion', { periodoId }), 'Reporte de Gestión')
+                }
+              >
+                <Eye className="h-4 w-4" />
+              </Boton>
+            </div>
           </div>
         </div>
 
@@ -324,19 +392,32 @@ export default function ReportesPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Validaciones que no cumplen en el período activo. Cruces, excesos y alertas.
             </p>
-            <Boton
-              variant="danger"
-              className="w-full mt-auto"
-              disabled={!!downloading || !periodoId}
-              onClick={() =>
-                runDownload('conf', () =>
-                  downloadFile('/api/reportes/conflictos', { periodoId }, `reporte-conflictos-${periodoId}.pdf`)
-                )
-              }
-            >
-              <FileDown className="h-4 w-4 mr-2" />
-              {downloading === 'conf' ? 'Generando…' : 'Descargar PDF'}
-            </Boton>
+            <div className="mt-auto flex w-full gap-2">
+              <Boton
+                variant="danger"
+                className="flex-1"
+                disabled={!!downloading || !periodoId}
+                onClick={() =>
+                  runDownload('conf', () =>
+                    downloadFile('/api/reportes/conflictos', { periodoId }, `reporte-conflictos-${periodoId}.pdf`)
+                  )
+                }
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {downloading === 'conf' ? 'Generando…' : 'Descargar PDF'}
+              </Boton>
+              <Boton
+                variant="outline"
+                className="px-3"
+                title="Previsualizar"
+                disabled={!!downloading || !periodoId}
+                onClick={() =>
+                  runPreview('conf', () => getFileUrl('/api/reportes/conflictos', { periodoId }), 'Reporte de Conflictos')
+                }
+              >
+                <Eye className="h-4 w-4" />
+              </Boton>
+            </div>
           </div>
         </div>
       </div>
@@ -384,30 +465,53 @@ export default function ReportesPage() {
                   ))}
                 </select>
               </div>
-              <Boton
-                variant="default"
-                className="mt-4 w-full"
-                disabled={!!downloading}
-                onClick={() =>
-                  runDownload(
-                    'carga-doc',
-                    () => {
-                      const params: Record<string, string> = {};
-                      if (periodoId) params.periodoId = periodoId;
-                      if (catCargaDocente) params.categoria = catCargaDocente;
-                      return downloadFile(
-                        '/api/reportes/carga-docente',
-                        params,
-                        `reporte-carga-docente${catCargaDocente ? `-${catCargaDocente.toLowerCase()}` : ''}.pdf`
-                      );
-                    },
-                    { requierePeriodo: false }
-                  )
-                }
-              >
-                <FileDown className="h-4 w-4 mr-2 shrink-0" />
-                {downloading === 'carga-doc' ? 'Generando…' : 'Descargar PDF'}
-              </Boton>
+              <div className="mt-4 flex w-full gap-2">
+                <Boton
+                  variant="default"
+                  className="flex-1"
+                  disabled={!!downloading}
+                  onClick={() =>
+                    runDownload(
+                      'carga-doc',
+                      () => {
+                        const params: Record<string, string> = {};
+                        if (periodoId) params.periodoId = periodoId;
+                        if (catCargaDocente) params.categoria = catCargaDocente;
+                        return downloadFile(
+                          '/api/reportes/carga-docente',
+                          params,
+                          `reporte-carga-docente${catCargaDocente ? `-${catCargaDocente.toLowerCase()}` : ''}.pdf`
+                        );
+                      },
+                      { requierePeriodo: false }
+                    )
+                  }
+                >
+                  <FileDown className="h-4 w-4 mr-2 shrink-0" />
+                  {downloading === 'carga-doc' ? 'Generando…' : 'Descargar PDF'}
+                </Boton>
+                <Boton
+                  variant="outline"
+                  className="px-3"
+                  title="Previsualizar"
+                  disabled={!!downloading}
+                  onClick={() =>
+                    runPreview(
+                      'carga-doc',
+                      () => {
+                        const params: Record<string, string> = {};
+                        if (periodoId) params.periodoId = periodoId;
+                        if (catCargaDocente) params.categoria = catCargaDocente;
+                        return getFileUrl('/api/reportes/carga-docente', params);
+                      },
+                      'Carga académica por docente',
+                      { requierePeriodo: false }
+                    )
+                  }
+                >
+                  <Eye className="h-4 w-4" />
+                </Boton>
+              </div>
             </div>
 
             {/* Horarios por ambiente */}
@@ -676,19 +780,29 @@ export default function ReportesPage() {
                       </div>
                     )}
 
-                    <Boton
-                      variant="default"
-                      className="mt-auto w-full"
-                      disabled={!!downloading || (!esTodos && !seleccion) || rangoFechasInvalido}
-                      onClick={() =>
-                        runDownload(c.key, () => descargarCatalogo(c), { requierePeriodo: false })
-                      }
-                    >
-                      <FileDown className="h-4 w-4 mr-2 shrink-0" />
-                      {downloading === c.key
-                        ? 'Generando…'
-                        : esTodos ? 'PDF — Todos' : 'PDF — Seleccionado'}
-                    </Boton>
+                    {/* Botones de descargar y previsualizar */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex w-full gap-2">
+                      <Boton
+                        variant="default"
+                        className="flex-1"
+                        disabled={!!downloading || (!esTodos && !seleccion) || rangoFechasInvalido || (c.entidad === 'carga-academica' && !periodoId)}
+                        onClick={() => runDownload(`cat-${c.entidad}`, () => descargarCatalogo(c), { requierePeriodo: false })}
+                      >
+                        <FileDown className="h-4 w-4 mr-2 shrink-0" />
+                        {downloading === `cat-${c.entidad}`
+                          ? 'Generando…'
+                          : esTodos ? 'PDF — Todos' : 'PDF — Selección'}
+                      </Boton>
+                      <Boton
+                        variant="outline"
+                        className="px-3"
+                        title="Previsualizar"
+                        disabled={!!downloading || (!esTodos && !seleccion) || rangoFechasInvalido || (c.entidad === 'carga-academica' && !periodoId)}
+                        onClick={() => runPreview(`cat-${c.entidad}`, () => previsualizarCatalogo(c), `Catálogo de ${c.label}`, { requierePeriodo: false })}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Boton>
+                    </div>
                   </div>
                 );
               })}
@@ -696,6 +810,13 @@ export default function ReportesPage() {
           )}
         </div>
       </div>
+
+      <VisorPDF
+        isOpen={previewData.isOpen}
+        onClose={() => setPreviewData((prev) => ({ ...prev, isOpen: false }))}
+        pdfUrl={previewData.url}
+        title={previewData.title}
+      />
     </div>
   );
 }

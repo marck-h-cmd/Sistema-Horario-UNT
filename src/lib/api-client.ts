@@ -158,11 +158,10 @@ export async function apiDelete<T>(path: string) {
   return apiRequest<T>(path, { method: 'DELETE' });
 }
 
-export async function downloadFile(
+export async function getFileUrl(
   path: string,
-  params?: RequestOptions['params'],
-  filename = 'reporte.pdf'
-): Promise<void> {
+  params?: RequestOptions['params']
+): Promise<string> {
   const token = getAccessToken();
   const url = buildUrl(path, params);
   const response = await fetch(url, {
@@ -172,16 +171,25 @@ export async function downloadFile(
   if (!response.ok) {
     const err = await response.json().catch(() => null);
     throw new ApiClientError(
-      err?.error?.message || 'Error al descargar',
+      err?.error?.message || 'Error al obtener archivo',
       err?.error?.code || 'DOWNLOAD_ERROR',
       response.status
     );
   }
 
   const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
+export async function downloadFile(
+  path: string,
+  params?: RequestOptions['params'],
+  filename = 'reporte.pdf'
+): Promise<void> {
+  const url = await getFileUrl(path, params);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
+  link.href = url;
   link.download = filename;
   link.click();
-  URL.revokeObjectURL(link.href);
+  URL.revokeObjectURL(url);
 }
