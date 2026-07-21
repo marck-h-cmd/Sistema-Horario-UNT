@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -24,9 +24,12 @@ import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 import { apiDelete, apiGet, apiPost, apiPut, ApiClientError } from '@/lib/api-client';
 import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
-import { Rol, TipoAmbiente } from '@prisma/client';
+import { usePeriodo } from '@/contexts/PeriodoContext';
+import { Rol, TipoAmbiente } from '@/lib/enums';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
+import VistaHorarioAula from '@/components/horarios/VistaHorarioAula';
+import VistaHorarioLaboratorio from '@/components/horarios/VistaHorarioLaboratorio';
 
 interface AmbienteRow {
   id: string;
@@ -40,12 +43,15 @@ interface AmbienteRow {
 type TabTipo = 'AULA' | 'LABORATORIO';
 
 export default function AmbientesPage() {
-  const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);
+  const { loading: authLoading } = useRequireAuth(['ADMINISTRADOR' as Rol, 'SECRETARIA' as Rol]);
   const { confirm, state: confirmState, handleClose: handleConfirmClose } = useConfirm();
+  const { periodoSeleccionado } = usePeriodo();
 
   const [tab, setTab] = useState<TabTipo>('AULA');
   const [qInput, setQInput] = useState('');
   const [search, setSearch] = useState('');
+  const [verHorarioAmbiente, setVerHorarioAmbiente] = useState<AmbienteRow | null>(null);
+
   const listParams = useMemo(
     () => ({ search: search || undefined, tipo: tab }),
     [search, tab]
@@ -67,7 +73,7 @@ export default function AmbientesPage() {
   }>({
     codigo: '',
     nombre: '',
-    tipo: TipoAmbiente.AULA,
+    tipo: 'AULA' as TipoAmbiente,
     capacidad: 40,
     activo: true,
   });
@@ -76,7 +82,7 @@ export default function AmbientesPage() {
     setForm({
       codigo: '',
       nombre: '',
-      tipo: tab === 'LABORATORIO' ? TipoAmbiente.LABORATORIO : TipoAmbiente.AULA,
+      tipo: (tab === 'LABORATORIO' ? 'LABORATORIO' : 'AULA') as TipoAmbiente,
       capacidad: 40,
       activo: true,
     });
@@ -87,7 +93,7 @@ export default function AmbientesPage() {
     resetForm();
     setForm((f) => ({
       ...f,
-      tipo: tab === 'LABORATORIO' ? TipoAmbiente.LABORATORIO : TipoAmbiente.AULA,
+      tipo: (tab === 'LABORATORIO' ? 'LABORATORIO' : 'AULA') as TipoAmbiente,
     }));
     setDialogOpen(true);
   };
@@ -185,9 +191,20 @@ export default function AmbientesPage() {
     {
       key: 'acciones',
       header: '',
-      className: 'w-28 text-right',
+      className: 'w-44 text-right',
       cell: (r) => (
         <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setVerHorarioAmbiente(r)}
+            className="text-xs flex items-center gap-1 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+            title="Ver Horario del Ambiente"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Horario
+          </Button>
           <Button type="button" size="sm" variant="edit" onClick={() => openEdit(r)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -302,7 +319,7 @@ export default function AmbientesPage() {
                 value={form.tipo}
                 onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as TipoAmbiente }))}
               >
-                {Object.values(TipoAmbiente).map((t) => (
+                {(['AULA', 'LABORATORIO', 'AUDITORIO', 'SALA_CONFERENCIAS'] as TipoAmbiente[]).map((t) => (
                   <option key={t} value={t}>
                     {Formateadores.tipoAmbiente(t)}
                   </option>
@@ -347,6 +364,31 @@ export default function AmbientesPage() {
         onConfirm={() => handleConfirmClose(true)}
         onCancel={() => handleConfirmClose(false)}
       />
+
+      <Dialog open={!!verHorarioAmbiente} onOpenChange={(o) => !o && setVerHorarioAmbiente(null)}>
+        <DialogContent className="max-w-4xl p-6">
+          <DialogHeader>
+            <DialogTitle>
+              Horario Semanal — {verHorarioAmbiente?.codigo} ({verHorarioAmbiente?.nombre})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            {verHorarioAmbiente && (
+              verHorarioAmbiente.tipo === 'LABORATORIO' ? (
+                <VistaHorarioLaboratorio laboratorioId={verHorarioAmbiente.id} periodoId={periodoSeleccionado?.id} />
+              ) : (
+                <VistaHorarioAula ambienteId={verHorarioAmbiente.id} periodoId={periodoSeleccionado?.id} />
+              )
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setVerHorarioAmbiente(null)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

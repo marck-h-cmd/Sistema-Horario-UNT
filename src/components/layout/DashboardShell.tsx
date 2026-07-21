@@ -4,12 +4,15 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePeriodo } from '@/contexts/PeriodoContext';
 import { Formateadores } from '@/lib/formateadores';
 import { MENU_SECTIONS } from '@/lib/menu-config';
 import { PeriodoSelector } from '@/components/layout/PeriodoSelector';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { PanelConsultaRapida } from '@/components/horarios/PanelConsultaRapida';
+import { Button } from '@/components/ui/button';
 
 function resolvePageTitle(pathname: string | null): string | null {
   if (!pathname) return null;
@@ -25,14 +28,15 @@ function resolvePageTitle(pathname: string | null): string | null {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout, can } = useAuth();
+  const { periodoSeleccionado } = usePeriodo();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [consultaRapidaOpen, setConsultaRapidaOpen] = useState(false);
 
   const pageTitle = useMemo(() => resolvePageTitle(pathname), [pathname]);
 
   const visibleSections = MENU_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
-      // Reglas específicas para módulos docentes
       if (item.href === '/dashboard/docente/declaracion-carga' && user?.rol !== 'DOCENTE') return false;
       if (item.nombre === 'Declarar Carga' && user?.rol !== 'DOCENTE') return false;
       
@@ -180,6 +184,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConsultaRapidaOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 font-medium text-xs h-9"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                Consulta Rápida
+              </Button>
               <ThemeToggle variant="ghost" />
               <PeriodoSelector />
             </div>
@@ -189,6 +203,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="animate-fadeIn">{children}</div>
         </main>
       </div>
+
+      <PanelConsultaRapida
+        open={consultaRapidaOpen}
+        onOpenChange={setConsultaRapidaOpen}
+        periodoId={periodoSeleccionado?.id}
+      />
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Trash2, FileDown } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, FileDown, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -16,9 +16,10 @@ import { ErrorAlert } from '@/components/feedback/ErrorAlert';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useConfirm } from '@/hooks/useConfirm';
 import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
-import { apiDelete, apiGet, apiPost, apiPut, ApiClientError } from '@/lib/api-client';
+import { apiDelete, apiGet, apiPost, apiPut, ApiClientError, getFileUrl } from '@/lib/api-client';
+import { VisorPDF } from '@/components/reportes/VisorPDF';
 import { useRequireAuth } from '@/contexts/AuthContext';
-import { Rol } from '@prisma/client';
+import { Rol } from '@/lib/enums';
 import { toast } from 'sonner';
 
 interface DepartamentoRow {
@@ -169,6 +170,12 @@ export default function PlanEstudiosPage() {
     setDialogOpen(true);
   };
 
+  const [pdfPreview, setPdfPreview] = useState<{ isOpen: boolean; url: string | null; title: string }>({
+    isOpen: false,
+    url: null,
+    title: 'Plan de Estudios',
+  });
+
   const handleExportPDF = () => {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
@@ -176,8 +183,12 @@ export default function PlanEstudiosPage() {
     if (departamentoFiltro) params.append('departamentoId', String(departamentoFiltro));
     if (planEstudioFiltro) params.append('planEstudioId', planEstudioFiltro);
 
-    const url = `/api/reportes/plan-estudios?${params.toString()}`;
-    window.open(url, '_blank');
+    const url = getFileUrl(`/api/reportes/plan-estudios?${params.toString()}`);
+    setPdfPreview({
+      isOpen: true,
+      url,
+      title: 'Reporte de Plan de Estudios',
+    });
   };
 
   const handleSave = async () => {
@@ -785,6 +796,13 @@ export default function PlanEstudiosPage() {
           onCancel={() => handleConfirmClose(false)}
         />
       )}
+
+      <VisorPDF
+        isOpen={pdfPreview.isOpen}
+        onClose={() => setPdfPreview(prev => ({ ...prev, isOpen: false }))}
+        url={pdfPreview.url}
+        title={pdfPreview.title}
+      />
     </div>
   );
 }

@@ -1528,6 +1528,34 @@ ${content}
     getHtmlBase
   };
 }
+export function generarHorarioPDFBlobUrl(
+  horarios: any[],
+  titulo: string,
+  subtitulo: string,
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
+): { url: string; blob: Blob } {
+  const { content, getHtmlBase } = generarContenidoHorarioPDF(horarios, titulo, subtitulo, diasMostrados, options);
+  let htmlCompleto = getHtmlBase(content);
+  
+  if (options?.printImmediately) {
+    htmlCompleto = htmlCompleto.replace(
+      '</body>',
+      '<script>window.onload = () => { setTimeout(() => { window.focus(); window.print(); }, 500); };</script></body>'
+    );
+  }
+
+  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  return { url, blob };
+}
+
 export async function exportarHorarioPDF(
   horarios: any[],
   titulo: string,
@@ -1541,20 +1569,7 @@ export async function exportarHorarioPDF(
     format?: 'grid' | 'table';
   }
 ): Promise<void> {
-  const { content, getHtmlBase } = generarContenidoHorarioPDF(horarios, titulo, subtitulo, diasMostrados, options);
-  let htmlCompleto = getHtmlBase(content);
-  
-  const printImmediately = options?.printImmediately ?? true;
-  if (printImmediately) {
-    htmlCompleto = htmlCompleto.replace(
-      '</body>',
-      '<script>window.onload = () => { setTimeout(() => { window.focus(); window.print(); }, 500); };</script></body>'
-    );
-  }
-
-  const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-
+  const { url } = generarHorarioPDFBlobUrl(horarios, titulo, subtitulo, diasMostrados, options);
   const win = window.open(url, '_blank');
   if (!win) {
     alert('Permite ventanas emergentes para exportar PDF');
@@ -1587,7 +1602,7 @@ const normalizarCicloPDF = (value: unknown): string => {
   return texto;
 };
 
-export async function exportarHorariosTodosCiclosPDF(
+export function generarHorariosTodosCiclosPDFBlobUrl(
   horarios: any[],
   periodoNombre: string,
   diasMostrados?: string[],
@@ -1598,7 +1613,7 @@ export async function exportarHorariosTodosCiclosPDF(
     printImmediately?: boolean;
     format?: 'grid' | 'table';
   }
-): Promise<void> {
+): { url: string; blob: Blob } {
   const ciclosUnicos = Array.from(new Set(horarios.map(h => normalizarCicloPDF(h.curso?.ciclo)).filter(Boolean)));
   const order = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   ciclosUnicos.sort((a, b) => {
@@ -1609,7 +1624,7 @@ export async function exportarHorariosTodosCiclosPDF(
   });
 
   if (ciclosUnicos.length === 0) {
-    return exportarHorarioPDF(horarios, 'HORARIO ACADÉMICO', periodoNombre, diasMostrados, options);
+    return generarHorarioPDFBlobUrl(horarios, 'HORARIO ACADÉMICO', periodoNombre, diasMostrados, options);
   }
 
   let htmlCombinado = '';
@@ -1663,8 +1678,7 @@ export async function exportarHorariosTodosCiclosPDF(
 
   let htmlCompleto = getHtmlGlobal(htmlCombinado, true);
 
-  const printImmediately = options?.printImmediately ?? true;
-  if (printImmediately) {
+  if (options?.printImmediately) {
     htmlCompleto = htmlCompleto.replace(
       '</body>',
       '<script>window.onload = () => { setTimeout(() => { window.focus(); window.print(); }, 500); };</script></body>'
@@ -1673,10 +1687,26 @@ export async function exportarHorariosTodosCiclosPDF(
 
   const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
+  return { url, blob };
+}
 
+export async function exportarHorariosTodosCiclosPDF(
+  horarios: any[],
+  periodoNombre: string,
+  diasMostrados?: string[],
+  options?: {
+    pageSize?: 'A4' | 'Letter' | 'Legal';
+    orientation?: 'landscape' | 'portrait';
+    margin?: number;
+    printImmediately?: boolean;
+    format?: 'grid' | 'table';
+  }
+): Promise<void> {
+  const { url } = generarHorariosTodosCiclosPDFBlobUrl(horarios, periodoNombre, diasMostrados, options);
   const win = window.open(url, '_blank');
   if (!win) {
     alert('Permite ventanas emergentes para exportar PDF');
     return;
   }
 }
+

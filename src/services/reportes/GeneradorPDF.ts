@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
 import { AppError } from '@/services/auth/AuthService';
 import {
   envolverDocumentoHTML,
@@ -24,11 +25,35 @@ export class GeneradorPDF {
 
   async inicializar() {
     if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: process.env.PUPPETEER_HEADLESS !== 'false',
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      });
+      const execPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      const validExecPath = execPath && fs.existsSync(execPath) ? execPath : undefined;
+
+      const systemBrowsers = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      ];
+      const fallbackPath = systemBrowsers.find(p => fs.existsSync(p));
+
+      try {
+        this.browser = await puppeteer.launch({
+          headless: process.env.PUPPETEER_HEADLESS !== 'false',
+          ...(validExecPath ? { executablePath: validExecPath } : {}),
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        });
+      } catch (err) {
+        console.warn('Fallo al iniciar Puppeteer por defecto, intentando navegador del sistema:', err);
+        if (fallbackPath) {
+          this.browser = await puppeteer.launch({
+            headless: process.env.PUPPETEER_HEADLESS !== 'false',
+            executablePath: fallbackPath,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          });
+        } else {
+          throw err;
+        }
+      }
     }
     return this.browser;
   }
