@@ -1,100 +1,50 @@
-// Enumeraciones del sistema
-// Estas enums reflejan y extienden las definidas en Prisma
+export const Rol = {
+  ADMINISTRADOR: 'ADMINISTRADOR',
+  SECRETARIA: 'SECRETARIA',
+  DOCENTE: 'DOCENTE',
+  OPERADOR: 'OPERADOR',
+  COORDINADOR: 'COORDINADOR',
+  ESTUDIANTE: 'ESTUDIANTE',
+} as const;
 
-export enum Roles {
-  ADMINISTRADOR = 'ADMINISTRADOR',
-  SECRETARIA = 'SECRETARIA',
-  OPERADOR = 'OPERADOR',
-  DOCENTE = 'DOCENTE',
-  MONITOR = 'MONITOR',
-}
+export type Rol = (typeof Rol)[keyof typeof Rol];
 
-export enum CategoriasDocente {
-  PRINCIPAL = 'PRINCIPAL',
-  ASOCIADO = 'ASOCIADO',
-  AUXILIAR = 'AUXILIAR',
-  CONTRATADO = 'CONTRATADO',
-  INVITADO = 'INVITADO',
-}
+export const CategoriaDocente = {
+  PRINCIPAL: 'PRINCIPAL',
+  ASOCIADO: 'ASOCIADO',
+  AUXILIAR: 'AUXILIAR',
+  CONTRATADO: 'CONTRATADO',
+  INVITADO: 'INVITADO',
+} as const;
 
-export enum TiposAmbiente {
-  AULA = 'AULA',
-  LABORATORIO = 'LABORATORIO',
-  AUDITORIO = 'AUDITORIO',
-  SALA_CONFERENCIAS = 'SALA_CONFERENCIAS',
-}
+export type CategoriaDocente = (typeof CategoriaDocente)[keyof typeof CategoriaDocente];
 
-export enum DiasSemana {
-  LUNES = 'LUNES',
-  MARTES = 'MARTES',
-  MIERCOLES = 'MIERCOLES',
-  JUEVES = 'JUEVES',
-  VIERNES = 'VIERNES',
-  SABADO = 'SABADO',
-  DOMINGO = 'DOMINGO',
-}
+export const TipoAmbiente = {
+  AULA: 'AULA',
+  LABORATORIO: 'LABORATORIO',
+  AUDITORIO: 'AUDITORIO',
+  SALA_CONFERENCIAS: 'SALA_CONFERENCIAS',
+} as const;
 
-export enum EstadosPeriodo {
-  BORRADOR = 'BORRADOR',
-  ACTIVO = 'ACTIVO',
-  FINALIZADO = 'FINALIZADO',
-  ARCHIVADO = 'ARCHIVADO',
-}
+export type TipoAmbiente = (typeof TipoAmbiente)[keyof typeof TipoAmbiente];
 
-export enum EstadosHorario {
-  BORRADOR = 'BORRADOR',
-  SELECCION_TEMPORAL = 'SELECCION_TEMPORAL',
-  CONFIRMADO = 'CONFIRMADO',
-  PUBLICADO = 'PUBLICADO',
-  CANCELADO = 'CANCELADO',
-}
+export const DiaSemana = {
+  LUNES: 'LUNES',
+  MARTES: 'MARTES',
+  MIERCOLES: 'MIERCOLES',
+  JUEVES: 'JUEVES',
+  VIERNES: 'VIERNES',
+  SABADO: 'SABADO',
+  DOMINGO: 'DOMINGO',
+} as const;
 
-export enum EstadosVentana {
-  PROGRAMADA = 'PROGRAMADA',
-  ABIERTA = 'ABIERTA',
-  EN_CURSO = 'EN_CURSO',
-  CERRADA = 'CERRADA',
-  CANCELADA = 'CANCELADA',
-}
+export type DiaSemana = (typeof DiaSemana)[keyof typeof DiaSemana];
 
-export enum EstadosAtencion {
-  ESPERANDO = 'ESPERANDO',
-  EN_ATENCION = 'EN_ATENCION',
-  ATENDIDO = 'ATENDIDO',
-  AUSENTE = 'AUSENTE',
-  CANCELADO = 'CANCELADO',
-}
+export const EstadoPeriodo = {
+  PLANIFICACION: 'PLANIFICACION',
+  ACTIVO: 'ACTIVO',
+  CERRADO: 'CERRADO',
+  ARCHIVADO: 'ARCHIVADO',
+} as const;
 
-export enum TiposNotificacion {
-  SELECCION_HORARIO = 'SELECCION_HORARIO',
-  CONFIRMACION_HORARIO = 'CONFIRMACION_HORARIO',
-  CAMBIO_HORARIO = 'CAMBIO_HORARIO',
-  VENTANA_ATENCION = 'VENTANA_ATENCION',
-  RECORDATORIO = 'RECORDATORIO',
-  SISTEMA = 'SISTEMA',
-}
-
-export enum CanalesNotificacion {
-  CORREO = 'CORREO',
-  WHATSAPP = 'WHATSAPP',
-  TELEGRAM = 'TELEGRAM',
-  SISTEMA = 'SISTEMA',
-}
-
-export enum PrioridadesNotificacion {
-  BAJA = 'BAJA',
-  MEDIA = 'MEDIA',
-  ALTA = 'ALTA',
-  URGENTE = 'URGENTE',
-}
-
-export enum AccionesAuditoria {
-  LOGIN = 'LOGIN',
-  LOGOUT = 'LOGOUT',
-  CREAR = 'CREAR',
-  ACTUALIZAR = 'ACTUALIZAR',
-  ELIMINAR = 'ELIMINAR',
-  PUBLICAR = 'PUBLICAR',
-  CONFIRMAR = 'CONFIRMAR',
-  CANCELAR = 'CANCELAR',
-}
+export type EstadoPeriodo = (typeof EstadoPeriodo)[keyof typeof EstadoPeriodo];

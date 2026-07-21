@@ -15,13 +15,14 @@ import { HORA_LIMITE_FIN_CLASES, validarFranjaHorariaPermitida } from '@/lib/hor
 import { Formateadores } from '@/lib/formateadores';
 import { useAuth, useRequireAuth } from '@/contexts/AuthContext';
 import { usePeriodo } from '@/contexts/PeriodoContext';
-import { DiaSemana, Rol } from '@prisma/client';
+import { DiaSemana, Rol } from '@/lib/enums';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { useFiltrosHorario } from '@/hooks/useFiltrosHorario';
 import { ExportOptionsModal } from '@/components/forms/ExportOptionsModal';
-import { exportarHorarioPDF, exportarHorariosTodosCiclosPDF } from '@/utils/exportarHorarioPDF';
+import { exportarHorarioPDF, exportarHorariosTodosCiclosPDF, generarHorarioPDFBlobUrl, generarHorariosTodosCiclosPDFBlobUrl } from '@/utils/exportarHorarioPDF';
 import { exportarHorarioExcel, exportarHorariosTodosCiclosExcel } from '@/utils/exportarHorarioExcel';
+import { VisorPDF } from '@/components/reportes/VisorPDF';
 
 interface HorarioCell {
   id: string;
@@ -89,12 +90,12 @@ interface DesfaseCarga {
 }
 
 const DIAS: DiaSemana[] = [
-  DiaSemana.LUNES,
-  DiaSemana.MARTES,
-  DiaSemana.MIERCOLES,
-  DiaSemana.JUEVES,
-  DiaSemana.VIERNES,
-  DiaSemana.SABADO,
+  'LUNES' as DiaSemana,
+  'MARTES' as DiaSemana,
+  'MIERCOLES' as DiaSemana,
+  'JUEVES' as DiaSemana,
+  'VIERNES' as DiaSemana,
+  'SABADO' as DiaSemana,
 ];
 
 const HORAS = Array.from({ length: 14 }, (_, i) => i + 7); // 7 to 20
@@ -149,7 +150,7 @@ const getColorForCurso = (cursoId: string) => {
 
 export default function HorariosPage() {
   const { loading: authLoading } = useRequireAuth([
-    Rol.ADMINISTRADOR, Rol.SECRETARIA, Rol.OPERADOR,
+    'ADMINISTRADOR' as Rol, 'SECRETARIA' as Rol, 'OPERADOR' as Rol,
   ]);
   const { can, user } = useAuth();
   const puedePublicar = can('PUBLICAR_HORARIOS');
@@ -176,6 +177,11 @@ export default function HorariosPage() {
   const [loadingDesfases, setLoadingDesfases] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ isOpen: boolean; url: string | null; title: string }>({
+    isOpen: false,
+    url: null,
+    title: 'Previsualización de PDF',
+  });
   const [horasCargaDocente, setHorasCargaDocente] = useState<number | null>(null);
   const [cargaRows, setCargaRows] = useState<CargaAcademicaRow[]>([]);
 
@@ -192,7 +198,7 @@ export default function HorariosPage() {
   const [form, setForm] = useState<{
     cursoId: string; docenteId: string; ambienteId: string; grupoId: string; diaSemana: DiaSemana; horaInicio: string; horaFin: string;
   }>({
-    cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: DiaSemana.LUNES, horaInicio: '08:00', horaFin: '10:00',
+    cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: 'LUNES' as DiaSemana, horaInicio: '08:00', horaFin: '10:00',
   });
 
   // Variables para filtros visuales y selects
@@ -207,6 +213,48 @@ export default function HorariosPage() {
   const [vistaTipo, setVistaTipo] = useState<'General' | 'Por Docente' | 'Por Aula'>('General');
   const [vistaFormato, setVistaFormato] = useState<'grid' | 'table'>('grid');
   const [exportModalOpen, setExportModalOpen] = useState(false);
+
+  const handleExportPDF = async (options: any) => {
+    if (!periodoId || horarios.length === 0) return;
+    setDownloadingPdf(true);
+    try {
+      const periodoNombre = periodoSeleccionado?.nombre || 'General';
+      const cicloNombre = filtros.ciclo ? `Ciclo ${CICLO_ROMANO[filtros.ciclo] || filtros.ciclo}` : 'Todos los ciclos';
+      
+      const horariosExportar = diasSeleccionados.length > 0
+        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
+        : horarios;
+
+      let res: { url: string; blob: Blob };
+      let titulo = 'Horario Académico';
+
+      if (!filtros.ciclo) {
+        titulo = `Horario General - ${periodoNombre}`;
+        res = generarHorariosTodosCiclosPDFBlobUrl(
+          horariosExportar,
+          periodoNombre,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      } else {
+        titulo = `Horario ${cicloNombre} - ${periodoNombre}`;
+        res = generarHorarioPDFBlobUrl(
+          horariosExportar,
+          'HORARIO ACADÉMICO',
+          `${periodoNombre} - ${cicloNombre}`,
+          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
+          options
+        );
+      }
+      
+      setPdfPreview({ isOpen: true, url: res.url, title: titulo });
+      toast.success('Previsualización de PDF lista');
+    } catch (e: any) {
+      toast.error('Error al generar PDF: ' + e.message);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const fetchHorarios = useCallback(async () => {
     if (!filtros.periodoId) {
@@ -581,42 +629,6 @@ export default function HorariosPage() {
     }
   };
 
-  const handleExportPDF = async (options: any) => {
-    if (!periodoId || horarios.length === 0) return;
-    setDownloadingPdf(true);
-    try {
-      const periodoNombre = periodoSeleccionado?.nombre || 'General';
-      const cicloNombre = filtros.ciclo ? `Ciclo ${CICLO_ROMANO[filtros.ciclo] || filtros.ciclo}` : 'Todos los ciclos';
-      
-      // Filtrar los horarios por días seleccionados si los hay
-      const horariosExportar = diasSeleccionados.length > 0
-        ? horarios.filter(h => diasSeleccionados.includes(h.diaSemana))
-        : horarios;
-
-      if (!filtros.ciclo) {
-        await exportarHorariosTodosCiclosPDF(
-          horariosExportar,
-          periodoNombre,
-          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-          options
-        );
-      } else {
-        await exportarHorarioPDF(
-          horariosExportar,
-          'HORARIO ACADÉMICO',
-          `${periodoNombre} - ${cicloNombre}`,
-          diasSeleccionados.length > 0 ? diasSeleccionados : undefined,
-          options
-        );
-      }
-      toast.success('PDF exportado');
-    } catch (e: any) {
-      toast.error('Error al generar PDF: ' + e.message);
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
-
   const handleExportExcel = async (options: any) => {
     if (!periodoId || horarios.length === 0) return;
     setDownloadingExcel(true);
@@ -834,7 +846,7 @@ export default function HorariosPage() {
             onClick={() => {
               setEditingId(null);
               setForm({
-                cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: DiaSemana.LUNES, horaInicio: '08:00', horaFin: '10:00',
+                cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: 'LUNES' as DiaSemana, horaInicio: '08:00', horaFin: '10:00',
               });
               setCreateOpen(true);
             }}
@@ -1501,7 +1513,7 @@ export default function HorariosPage() {
             setFormError(null);
             setEditingId(null);
             setForm({
-              cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: DiaSemana.LUNES, horaInicio: '08:00', horaFin: '10:00',
+              cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: 'LUNES' as DiaSemana, horaInicio: '08:00', horaFin: '10:00',
             });
           }
         }}
@@ -1755,7 +1767,7 @@ export default function HorariosPage() {
               setCreateOpen(false);
               setEditingId(null);
               setForm({
-                cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: DiaSemana.LUNES, horaInicio: '08:00', horaFin: '10:00',
+                cursoId: '', docenteId: '', ambienteId: '', grupoId: '', diaSemana: 'LUNES' as DiaSemana, horaInicio: '08:00', horaFin: '10:00',
               });
             }}
             onSubmit={handleCreate}
@@ -1776,6 +1788,14 @@ export default function HorariosPage() {
         onExportPDF={handleExportPDF}
         onExportExcel={handleExportExcel}
       />
+
+      <VisorPDF
+        isOpen={pdfPreview.isOpen}
+        onClose={() => setPdfPreview((prev) => ({ ...prev, isOpen: false }))}
+        pdfUrl={pdfPreview.url}
+        title={pdfPreview.title}
+      />
     </div>
   );
 }
+

@@ -20,7 +20,7 @@ import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 import { apiDelete, apiGet, apiPost, apiPut, ApiClientError } from '@/lib/api-client';
 import { Formateadores } from '@/lib/formateadores';
 import { useRequireAuth } from '@/contexts/AuthContext';
-import { CategoriaDocente, Rol } from '@prisma/client';
+import { CategoriaDocente, Rol } from '@/lib/enums';
 import { toast } from 'sonner';
 import { CargaHorariaModal } from '@/components/docentes/CargaHorariaModal';
 
@@ -50,7 +50,7 @@ interface DocenteRow {
   fechaIngreso?: string | null;
 }
 
-const CATEGORIAS = Object.values(CategoriaDocente);
+const CATEGORIAS: CategoriaDocente[] = Object.values(CategoriaDocente);
 
 export default function DocentesPage() {
   const { loading: authLoading } = useRequireAuth([Rol.ADMINISTRADOR, Rol.SECRETARIA]);

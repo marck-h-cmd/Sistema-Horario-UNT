@@ -1,11 +1,12 @@
 'use client';
 
 import { useRequireAuth } from '@/contexts/AuthContext';
-import { Rol } from '@prisma/client';
+import { Rol } from '@/lib/enums';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ErrorAlert } from '@/components/feedback/ErrorAlert';
-import { apiGet, ApiClientError, downloadFile } from '@/lib/api-client';
-import { Loader2, FileText, Download, Clock, Users as UsersIcon } from 'lucide-react';
+import { apiGet, ApiClientError, downloadFile, getFileUrl } from '@/lib/api-client';
+import { VisorPDF } from '@/components/reportes/VisorPDF';
+import { Loader2, FileText, Download, Clock, Users as UsersIcon, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { BarChartCard } from '@/components/charts/BarChartCard';
@@ -39,6 +40,24 @@ export default function DocenteCursosPage() {
   const [selectedGrupoId, setSelectedGrupoId] = useState<string | null>(null);
   const [docenteId, setDocenteId] = useState<string | undefined>(undefined);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ isOpen: boolean; url: string | null; title: string }>({
+    isOpen: false,
+    url: null,
+    title: 'Horario del Docente',
+  });
+
+  const handlePreviewReport = () => {
+    if (!docenteId || !periodoSeleccionado) {
+      setError('Por favor, seleccione un periodo académico en la parte superior.');
+      return;
+    }
+    const url = getFileUrl('/api/reportes/docente', { docenteId, periodoId: periodoSeleccionado.id });
+    setPdfPreview({
+      isOpen: true,
+      url,
+      title: `Horario del Docente — ${user?.nombre ?? ''} ${user?.apellidos ?? ''}`,
+    });
+  };
 
   const handleDownloadReport = async () => {
     if (!docenteId) return;
@@ -293,17 +312,27 @@ export default function DocenteCursosPage() {
                             Grupo {selectedGrupo.nombre} • Capacidad: {selectedGrupo.capacidad} vacantes
                           </p>
                         </div>
-                        <button
-                          onClick={handleDownloadReport}
-                          disabled={isDownloading}
-                          className="btn-primary gap-2 bg-amber-500 hover:bg-amber-600 text-white"
-                        >
-                          {isDownloading
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : <FileText className="h-4 w-4" />
-                          }
-                          Descargar PDF
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleDownloadReport}
+                            disabled={isDownloading}
+                            className="btn-primary gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                          >
+                            {isDownloading
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <FileText className="h-4 w-4" />
+                            }
+                            Descargar PDF
+                          </button>
+                          <button
+                            onClick={handlePreviewReport}
+                            disabled={isDownloading}
+                            title="Previsualizar PDF"
+                            className="flex items-center justify-center px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
 
 
@@ -329,6 +358,13 @@ export default function DocenteCursosPage() {
           )}
         </div>
       </div>
+
+      <VisorPDF
+        isOpen={pdfPreview.isOpen}
+        onClose={() => setPdfPreview(prev => ({ ...prev, isOpen: false }))}
+        url={pdfPreview.url}
+        title={pdfPreview.title}
+      />
     </div>
   );
 }

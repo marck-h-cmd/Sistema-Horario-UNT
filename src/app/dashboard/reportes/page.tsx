@@ -564,26 +564,48 @@ export default function ReportesPage() {
                     ))}
                 </select>
               </div>
-              <Boton
-                variant="default"
-                className="mt-auto w-full"
-                disabled={!!downloading || !periodoId}
-                onClick={() =>
-                  runDownload('hor-amb', () => {
-                    const params: Record<string, string> = { periodoId };
-                    if (catHorariosAmbiente) params.tipo = catHorariosAmbiente;
-                    if (ambienteIdFiltro) params.ambienteId = ambienteIdFiltro;
-                    return downloadFile(
-                      '/api/reportes/horarios-ambiente',
-                      params,
-                      `reporte-horarios-ambiente.pdf`
-                    );
-                  })
-                }
-              >
-                <Building2 className="h-4 w-4 mr-2 shrink-0" />
-                {downloading === 'hor-amb' ? 'Generando…' : 'Descargar PDF'}
-              </Boton>
+              <div className="mt-4 flex w-full gap-2">
+                <Boton
+                  variant="default"
+                  className="flex-1"
+                  disabled={!!downloading || !periodoId}
+                  onClick={() =>
+                    runDownload('hor-amb', () => {
+                      const params: Record<string, string> = { periodoId };
+                      if (catHorariosAmbiente) params.tipo = catHorariosAmbiente;
+                      if (ambienteIdFiltro) params.ambienteId = ambienteIdFiltro;
+                      return downloadFile(
+                        '/api/reportes/horarios-ambiente',
+                        params,
+                        `reporte-horarios-ambiente.pdf`
+                      );
+                    })
+                  }
+                >
+                  <FileDown className="h-4 w-4 mr-2 shrink-0" />
+                  {downloading === 'hor-amb' ? 'Generando…' : 'Descargar PDF'}
+                </Boton>
+                <Boton
+                  variant="outline"
+                  className="px-3"
+                  title="Previsualizar"
+                  disabled={!!downloading || !periodoId}
+                  onClick={() =>
+                    runPreview(
+                      'hor-amb',
+                      () => {
+                        const params: Record<string, string> = { periodoId };
+                        if (catHorariosAmbiente) params.tipo = catHorariosAmbiente;
+                        if (ambienteIdFiltro) params.ambienteId = ambienteIdFiltro;
+                        return getFileUrl('/api/reportes/horarios-ambiente', params);
+                      },
+                      'Reporte de Horarios por Ambiente'
+                    )
+                  }
+                >
+                  <Eye className="h-4 w-4" />
+                </Boton>
+              </div>
               {!periodoId && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   Requiere período académico activo.
